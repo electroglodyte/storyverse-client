@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import createInitialData from '../utils/createInitialData';
 import { supabase } from '../supabaseClient';
-import { FaDatabase, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaDatabase, FaCheck, FaExclamationTriangle, FaTools } from 'react-icons/fa';
 
 const SetupPage = () => {
   const [result, setResult] = useState(null);
@@ -38,7 +38,7 @@ const SetupPage = () => {
           .select('id')
           .limit(1);
         
-        status.tablesExist = !worldsError;
+        status.tablesExist = !worldsError || worldsError.code !== '42P01'; // Not the 'relation does not exist' error
         status.storyWorldsExist = !worldsError && worldsData && worldsData.length > 0;
 
         // Check if stories table exists
@@ -66,6 +66,11 @@ const SetupPage = () => {
       const data = await createInitialData();
       console.log('Create initial data result:', data);
       setResult(data);
+      
+      if (!data.success && data.error && data.error.code === '42P01') {
+        // This is a "relation does not exist" error, which means we need to create tables
+        setError('The database tables do not exist. You need to set up the database schema first.');
+      }
     } catch (err) {
       console.error('Error in handleCreateData:', err);
       setError(err.message || 'An error occurred');
@@ -117,6 +122,24 @@ const SetupPage = () => {
           </div>
         )}
         
+        {!dbStatus.checking && !dbStatus.tablesExist && (
+          <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 text-amber-700">
+            <h3 className="font-bold flex items-center mb-2">
+              <FaTools className="mr-2" />
+              Database Tables Missing
+            </h3>
+            <p className="mb-2">
+              The required database tables do not exist in your Supabase project. You need to set them up before continuing.
+            </p>
+            <Link 
+              to="/database-setup" 
+              className="inline-block mt-2 px-4 py-2 bg-accent text-white rounded hover:bg-accent-hover"
+            >
+              Go to Database Setup
+            </Link>
+          </div>
+        )}
+        
         <div className="mb-6">
           <p className="mb-4">
             This page helps you set up the initial data for StoryVerse. 
@@ -125,7 +148,7 @@ const SetupPage = () => {
           
           <button
             onClick={handleCreateData}
-            disabled={isLoading || (dbStatus.storyWorldsExist && dbStatus.storiesExist)}
+            disabled={isLoading || !dbStatus.tablesExist || (dbStatus.storyWorldsExist && dbStatus.storiesExist)}
             className="create-button disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Setting Up Database...' : 'Create Initial Sample Data'}
@@ -145,6 +168,17 @@ const SetupPage = () => {
             <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
               {JSON.stringify(result?.error || {}, null, 2)}
             </pre>
+            
+            {error.includes('tables do not exist') && (
+              <div className="mt-3">
+                <Link 
+                  to="/database-setup" 
+                  className="inline-block px-4 py-2 bg-accent text-white rounded hover:bg-accent-hover"
+                >
+                  Go to Database Setup
+                </Link>
+              </div>
+            )}
           </div>
         )}
         
