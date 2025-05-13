@@ -6,12 +6,6 @@ export const SideNav: React.FC = () => {
   const location = useLocation();
   const { activeProject } = useProject();
 
-  const navItems = [
-    { path: '/', label: 'Home', icon: '🏠' },
-    { path: '/projects', label: 'Projects', icon: '📁' },
-    { path: '/samples', label: 'Writing Samples', icon: '📝' },
-  ];
-
   const isActive = (path: string) => {
     if (path === '/') {
       return location.pathname === '/';
@@ -20,57 +14,144 @@ export const SideNav: React.FC = () => {
   };
 
   return (
-    <nav className="bg-gray-800 w-64 min-h-screen p-4 hidden md:block">
+    <nav className="bg-[#e8e1d9] w-64 min-h-screen p-4 border-r border-[#d6cfc5] hidden md:block">
+      {/* Logo */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-indigo-400">StoryVerse</h1>
-        {activeProject && (
-          <div className="mt-2 p-2 bg-gray-700 rounded-md">
-            <span className="text-xs text-gray-400">Active Project:</span>
-            <p className="text-white font-medium truncate">{activeProject.name}</p>
-          </div>
-        )}
+        <h1 className="text-2xl font-bold text-[#654321]">StoryVerse</h1>
+        <p className="text-sm text-[#8a7968]">World Builder</p>
       </div>
       
-      <ul className="space-y-2">
-        {navItems.map((item) => (
-          <li key={item.path}>
-            <Link
-              to={item.path}
-              className={`flex items-center p-2 rounded-md transition-colors ${
-                isActive(item.path)
-                  ? 'bg-indigo-800 text-white'
-                  : 'text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              <span className="mr-3">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+      {/* Active Project */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#a69886] font-medium mb-2">ACTIVE PROJECT</h3>
+        <div className="relative">
+          <button 
+            className="w-full p-2 bg-[#d6cfc5] rounded-md text-[#654321] font-medium text-left flex justify-between items-center"
+          >
+            <span className="truncate">{activeProject?.name || 'Select a Project'}</span>
+            <span>▼</span>
+          </button>
+        </div>
+      </div>
       
-      <div className="mt-8 border-t border-gray-700 pt-4">
-        <h3 className="text-sm font-medium text-gray-400 mb-2">Quick Links</h3>
+      {/* Main Navigation */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#a69886] font-medium mb-2">MAIN</h3>
         <ul className="space-y-1">
           <li>
             <Link
-              to="/samples/new"
-              className="text-gray-300 hover:text-white text-sm flex items-center"
+              to="/"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/') && !isActive('/projects') && !isActive('/samples') && !isActive('/search')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
             >
-              <span className="mr-2">➕</span>
-              <span>Add New Sample</span>
+              <span className="mr-3">🏠</span>
+              <span>Dashboard</span>
             </Link>
           </li>
           <li>
             <Link
-              to="/projects/new"
-              className="text-gray-300 hover:text-white text-sm flex items-center"
+              to="/samples"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/samples')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
             >
-              <span className="mr-2">➕</span>
-              <span>Create New Project</span>
+              <span className="mr-3">📝</span>
+              <span>Writing Samples</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/search"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/search')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
+            >
+              <span className="mr-3">🔍</span>
+              <span>Search</span>
             </Link>
           </li>
         </ul>
+      </div>
+      
+      {/* Tools */}
+      <div className="mb-6">
+        <h3 className="text-xs uppercase text-[#a69886] font-medium mb-2">TOOLS</h3>
+        <ul className="space-y-1">
+          <li>
+            <Link
+              to="/style-analysis"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/style-analysis')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
+            >
+              <span className="mr-3">📊</span>
+              <span>Style Analysis</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/plot-mapping"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/plot-mapping')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
+            >
+              <span className="mr-3">📈</span>
+              <span>Plot Mapping</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/consistency-check"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/consistency-check')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
+            >
+              <span className="mr-3">⚡</span>
+              <span>Consistency Check</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/claude-assistant"
+              className={`flex items-center p-2 rounded-md transition-colors ${
+                isActive('/claude-assistant')
+                  ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+                  : 'text-[#654321] hover:bg-[#d6cfc5]'
+              }`}
+            >
+              <span className="mr-3">💬</span>
+              <span>Claude Assistant</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+      
+      {/* Settings */}
+      <div className="mt-auto">
+        <Link
+          to="/settings"
+          className={`flex items-center p-2 rounded-md transition-colors ${
+            isActive('/settings')
+              ? 'bg-[#d6cfc5] text-[#654321] font-medium'
+              : 'text-[#654321] hover:bg-[#d6cfc5]'
+          }`}
+        >
+          <span className="mr-3">⚙️</span>
+          <span>Settings</span>
+        </Link>
       </div>
     </nav>
   );
