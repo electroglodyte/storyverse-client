@@ -35,9 +35,13 @@ const router = createBrowserRouter([
         path: 'database-setup',
         element: <DirectDatabaseSetupPage />,
       },
-      // Story World routes
+      // Story World routes - handle both 'storyworlds' and 'story-worlds' for backwards compatibility
       {
         path: 'story-worlds',
+        element: <StoryWorldsTable />,
+      },
+      {
+        path: 'storyworlds',
         element: <StoryWorldsTable />,
       },
       {
@@ -45,7 +49,15 @@ const router = createBrowserRouter([
         element: <StoryWorldsListPage />,
       },
       {
+        path: 'storyworlds/list',
+        element: <StoryWorldsListPage />,
+      },
+      {
         path: 'story-worlds/:id',
+        element: <StoryWorldDetailPage />,
+      },
+      {
+        path: 'storyworlds/:id',
         element: <StoryWorldDetailPage />,
       },
       {
@@ -53,7 +65,15 @@ const router = createBrowserRouter([
         element: <StoryWorldDetailPage />,
       },
       {
+        path: 'storyworlds/edit/:id',
+        element: <StoryWorldDetailPage />,
+      },
+      {
         path: 'story-worlds/new',
+        element: <StoryWorldDetailPage />,
+      },
+      {
+        path: 'storyworlds/new',
         element: <StoryWorldDetailPage />,
       },
       // Series routes
