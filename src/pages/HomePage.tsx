@@ -3,22 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext';
 import { useSamples } from '../hooks/useSamples';
-import { useAnalysis } from '../hooks/useAnalysis';
-
-// Define interface for samples
-interface Sample {
-  id: string;
-  title: string;
-  content: string;
-  author?: string;
-  created_at: string;
-  updated_at: string;
-  sample_type?: string;
-  tags?: string[];
-  word_count: number;
-  excerpt?: string;
-  project_id: string;
-}
 
 const HomePage: React.FC = () => {
   const { activeProject, projects, loading: projectsLoading } = useProject();
