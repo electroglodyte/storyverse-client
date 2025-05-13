@@ -127,7 +127,7 @@ const SeriesTable = () => {
     },
     { 
       headerName: 'Story World', 
-      field: 'story_world_id',
+      field: 'storyworld_id',
       cellRenderer: (params) => storyWorlds[params.value] || 'Unknown',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -159,7 +159,7 @@ const SeriesTable = () => {
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => navigate(`/series/edit/${params.data.id}`)} 
-            className="text-blue-500 hover:text-blue-700"
+            className="text-accent hover:text-accent-hover"
           >
             <FaEdit />
           </button>
@@ -180,7 +180,7 @@ const SeriesTable = () => {
   const actionButtons = (
     <button
       onClick={handleCreateNew}
-      className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+      className="create-button"
     >
       <FaPlus />
       <span>New Series</span>
@@ -188,17 +188,15 @@ const SeriesTable = () => {
   );
 
   return (
-    <div className="container mx-auto py-8">
-      <DataGrid
-        title="Series"
-        columnDefs={columnDefs}
-        rowData={series}
-        onRowSelected={handleRowSelected}
-        onCellValueChanged={handleCellValueChanged}
-        actionButtons={actionButtons}
-        isLoading={loading}
-      />
-    </div>
+    <DataGrid
+      title="Series"
+      columnDefs={columnDefs}
+      rowData={series}
+      onRowSelected={handleRowSelected}
+      onCellValueChanged={handleCellValueChanged}
+      actionButtons={actionButtons}
+      isLoading={loading}
+    />
   );
 };
 
