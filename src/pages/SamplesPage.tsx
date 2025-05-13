@@ -80,14 +80,14 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
 
   // Empty state component
   const EmptyState = () => (
-    <div className="text-center py-12">
-      <div className="inline-block mb-4">
-        <svg className="w-16 h-16 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="text-center py-12 bg-white rounded-lg border border-primary-200 shadow-sm">
+      <div className="inline-block mb-4 text-primary-300">
+        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </div>
       <h3 className="text-lg font-medium text-primary-700 mb-2">No writing samples yet</h3>
-      <p className="text-gray-500 mb-6">Add your first writing sample to get started</p>
+      <p className="text-primary-600 mb-6">Add your first writing sample to get started</p>
       <Link 
         to="/samples/new"
         className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -110,7 +110,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 bg-primary-50 p-4 rounded-md">
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border border-primary-200 shadow-sm">
         <div className="flex-1">
           <label htmlFor="author" className="block text-sm font-medium text-primary-600 mb-1">Author</label>
           <select
@@ -176,7 +176,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
       </div>
       
       {error && (
-        <div className="bg-red-50 p-4 rounded-md mb-6">
+        <div className="bg-red-50 p-4 rounded-md mb-6 border border-red-200">
           <p className="text-red-700">{error}</p>
         </div>
       )}
@@ -193,14 +193,14 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
             <Link 
               key={sample.id}
               to={`/samples/${sample.id}`}
-              className="block bg-white rounded-lg shadow-sm hover:shadow transition-shadow"
+              className="block bg-white rounded-lg border border-primary-200 shadow-sm hover:shadow transition-shadow"
             >
               <div className="p-4">
                 <h3 className="font-medium text-primary-700 mb-1">{sample.title}</h3>
                 {sample.author && (
                   <p className="text-sm text-primary-500 mb-2">{sample.author}</p>
                 )}
-                <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+                <p className="text-sm text-primary-600 line-clamp-3 mb-3">
                   {sample.excerpt || sample.content.substring(0, 150) + '...'}
                 </p>
                 <div className="flex justify-between text-xs text-primary-500">
@@ -212,7 +212,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white rounded-lg border border-primary-200 shadow-sm overflow-hidden">
           <ul className="divide-y divide-primary-200">
             {filteredSamples.map(sample => (
               <li key={sample.id}>
@@ -226,7 +226,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
                       {sample.author && (
                         <p className="text-sm text-primary-500 mt-1">{sample.author}</p>
                       )}
-                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                      <p className="text-sm text-primary-600 mt-2 line-clamp-2">
                         {sample.excerpt || sample.content.substring(0, 100) + '...'}
                       </p>
                     </div>
