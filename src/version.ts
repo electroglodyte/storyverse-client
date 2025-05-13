@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 5,
+  patch: 6,
   date: '2025-05-13',
-  notes: 'Added comprehensive database setup tools. Fixed the "relation does not exist" error by providing a way to create database tables through the web interface. Improved error handling throughout the application.'
+  notes: 'Fixed the "relation does not exist" error by creating the story_worlds table with proper structure and migrating data from storyworlds table. Updated database references to ensure consistent table naming across the application.'
 };
