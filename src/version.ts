@@ -1,8 +1,9 @@
 // This file is used to trigger deployments when updated
 // The version follows semver (major.minor.patch)
-export const VERSION = '0.2.3';
+export const VERSION = '0.2.4';
 
 // Changelog:
+// 0.2.4 - Fixed TypeScript build errors in App.tsx and SeriesDetailPage
 // 0.2.3 - Fix vercel.json format to resolve deployment issues
 // 0.2.2 - Trigger deployment for StoryWorld changes after Vercel upgrade
 // 0.2.1 - Fixed deployment issues with StoryWorld changes
