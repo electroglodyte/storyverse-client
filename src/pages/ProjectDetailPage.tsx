@@ -36,6 +36,7 @@ const ProjectDetailPage: React.FC = () => {
   const [samples, setSamples] = useState<Sample[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<Project>>({});
   const { activeProject, changeProject } = useProject();
@@ -48,36 +49,80 @@ const ProjectDetailPage: React.FC = () => {
       
       try {
         setLoading(true);
+        setError(null);
+        setErrorDetails(null);
         
-        // Fetch project details
+        // First check if project exists
         const { data: projectData, error: projectError } = await supabase
           .from('projects')
           .select('*')
           .eq('id', id)
           .single();
         
-        if (projectError) throw projectError;
+        if (projectError) {
+          console.error('Error fetching project:', projectError);
+          
+          if (projectError.code === 'PGRST116') {
+            setError('Database access error: The "projects" table might not exist yet.');
+            setErrorDetails('Please make sure your database is properly set up with the required tables.');
+          } else if (projectError.code === '22P02') {
+            setError('Invalid project ID format.');
+            setErrorDetails('The project ID in the URL is not in the correct format. Please check the URL and try again.');
+          } else if (projectError.code === 'PGRST104') {
+            setError('Project not found.');
+            setErrorDetails('The project you are looking for does not exist or may have been deleted.');
+          } else if (projectError.message?.includes('auth')) {
+            setError('Authentication error: Please check your Supabase connection settings.');
+            setErrorDetails('Your API key might not have the necessary permissions to access this data.');
+          } else {
+            setError(`Failed to load project details: ${projectError.message || 'Unknown error'}`);
+            setErrorDetails('There was an error while trying to fetch this project from the database.');
+          }
+          
+          setLoading(false);
+          return;
+        }
         
         if (!projectData) {
-          throw new Error('Project not found');
+          setError('Project not found.');
+          setErrorDetails('The project you are looking for does not exist or may have been deleted.');
+          setLoading(false);
+          return;
         }
         
         setProject(projectData);
         setFormData(projectData);
         
         // Fetch associated samples
-        const { data: samplesData, error: samplesError } = await supabase
-          .from('samples')
-          .select('*')
-          .eq('project_id', id)
-          .order('updated_at', { ascending: false });
+        try {
+          const { data: samplesData, error: samplesError } = await supabase
+            .from('samples')
+            .select('*')
+            .eq('project_id', id)
+            .order('updated_at', { ascending: false });
+          
+          if (samplesError) {
+            console.error('Error fetching samples:', samplesError);
+            // If samples table doesn't exist, just show empty list but don't break the page
+            if (samplesError.code === 'PGRST116') {
+              console.log('Samples table not found, showing empty list');
+              setSamples([]);
+            } else {
+              throw samplesError;
+            }
+          } else {
+            setSamples(samplesData || []);
+          }
+        } catch (sampleErr: any) {
+          // Handle sample loading error specifically, but don't break project loading
+          console.error('Error loading samples:', sampleErr);
+          setSamples([]);
+        }
         
-        if (samplesError) throw samplesError;
-        
-        setSamples(samplesData || []);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching project details:', err);
         setError('Failed to load project details');
+        setErrorDetails(err.message || 'An unexpected error occurred');
       } finally {
         setLoading(false);
       }
@@ -98,6 +143,8 @@ const ProjectDetailPage: React.FC = () => {
     
     try {
       setLoading(true);
+      setError(null);
+      setErrorDetails(null);
       
       const { data, error } = await supabase
         .from('projects')
@@ -110,7 +157,13 @@ const ProjectDetailPage: React.FC = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating project:', error);
+        setError('Failed to update project');
+        setErrorDetails(error.message || 'An unexpected error occurred');
+        setLoading(false);
+        return;
+      }
       
       setProject(data);
       setIsEditing(false);
@@ -119,9 +172,10 @@ const ProjectDetailPage: React.FC = () => {
       if (activeProject?.id === id) {
         changeProject(id);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating project:', err);
       setError('Failed to update project');
+      setErrorDetails(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -137,14 +191,24 @@ const ProjectDetailPage: React.FC = () => {
     
     try {
       setLoading(true);
+      setError(null);
+      setErrorDetails(null);
       
       // Delete associated samples first
-      const { error: samplesError } = await supabase
-        .from('samples')
-        .delete()
-        .eq('project_id', id);
-      
-      if (samplesError) throw samplesError;
+      try {
+        const { error: samplesError } = await supabase
+          .from('samples')
+          .delete()
+          .eq('project_id', id);
+        
+        if (samplesError) {
+          console.warn('Warning: Could not delete samples:', samplesError);
+          // Continue with project deletion even if samples deletion fails
+        }
+      } catch (sampleErr) {
+        console.warn('Warning: Error during samples deletion:', sampleErr);
+        // Continue anyway
+      }
       
       // Then delete the project
       const { error: projectError } = await supabase
@@ -152,13 +216,20 @@ const ProjectDetailPage: React.FC = () => {
         .delete()
         .eq('id', id);
       
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error('Error deleting project:', projectError);
+        setError('Failed to delete project');
+        setErrorDetails(projectError.message || 'An unexpected error occurred');
+        setLoading(false);
+        return;
+      }
       
       // Navigate back to projects list
       navigate('/projects');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error deleting project:', err);
       setError('Failed to delete project');
+      setErrorDetails(err.message || 'An unexpected error occurred');
       setLoading(false);
     }
   };
@@ -200,22 +271,57 @@ const ProjectDetailPage: React.FC = () => {
     return (
       <div style={{
         backgroundColor: '#fee2e2',
-        padding: '1rem',
-        borderRadius: '0.375rem',
-        marginBottom: '1.5rem',
-        border: '1px solid #fecaca'
+        padding: '1.5rem',
+        borderRadius: '0.5rem',
+        border: '1px solid #fecaca',
+        marginBottom: '1.5rem'
       }}>
-        <p style={{ color: '#b91c1c' }}>{error}</p>
+        <h3 style={{ 
+          fontSize: '1.125rem',
+          fontWeight: '500',
+          color: '#b91c1c',
+          marginBottom: '0.5rem'
+        }}>
+          {error}
+        </h3>
+        
+        {errorDetails && (
+          <p style={{ 
+            color: '#b91c1c',
+            marginBottom: '1rem'
+          }}>
+            {errorDetails}
+          </p>
+        )}
+        
+        <div style={{ 
+          marginTop: '1rem',
+          fontSize: '0.875rem',
+          color: '#b91c1c'
+        }}>
+          <p>Common troubleshooting steps:</p>
+          <ul style={{ 
+            paddingLeft: '1.5rem',
+            marginTop: '0.5rem',
+            marginBottom: '1rem'
+          }}>
+            <li>Check your database connection and API keys</li>
+            <li>Verify that the required tables exist in your Supabase project</li>
+            <li>Make sure the project ID in the URL is correct</li>
+            <li>Check that you have the necessary permissions to access this project</li>
+          </ul>
+        </div>
+        
         <Link 
           to="/projects"
           style={{
             display: 'inline-block',
-            marginTop: '1rem',
             padding: '0.5rem 1rem',
             backgroundColor: '#8a6d4d',
             color: 'white',
             borderRadius: '0.375rem',
-            textDecoration: 'none'
+            textDecoration: 'none',
+            marginTop: '0.5rem'
           }}
         >
           Back to Projects
@@ -238,6 +344,13 @@ const ProjectDetailPage: React.FC = () => {
         }}>
           Project not found
         </h3>
+        <p style={{
+          fontSize: '0.875rem',
+          color: '#8a6d4d',
+          marginBottom: '1.5rem'
+        }}>
+          The project you're looking for does not exist or you may not have permission to view it.
+        </p>
         <Link 
           to="/projects"
           style={{
