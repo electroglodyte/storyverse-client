@@ -1,286 +1,141 @@
 /**
- * StoryVerse Database Schema Types
- * Generated for Supabase project: rkmjjhjjpnhjymqmcvpe
+ * Supabase Database Schema for StoryVerse
+ * 
+ * This file serves as documentation for the Supabase database tables
+ * and their relationships.
  */
 
 /**
- * StoryWorld Type
+ * story_worlds table
+ * 
+ * A Story World is the high-level container for related content.
  */
 export interface StoryWorld {
-  id: string; // uuid
-  name: string;
-  description: string | null;
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  user_id: string | null; // references auth.users
-  cover_image: string | null;
-  tags: string[] | null;
+  id: string;               // UUID primary key
+  name: string;             // Display name
+  description: string;      // Longer description
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the story world
 }
 
 /**
- * Series Type
+ * series table
+ * 
+ * A Series groups related stories together in a specific sequence.
  */
 export interface Series {
-  id: string; // uuid
-  name: string;
-  description: string | null;
-  storyworld_id: string | null; // references StoryWorld
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  user_id: string | null; // references auth.users
-  cover_image: string | null;
-  sequence_type: string | null;
+  id: string;               // UUID primary key
+  name: string;             // Display name
+  description: string;      // Longer description
+  story_world_id: string;   // Foreign key to story_worlds
+  sequence_type: string;    // Chronological, Publication, Narrative, Other
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the series
 }
 
 /**
- * Series-Stories Junction Type
- */
-export interface SeriesStory {
-  id: string; // uuid
-  series_id: string | null; // references Series
-  story_id: string | null; // references Story
-  sequence_number: number | null;
-  created_at: string | null; // timestamp
-}
-
-/**
- * Core Story Type (renamed from Project)
+ * stories table
+ * 
+ * A Story is an individual creative work.
  */
 export interface Story {
-  id: string; // uuid
-  name: string;
-  description: string | null;
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  status: string | null; // default: 'active'
-  cover_image_url: string | null;
-  genre: string[] | null;
-  tags: string[] | null;
-  storyworld_id: string | null; // references StoryWorld
-  series_id: string | null; // references Series
+  id: string;               // UUID primary key
+  title: string;            // Title of the story
+  description: string;      // Synopsis or description
+  story_world_id: string;   // Foreign key to story_worlds
+  series_id: string;        // Optional foreign key to series
+  series_order: number;     // Optional position in series
+  status: string;           // Draft, In Progress, Editing, Complete
+  word_count: number;       // Word count of the story
+  target_date: string;      // Target completion date
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the story
 }
 
 /**
- * Writing Sample Type
+ * writing_samples table
+ * 
+ * Writing Samples are text excerpts that can be analyzed for style.
  */
 export interface WritingSample {
-  id: string; // uuid
-  title: string;
-  content: string;
-  author: string | null;
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  sample_type: string | null;
-  tags: string[] | null;
-  word_count: number | null; // generated from content
-  excerpt: string | null;
-  story_id: string | null; // references Story (renamed from project_id)
+  id: string;               // UUID primary key
+  title: string;            // Title of the sample
+  text: string;             // The sample text content
+  author: string;           // Author of the sample
+  sample_type: string;      // Type of writing (novel, screenplay, etc.)
+  project_id: string;       // Associated project
+  tags: string[];           // Array of tags for categorization
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the sample
 }
 
 /**
- * Style Analysis Type
- */
-export interface StyleAnalysis {
-  id: string; // uuid
-  sample_id: string | null; // references WritingSample
-  created_at: string | null; // timestamp
-  sentence_metrics: Record<string, any>; // jsonb
-  vocabulary_metrics: Record<string, any>; // jsonb
-  narrative_characteristics: Record<string, any>; // jsonb
-  stylistic_devices: Record<string, any>; // jsonb
-  tone_attributes: Record<string, any>; // jsonb
-  comparable_authors: string[] | null;
-  descriptive_summary: string;
-}
-
-/**
- * Dialogue Analysis Type
- */
-export interface DialogueAnalysis {
-  id: string; // uuid
-  sample_id: string | null; // references WritingSample
-  created_at: string | null; // timestamp
-  dialogue_metrics: Record<string, any>; // jsonb
-  voice_differentiation: Record<string, any>; // jsonb
-  subtext_metrics: Record<string, any>; // jsonb
-  identified_techniques: Record<string, any>[] | null; // jsonb[]
-  dialogue_summary: string;
-}
-
-/**
- * Dialogue Techniques Reference Type
- */
-export interface DialogueTechnique {
-  id: string; // uuid
-  name: string; // unique
-  description: string;
-  example: string;
-  purpose: string[] | null;
-  common_contexts: string[] | null;
-  tags: string[] | null;
-  related_technique_ids: string[] | null; // uuid[]
-}
-
-/**
- * Style Profile Type
+ * style_profiles table
+ * 
+ * Style Profiles capture the writing style from analyzed samples.
  */
 export interface StyleProfile {
-  id: string; // uuid
-  name: string;
-  description: string | null;
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  style_parameters: Record<string, any>; // jsonb
-  dialogue_parameters: Record<string, any> | null; // jsonb
-  example_passages: string[] | null;
-  notes: string | null;
-  story_specific: boolean | null; // renamed from project_specific, default: false
-  story_name: string | null; // renamed from project_name
-  story_id: string | null; // references Story (renamed from project_id)
+  id: string;               // UUID primary key
+  name: string;             // Name of the style profile
+  description: string;      // Description of the style
+  genre: string[];          // Genres associated with this style
+  project_id: string;       // Associated project
+  comparable_authors: string[]; // Similar authors
+  user_comments: string;    // Additional notes
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the profile
 }
 
 /**
- * Profile Sample Junction Type
+ * sample_analyses table
+ * 
+ * Contains detailed analysis of writing samples.
+ */
+export interface SampleAnalysis {
+  id: string;               // UUID primary key
+  sample_id: string;        // Foreign key to writing_samples
+  analysis_data: any;       // JSON data with analysis results
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * profile_samples table
+ * 
+ * Junction table linking style profiles to their constituent samples.
  */
 export interface ProfileSample {
-  id: string; // uuid
-  profile_id: string | null; // references StyleProfile
-  sample_id: string | null; // references WritingSample
-  added_at: string | null; // timestamp
-  weight: number | null; // default: 1.0
+  profile_id: string;       // Foreign key to style_profiles
+  sample_id: string;        // Foreign key to writing_samples
+  created_at: string;       // Timestamp of creation
 }
 
 /**
- * Reference Author Type
+ * representative_samples table
+ * 
+ * Examples that best exemplify a particular style profile.
  */
-export interface ReferenceAuthor {
-  id: string; // uuid
-  name: string; // unique
-  time_period: string | null;
-  primary_genres: string[] | null;
-  notable_works: string[] | null;
-  known_style_attributes: Record<string, any>; // jsonb
-  style_fingerprint: Record<string, any> | null; // jsonb
-  reference_links: string[] | null;
+export interface RepresentativeSample {
+  id: string;               // UUID primary key
+  profile_id: string;       // Foreign key to style_profiles
+  text_content: string;     // The exemplary text
+  description: string;      // Description of what makes it representative
+  created_at: string;       // Timestamp of creation
 }
 
 /**
- * Knowledge Category Type
+ * users table
+ * 
+ * User accounts (managed by Supabase Auth).
  */
-export interface KnowledgeCategory {
-  id: string; // uuid
-  name: string; // unique
-  description: string | null;
-  parent_id: string | null; // references KnowledgeCategory
-  created_at: string | null; // timestamp
-  story_id: string | null; // references Story (renamed from project_id)
-}
-
-/**
- * Writing Knowledge Type
- */
-export interface WritingKnowledge {
-  id: string; // uuid
-  title: string;
-  content: string;
-  category_id: string | null; // references KnowledgeCategory
-  source: string | null;
-  importance: number | null; // default: 3
-  created_at: string | null; // timestamp
-  updated_at: string | null; // timestamp
-  tags: string[] | null;
-  is_personal: boolean | null; // default: false
-  related_knowledge_ids: string[] | null; // uuid[]
-  usage_context: string[] | null;
-  visibility_trigger: string | null;
-  story_id: string | null; // references Story (renamed from project_id)
-}
-
-/**
- * Knowledge Example Type
- */
-export interface KnowledgeExample {
-  id: string; // uuid
-  knowledge_id: string | null; // references WritingKnowledge
-  excerpt: string;
-  source: string | null;
-  notes: string | null;
-  sample_id: string | null; // references WritingSample
-  created_at: string | null; // timestamp
-}
-
-/**
- * Knowledge Usage History Type
- */
-export interface KnowledgeUsageHistory {
-  id: string; // uuid
-  knowledge_id: string | null; // references WritingKnowledge
-  used_at: string | null; // timestamp
-  usage_context: string | null;
-  effectiveness: number | null;
-}
-
-/**
- * Test Database Type (seems to be a test table)
- */
-export interface TestDb {
-  id: number;
-  created_at: string; // timestamp
-  Name: string;
-  Rank: string;
-}
-
-/**
- * Database Tables Map
- * Maps table names to their TypeScript types
- */
-export const TABLES = {
-  storyworlds: 'storyworlds' as const,
-  series: 'series' as const,
-  series_stories: 'series_stories' as const,
-  stories: 'stories' as const, // renamed from projects
-  writing_samples: 'writing_samples' as const,
-  style_analyses: 'style_analyses' as const,
-  dialogue_analyses: 'dialogue_analyses' as const,
-  dialogue_techniques: 'dialogue_techniques' as const,
-  style_profiles: 'style_profiles' as const,
-  profile_samples: 'profile_samples' as const,
-  reference_authors: 'reference_authors' as const,
-  knowledge_categories: 'knowledge_categories' as const,
-  writing_knowledge: 'writing_knowledge' as const,
-  knowledge_examples: 'knowledge_examples' as const,
-  knowledge_usage_history: 'knowledge_usage_history' as const,
-  testdb: 'testdb' as const
-};
-
-/**
- * Database Schema Type
- * Maps table names to their TypeScript types
- */
-export type Database = {
-  [TABLES.storyworlds]: StoryWorld;
-  [TABLES.series]: Series;
-  [TABLES.series_stories]: SeriesStory;
-  [TABLES.stories]: Story; // renamed from projects
-  [TABLES.writing_samples]: WritingSample;
-  [TABLES.style_analyses]: StyleAnalysis;
-  [TABLES.dialogue_analyses]: DialogueAnalysis;
-  [TABLES.dialogue_techniques]: DialogueTechnique;
-  [TABLES.style_profiles]: StyleProfile;
-  [TABLES.profile_samples]: ProfileSample;
-  [TABLES.reference_authors]: ReferenceAuthor;
-  [TABLES.knowledge_categories]: KnowledgeCategory;
-  [TABLES.writing_knowledge]: WritingKnowledge;
-  [TABLES.knowledge_examples]: KnowledgeExample;
-  [TABLES.knowledge_usage_history]: KnowledgeUsageHistory;
-  [TABLES.testdb]: TestDb;
-};
-
-/**
- * Gets the table name as a string
- * @param table The table constant
- * @returns The table name
- */
-export function getTableName<T extends keyof Database>(table: T): string {
-  return table;
+export interface User {
+  id: string;               // UUID primary key (from Supabase Auth)
+  email: string;            // User's email
+  display_name: string;     // User's display name
+  created_at: string;       // Timestamp of creation
 }
