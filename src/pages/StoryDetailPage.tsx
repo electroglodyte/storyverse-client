@@ -17,6 +17,11 @@ interface SeriesOption {
   name: string;
 }
 
+interface StoryWorldOption {
+  id: string;
+  name: string;
+}
+
 const StoryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -33,8 +38,12 @@ const StoryDetailPage: React.FC = () => {
     genre: []
   });
   const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
+  const [storyWorldOptions, setStoryWorldOptions] = useState<StoryWorldOption[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const [selectedStoryWorldId, setSelectedStoryWorldId] = useState<string | null>(null);
   const [isNewStory, setIsNewStory] = useState(!id);
+  const [createNewSeries, setCreateNewSeries] = useState<boolean>(false);
+  const [createNewStoryWorld, setCreateNewStoryWorld] = useState<boolean>(false);
 
   // Get query parameters (for new story creation)
   useEffect(() => {
@@ -47,6 +56,7 @@ const StoryDetailPage: React.FC = () => {
       
       if (storyWorldId) {
         setFormData(prev => ({ ...prev, story_world_id: storyWorldId }));
+        setSelectedStoryWorldId(storyWorldId);
         
         // Fetch the story world details
         const fetchStoryWorld = async () => {
@@ -83,11 +93,52 @@ const StoryDetailPage: React.FC = () => {
         };
         
         fetchStoryWorld();
+      } else {
+        // Fetch all story worlds for the dropdown
+        const fetchStoryWorlds = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('story_worlds')
+              .select('id, name')
+              .order('name', { ascending: true });
+              
+            if (error) throw error;
+            
+            setStoryWorldOptions(data || []);
+          } catch (err) {
+            console.error('Error fetching story worlds:', err);
+          }
+        };
+        
+        fetchStoryWorlds();
       }
       
       setLoading(false);
     }
   }, [id]);
+
+  // Fetch series options when story world changes
+  useEffect(() => {
+    if (isNewStory && selectedStoryWorldId && !createNewStoryWorld) {
+      const fetchSeriesForStoryWorld = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('series')
+            .select('id, name')
+            .eq('storyworld_id', selectedStoryWorldId)
+            .order('name', { ascending: true });
+            
+          if (error) throw error;
+          
+          setSeriesOptions(data || []);
+        } catch (err) {
+          console.error('Error fetching series options:', err);
+        }
+      };
+      
+      fetchSeriesForStoryWorld();
+    }
+  }, [selectedStoryWorldId, isNewStory, createNewStoryWorld]);
 
   // Fetch story details and associated samples
   useEffect(() => {
@@ -131,6 +182,7 @@ const StoryDetailPage: React.FC = () => {
         
         const story: ExtendedStory = storyData;
         setSelectedSeriesId(story.series_id);
+        setSelectedStoryWorldId(story.story_world_id);
         
         // Get the StoryWorld information if available
         if (story.story_world_id) {
@@ -220,7 +272,90 @@ const StoryDetailPage: React.FC = () => {
   // Handle series select change
   const handleSeriesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;
-    setSelectedSeriesId(value === "" ? null : value);
+    if (value === "add_new") {
+      setCreateNewSeries(true);
+      setSelectedSeriesId(null);
+    } else {
+      setCreateNewSeries(false);
+      setSelectedSeriesId(value === "" ? null : value);
+    }
+  };
+
+  // Handle story world select change
+  const handleStoryWorldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    
+    if (value === "own_story_world") {
+      // Will create a new story world with the story's name
+      setCreateNewStoryWorld(true);
+      setSelectedStoryWorldId(null);
+      setFormData(prev => ({ ...prev, story_world_id: null }));
+      // Reset series options as they're tied to story world
+      setSeriesOptions([]);
+      setSelectedSeriesId(null);
+    } else if (value === "add_new") {
+      // Add new story world option
+      setCreateNewStoryWorld(true);
+      setSelectedStoryWorldId(null);
+      setFormData(prev => ({ ...prev, story_world_id: null }));
+      // Reset series options as they're tied to story world
+      setSeriesOptions([]);
+      setSelectedSeriesId(null);
+    } else {
+      setCreateNewStoryWorld(false);
+      setSelectedStoryWorldId(value === "" ? null : value);
+      setFormData(prev => ({ ...prev, story_world_id: value === "" ? null : value }));
+    }
+  };
+
+  // Create a new story world based on the story's name
+  const createStoryWorldFromStory = async (storyName: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('story_worlds')
+        .insert([
+          {
+            name: `${storyName} (Story World)`,
+            description: `Story world for "${storyName}"`,
+          }
+        ])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      return data.id;
+    } catch (err: any) {
+      console.error('Error creating story world:', err);
+      toast.error('Failed to create story world');
+      return null;
+    }
+  };
+
+  // Create a new series for the story
+  const createNewSeriesForStory = async (storyName: string, storyWorldId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('series')
+        .insert([
+          {
+            name: `${storyName} Series`,
+            description: `Series for "${storyName}"`,
+            storyworld_id: storyWorldId,
+            sequence_type: 'Chronological'
+          }
+        ])
+        .select()
+        .single();
+        
+      if (error) throw error;
+      
+      return data.id;
+    } catch (err: any) {
+      console.error('Error creating series:', err);
+      toast.error('Failed to create series');
+      return null;
+    }
   };
 
   // Save new story
@@ -233,6 +368,22 @@ const StoryDetailPage: React.FC = () => {
     try {
       setLoading(true);
       
+      let finalStoryWorldId = selectedStoryWorldId;
+      let finalSeriesId = selectedSeriesId;
+      
+      // Create a new story world if needed
+      if (createNewStoryWorld) {
+        if (selectedStoryWorldId === "own_story_world" || !selectedStoryWorldId) {
+          // Create a story world with the story's name
+          finalStoryWorldId = await createStoryWorldFromStory(formData.name);
+        }
+      }
+      
+      // Create a new series if needed
+      if (createNewSeries && finalStoryWorldId) {
+        finalSeriesId = await createNewSeriesForStory(formData.name, finalStoryWorldId);
+      }
+      
       // Create the new story
       const { data, error } = await supabase
         .from('stories')
@@ -241,8 +392,8 @@ const StoryDetailPage: React.FC = () => {
             name: formData.name,
             description: formData.description || '',
             status: 'active',
-            story_world_id: formData.story_world_id || null,
-            series_id: selectedSeriesId,
+            story_world_id: finalStoryWorldId,
+            series_id: finalSeriesId,
             tags: formData.tags || [],
             genre: formData.genre || []
           }
@@ -560,8 +711,30 @@ const StoryDetailPage: React.FC = () => {
             />
           </div>
           
-          {formData.story_world_id && seriesOptions.length > 0 && (
-            <div className="mb-4">
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            {/* Story World Selection */}
+            <div className="flex-1">
+              <label className="block text-gray-700 font-medium mb-2">
+                Story World
+              </label>
+              <select
+                value={selectedStoryWorldId || ""}
+                onChange={handleStoryWorldChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Select a Story World --</option>
+                <option value="own_story_world">Its own story world</option>
+                {storyWorldOptions.map(storyWorld => (
+                  <option key={storyWorld.id} value={storyWorld.id}>
+                    {storyWorld.name}
+                  </option>
+                ))}
+                <option value="add_new">Add new story world</option>
+              </select>
+            </div>
+            
+            {/* Series Selection */}
+            <div className="flex-1">
               <label className="block text-gray-700 font-medium mb-2">
                 Series (optional)
               </label>
@@ -569,16 +742,23 @@ const StoryDetailPage: React.FC = () => {
                 value={selectedSeriesId || ""}
                 onChange={handleSeriesChange}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!selectedStoryWorldId || createNewStoryWorld}
               >
-                <option value="">-- Standalone Story (No Series) --</option>
+                <option value="">None</option>
                 {seriesOptions.map(series => (
                   <option key={series.id} value={series.id}>
                     {series.name}
                   </option>
                 ))}
+                <option value="add_new">Add new series</option>
               </select>
+              {(!selectedStoryWorldId || createNewStoryWorld) && (
+                <p className="text-sm text-gray-500 mt-1">
+                  Please select a story world first to see available series
+                </p>
+              )}
             </div>
-          )}
+          </div>
           
           <div className="flex justify-end gap-2 mt-6">
             <button
@@ -903,7 +1083,7 @@ const StoryDetailPage: React.FC = () => {
                           </p>
                         )}
                         <p className="text-sm text-gray-600 mb-1 line-clamp-2">
-                          {sample.excerpt || sample.content.substring(0, 150) + '...'}
+                          {sample.excerpt || sample.content?.substring(0, 150) + '...'}
                         </p>
                         <div className="text-xs text-gray-500">
                           {sample.word_count || 0} words • {new Date(sample.updated_at || '').toLocaleDateString()}
