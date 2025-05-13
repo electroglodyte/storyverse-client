@@ -4,9 +4,49 @@
  */
 
 /**
- * Core Project Type
+ * StoryWorld Type
  */
-export interface Project {
+export interface StoryWorld {
+  id: string; // uuid
+  name: string;
+  description: string | null;
+  created_at: string | null; // timestamp
+  updated_at: string | null; // timestamp
+  user_id: string | null; // references auth.users
+  cover_image: string | null;
+  tags: string[] | null;
+}
+
+/**
+ * Series Type
+ */
+export interface Series {
+  id: string; // uuid
+  name: string;
+  description: string | null;
+  storyworld_id: string | null; // references StoryWorld
+  created_at: string | null; // timestamp
+  updated_at: string | null; // timestamp
+  user_id: string | null; // references auth.users
+  cover_image: string | null;
+  sequence_type: string | null;
+}
+
+/**
+ * Series-Stories Junction Type
+ */
+export interface SeriesStory {
+  id: string; // uuid
+  series_id: string | null; // references Series
+  story_id: string | null; // references Story
+  sequence_number: number | null;
+  created_at: string | null; // timestamp
+}
+
+/**
+ * Core Story Type (renamed from Project)
+ */
+export interface Story {
   id: string; // uuid
   name: string;
   description: string | null;
@@ -16,6 +56,8 @@ export interface Project {
   cover_image_url: string | null;
   genre: string[] | null;
   tags: string[] | null;
+  storyworld_id: string | null; // references StoryWorld
+  series_id: string | null; // references Series
 }
 
 /**
@@ -32,7 +74,7 @@ export interface WritingSample {
   tags: string[] | null;
   word_count: number | null; // generated from content
   excerpt: string | null;
-  project_id: string | null; // references Project
+  story_id: string | null; // references Story (renamed from project_id)
 }
 
 /**
@@ -92,9 +134,9 @@ export interface StyleProfile {
   dialogue_parameters: Record<string, any> | null; // jsonb
   example_passages: string[] | null;
   notes: string | null;
-  project_specific: boolean | null; // default: false
-  project_name: string | null;
-  project_id: string | null; // references Project
+  story_specific: boolean | null; // renamed from project_specific, default: false
+  story_name: string | null; // renamed from project_name
+  story_id: string | null; // references Story (renamed from project_id)
 }
 
 /**
@@ -131,7 +173,7 @@ export interface KnowledgeCategory {
   description: string | null;
   parent_id: string | null; // references KnowledgeCategory
   created_at: string | null; // timestamp
-  project_id: string | null; // references Project
+  story_id: string | null; // references Story (renamed from project_id)
 }
 
 /**
@@ -151,7 +193,7 @@ export interface WritingKnowledge {
   related_knowledge_ids: string[] | null; // uuid[]
   usage_context: string[] | null;
   visibility_trigger: string | null;
-  project_id: string | null; // references Project
+  story_id: string | null; // references Story (renamed from project_id)
 }
 
 /**
@@ -193,7 +235,10 @@ export interface TestDb {
  * Maps table names to their TypeScript types
  */
 export const TABLES = {
-  projects: 'projects' as const,
+  storyworlds: 'storyworlds' as const,
+  series: 'series' as const,
+  series_stories: 'series_stories' as const,
+  stories: 'stories' as const, // renamed from projects
   writing_samples: 'writing_samples' as const,
   style_analyses: 'style_analyses' as const,
   dialogue_analyses: 'dialogue_analyses' as const,
@@ -213,7 +258,10 @@ export const TABLES = {
  * Maps table names to their TypeScript types
  */
 export type Database = {
-  [TABLES.projects]: Project;
+  [TABLES.storyworlds]: StoryWorld;
+  [TABLES.series]: Series;
+  [TABLES.series_stories]: SeriesStory;
+  [TABLES.stories]: Story; // renamed from projects
   [TABLES.writing_samples]: WritingSample;
   [TABLES.style_analyses]: StyleAnalysis;
   [TABLES.dialogue_analyses]: DialogueAnalysis;
