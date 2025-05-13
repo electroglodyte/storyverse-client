@@ -115,16 +115,17 @@ const StoryWorldTable = () => {
     { 
       headerName: 'Name', 
       field: 'name', 
+      width: 220,
       cellRenderer: (params) => (
         <div className="font-medium text-blue-600 hover:underline cursor-pointer">
           {params.value}
         </div>
       )
     },
-    { headerName: 'Description', field: 'description', flex: 2 },
-    { headerName: 'Created', field: 'createdTimeAgo', editable: false },
-    { headerName: 'Series', field: 'seriesCount', editable: false, width: 120 },
-    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 120 },
+    { headerName: 'Description', field: 'description', flex: 2, minWidth: 250 },
+    { headerName: 'Created', field: 'createdTimeAgo', editable: false, width: 140 },
+    { headerName: 'Series', field: 'seriesCount', editable: false, width: 100, type: 'numericColumn' },
+    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 100, type: 'numericColumn' },
     {
       headerName: 'Actions',
       width: 120,
@@ -134,10 +135,14 @@ const StoryWorldTable = () => {
       cellRenderer: (params) => (
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => navigate(`/story-worlds/edit/${params.data.id}`)} 
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/story-worlds/edit/${params.data.id}`);
+            }} 
             className="text-accent hover:text-accent-hover"
+            title="Edit Story World"
           >
-            <FaEdit />
+            <FaEdit size={16} />
           </button>
           <button 
             onClick={(e) => {
@@ -145,8 +150,9 @@ const StoryWorldTable = () => {
               handleDelete(params.data.id);
             }} 
             className="text-red-500 hover:text-red-700"
+            title="Delete Story World"
           >
-            <FaTrash />
+            <FaTrash size={16} />
           </button>
         </div>
       )
