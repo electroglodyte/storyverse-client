@@ -132,7 +132,7 @@ export const SampleDetailPage: React.FC = () => {
     };
 
     loadData();
-  }, [id]);
+  }, [id, getSample, getAnalyses]);
 
   const handleRunAnalysis = async () => {
     if (!sample || !sample.project_id) return;
