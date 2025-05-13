@@ -14,6 +14,8 @@ export interface StoryWorld {
   id: string;               // UUID primary key
   name: string;             // Display name
   description: string;      // Longer description
+  tags?: string[];          // Tags for categorization
+  cover_image?: string;     // URL to cover image
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
   user_id: string;          // Owner of the story world
@@ -28,7 +30,8 @@ export interface Series {
   id: string;               // UUID primary key
   name: string;             // Display name
   description: string;      // Longer description
-  story_world_id: string;   // Foreign key to story_worlds
+  storyworld_id: string;    // Foreign key to story_worlds (alias for story_world_id)
+  story_world_id: string;   // Foreign key to story_worlds 
   sequence_type: string;    // Chronological, Publication, Narrative, Other
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
@@ -43,16 +46,31 @@ export interface Series {
 export interface Story {
   id: string;               // UUID primary key
   title: string;            // Title of the story
+  name: string;             // Alias for title
   description: string;      // Synopsis or description
+  storyworld_id: string;    // Alias for story_world_id
   story_world_id: string;   // Foreign key to story_worlds
   series_id: string;        // Optional foreign key to series
   series_order: number;     // Optional position in series
   status: string;           // Draft, In Progress, Editing, Complete
   word_count: number;       // Word count of the story
   target_date: string;      // Target completion date
+  tags?: string[];          // Tags for categorization
+  genre?: string[];         // Genres associated with this story
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
   user_id: string;          // Owner of the story
+}
+
+/**
+ * Extended Story interface with additional properties
+ */
+export interface ExtendedStory extends Story {
+  // Add all properties that are used in the code
+  storyworld_id: string;    // Alias for story_world_id
+  story_world_id: string;   // Foreign key to story_worlds
+  tags?: string[];          // Tags for categorization
+  genre?: string[];         // Genres for the story
 }
 
 /**
@@ -64,10 +82,13 @@ export interface WritingSample {
   id: string;               // UUID primary key
   title: string;            // Title of the sample
   text: string;             // The sample text content
+  content?: string;         // Alias for text content
+  excerpt?: string;         // Short excerpt
   author: string;           // Author of the sample
   sample_type: string;      // Type of writing (novel, screenplay, etc.)
   project_id: string;       // Associated project
   tags: string[];           // Array of tags for categorization
+  word_count?: number;      // Word count of the sample
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
   user_id: string;          // Owner of the sample
