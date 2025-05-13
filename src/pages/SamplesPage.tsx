@@ -80,44 +80,127 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
 
   // Empty state component
   const EmptyState = () => (
-    <div className="text-center py-12 bg-white rounded-lg border border-primary-200 shadow-sm">
-      <div className="inline-block mb-4 text-primary-300">
-        <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div style={{
+      textAlign: 'center',
+      padding: '3rem 1rem',
+      backgroundColor: 'white',
+      borderRadius: '0.5rem',
+      border: '1px solid #e8e1d9',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+    }}>
+      <div style={{ 
+        display: 'inline-block',
+        marginBottom: '1rem',
+        color: '#c3b7a9'
+      }}>
+        <svg style={{ width: '4rem', height: '4rem' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </div>
-      <h3 className="text-lg font-medium text-primary-700 mb-2">No writing samples yet</h3>
-      <p className="text-primary-600 mb-6">Add your first writing sample to get started</p>
+      <h3 style={{ 
+        fontSize: '1.125rem',
+        fontWeight: '500',
+        color: '#654321',
+        marginBottom: '0.5rem'
+      }}>
+        No writing samples yet
+      </h3>
+      <p style={{ 
+        color: '#8a6d4d',
+        marginBottom: '1.5rem'
+      }}>
+        Add your first writing sample to get started
+      </p>
       <Link 
         to="/samples/new"
-        className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          padding: '0.5rem 1rem',
+          backgroundColor: '#8a6d4d',
+          color: 'white',
+          borderRadius: '0.375rem',
+          textDecoration: 'none',
+          transition: 'background-color 0.2s'
+        }}
+        onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#654321' }}
+        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#8a6d4d' }}
       >
-        <span className="mr-1">+</span> Add Sample
+        <span style={{ marginRight: '0.25rem' }}>+</span> Add Sample
       </Link>
     </div>
   );
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-primary-700">Writing Samples</h1>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '1.5rem'
+      }}>
+        <h1 style={{
+          fontSize: '1.5rem',
+          fontWeight: 'bold',
+          color: '#654321'
+        }}>
+          Writing Samples
+        </h1>
         <Link 
           to="/samples/new"
-          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            padding: '0.5rem 1rem',
+            backgroundColor: '#8a6d4d',
+            color: 'white',
+            borderRadius: '0.375rem',
+            textDecoration: 'none',
+            transition: 'background-color 0.2s'
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#654321' }}
+          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#8a6d4d' }}
         >
-          <span className="mr-1">+</span> Add Sample
+          <span style={{ marginRight: '0.25rem' }}>+</span> Add Sample
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-lg border border-primary-200 shadow-sm">
-        <div className="flex-1">
-          <label htmlFor="author" className="block text-sm font-medium text-primary-600 mb-1">Author</label>
+      <div style={{
+        marginBottom: '1.5rem',
+        display: 'flex',
+        flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+        gap: '1rem',
+        backgroundColor: 'white',
+        padding: '1rem',
+        borderRadius: '0.5rem',
+        border: '1px solid #e8e1d9',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ flex: '1' }}>
+          <label 
+            htmlFor="author" 
+            style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#8a6d4d',
+              marginBottom: '0.25rem'
+            }}
+          >
+            Author
+          </label>
           <select
             id="author"
             value={author}
             onChange={e => setAuthor(e.target.value)}
-            className="w-full p-2 border border-primary-300 rounded-md bg-white"
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #c3b7a9',
+              borderRadius: '0.375rem',
+              backgroundColor: 'white'
+            }}
           >
             <option value="">All Authors</option>
             {authors.map(a => (
@@ -126,13 +209,30 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           </select>
         </div>
         
-        <div className="flex-1">
-          <label htmlFor="type" className="block text-sm font-medium text-primary-600 mb-1">Type</label>
+        <div style={{ flex: '1' }}>
+          <label 
+            htmlFor="type"
+            style={{
+              display: 'block',
+              fontSize: '0.875rem',
+              fontWeight: '500',
+              color: '#8a6d4d',
+              marginBottom: '0.25rem'
+            }}
+          >
+            Type
+          </label>
           <select
             id="type"
             value={type}
             onChange={e => setType(e.target.value)}
-            className="w-full p-2 border border-primary-300 rounded-md bg-white"
+            style={{
+              width: '100%',
+              padding: '0.5rem',
+              border: '1px solid #c3b7a9',
+              borderRadius: '0.375rem',
+              backgroundColor: 'white'
+            }}
           >
             <option value="">All Types</option>
             {types.map(t => (
@@ -141,10 +241,22 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           </select>
         </div>
         
-        <div className="flex-none self-end">
+        <div style={{ 
+          alignSelf: 'flex-end'
+        }}>
           <button
             onClick={handleReset}
-            className="px-4 py-2 border border-primary-300 rounded-md bg-white text-primary-700 hover:bg-primary-50"
+            style={{
+              padding: '0.5rem 1rem',
+              border: '1px solid #c3b7a9',
+              borderRadius: '0.375rem',
+              backgroundColor: 'white',
+              color: '#654321',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#f2eee6' }}
+            onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'white' }}
           >
             Reset
           </button>
@@ -152,23 +264,44 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
       </div>
       
       {/* View mode toggle */}
-      <div className="flex justify-end mb-4">
-        <div className="flex border border-primary-300 rounded-md overflow-hidden">
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        marginBottom: '1rem'
+      }}>
+        <div style={{
+          display: 'flex',
+          border: '1px solid #c3b7a9',
+          borderRadius: '0.375rem',
+          overflow: 'hidden'
+        }}>
           <button
             onClick={() => setViewMode('grid')}
-            className={`px-3 py-1 ${viewMode === 'grid' ? 'bg-primary-200 text-primary-700' : 'bg-white text-primary-600'}`}
+            style={{
+              padding: '0.25rem 0.75rem',
+              backgroundColor: viewMode === 'grid' ? '#e8e1d9' : 'white',
+              color: viewMode === 'grid' ? '#654321' : '#8a6d4d',
+              cursor: 'pointer',
+              border: 'none'
+            }}
             aria-label="Grid view"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 8a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zm6-6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 8a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" clipRule="evenodd" />
             </svg>
           </button>
           <button
             onClick={() => setViewMode('list')}
-            className={`px-3 py-1 ${viewMode === 'list' ? 'bg-primary-200 text-primary-700' : 'bg-white text-primary-600'}`}
+            style={{
+              padding: '0.25rem 0.75rem',
+              backgroundColor: viewMode === 'list' ? '#e8e1d9' : 'white',
+              color: viewMode === 'list' ? '#654321' : '#8a6d4d',
+              cursor: 'pointer',
+              border: 'none'
+            }}
             aria-label="List view"
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <svg style={{ width: '1.25rem', height: '1.25rem' }} fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
             </svg>
           </button>
@@ -176,34 +309,91 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
       </div>
       
       {error && (
-        <div className="bg-red-50 p-4 rounded-md mb-6 border border-red-200">
-          <p className="text-red-700">{error}</p>
+        <div style={{
+          backgroundColor: '#fee2e2',
+          padding: '1rem',
+          borderRadius: '0.375rem',
+          marginBottom: '1.5rem',
+          border: '1px solid #fecaca'
+        }}>
+          <p style={{ color: '#b91c1c' }}>{error}</p>
         </div>
       )}
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '3rem'
+        }}>
+          <div style={{
+            width: '3rem',
+            height: '3rem',
+            borderRadius: '50%',
+            borderWidth: '2px',
+            borderStyle: 'solid',
+            borderColor: '#8a6d4d transparent #8a6d4d transparent',
+            animation: 'spin 1s linear infinite'
+          }}></div>
         </div>
       ) : filteredSamples.length === 0 ? (
         <EmptyState />
       ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+          gap: '1.5rem'
+        }}>
           {filteredSamples.map(sample => (
             <Link 
               key={sample.id}
               to={`/samples/${sample.id}`}
-              className="block bg-white rounded-lg border border-primary-200 shadow-sm hover:shadow transition-shadow"
+              style={{
+                display: 'block',
+                backgroundColor: 'white',
+                borderRadius: '0.5rem',
+                border: '1px solid #e8e1d9',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                textDecoration: 'none',
+                transition: 'box-shadow 0.2s'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)' }}
+              onMouseOut={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)' }}
             >
-              <div className="p-4">
-                <h3 className="font-medium text-primary-700 mb-1">{sample.title}</h3>
+              <div style={{ padding: '1rem' }}>
+                <h3 style={{ 
+                  fontWeight: '500',
+                  color: '#654321',
+                  marginBottom: '0.25rem'
+                }}>
+                  {sample.title}
+                </h3>
                 {sample.author && (
-                  <p className="text-sm text-primary-500 mb-2">{sample.author}</p>
+                  <p style={{
+                    fontSize: '0.875rem',
+                    color: '#ab8760',
+                    marginBottom: '0.5rem'
+                  }}>
+                    {sample.author}
+                  </p>
                 )}
-                <p className="text-sm text-primary-600 line-clamp-3 mb-3">
+                <p style={{
+                  fontSize: '0.875rem',
+                  color: '#8a6d4d',
+                  marginBottom: '0.75rem',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 3,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
+                }}>
                   {sample.excerpt || sample.content.substring(0, 150) + '...'}
                 </p>
-                <div className="flex justify-between text-xs text-primary-500">
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '0.75rem',
+                  color: '#ab8760'
+                }}>
                   <span>{sample.word_count} words</span>
                   <span>{new Date(sample.updated_at).toLocaleDateString()}</span>
                 </div>
@@ -212,25 +402,68 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg border border-primary-200 shadow-sm overflow-hidden">
-          <ul className="divide-y divide-primary-200">
-            {filteredSamples.map(sample => (
-              <li key={sample.id}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '0.5rem',
+          border: '1px solid #e8e1d9',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          overflow: 'hidden'
+        }}>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {filteredSamples.map((sample, index) => (
+              <li key={sample.id} style={{
+                borderBottom: index < filteredSamples.length - 1 ? '1px solid #e8e1d9' : 'none'
+              }}>
                 <Link 
                   to={`/samples/${sample.id}`}
-                  className="block hover:bg-primary-50 p-4"
+                  style={{
+                    display: 'block',
+                    padding: '1rem',
+                    textDecoration: 'none',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#f2eee6' }}
+                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
                 >
-                  <div className="flex justify-between items-start">
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start'
+                  }}>
                     <div>
-                      <h3 className="font-medium text-primary-700">{sample.title}</h3>
+                      <h3 style={{ 
+                        fontWeight: '500',
+                        color: '#654321'
+                      }}>
+                        {sample.title}
+                      </h3>
                       {sample.author && (
-                        <p className="text-sm text-primary-500 mt-1">{sample.author}</p>
+                        <p style={{
+                          fontSize: '0.875rem',
+                          color: '#ab8760',
+                          marginTop: '0.25rem'
+                        }}>
+                          {sample.author}
+                        </p>
                       )}
-                      <p className="text-sm text-primary-600 mt-2 line-clamp-2">
+                      <p style={{
+                        fontSize: '0.875rem',
+                        color: '#8a6d4d',
+                        marginTop: '0.5rem',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
                         {sample.excerpt || sample.content.substring(0, 100) + '...'}
                       </p>
                     </div>
-                    <div className="text-xs text-primary-500 whitespace-nowrap">
+                    <div style={{
+                      fontSize: '0.75rem',
+                      color: '#ab8760',
+                      whiteSpace: 'nowrap',
+                      marginLeft: '1rem'
+                    }}>
                       {new Date(sample.updated_at).toLocaleDateString()}
                     </div>
                   </div>
@@ -240,6 +473,16 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           </ul>
         </div>
       )}
+
+      {/* Add a style for the spinner animation */}
+      <style>
+        {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}
+      </style>
     </div>
   );
 };
