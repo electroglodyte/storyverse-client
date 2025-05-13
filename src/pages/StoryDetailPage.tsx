@@ -21,21 +21,79 @@ const StoryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [story, setStory] = useState<ExtendedStory | null>(null);
-  const [samples, setSamples] = useState<WritingSample[]>([]);
+  const [samples, setSamples] = useState<WritingSample[]>([])
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(id ? false : true); // Automatically start in edit mode for new stories
   const [isEditingSeries, setIsEditingSeries] = useState(false);
-  const [formData, setFormData] = useState<Partial<Story>>({});
+  const [formData, setFormData] = useState<Partial<Story>>({
+    name: '',
+    description: '',
+    status: 'active',
+    tags: [],
+    genre: []
+  });
   const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
+  const [isNewStory, setIsNewStory] = useState(!id);
+
+  // Get query parameters (for new story creation)
+  useEffect(() => {
+    if (!id) {
+      setIsNewStory(true);
+      
+      // Check for storyWorldId in query params
+      const queryParams = new URLSearchParams(window.location.search);
+      const storyWorldId = queryParams.get('storyWorldId');
+      
+      if (storyWorldId) {
+        setFormData(prev => ({ ...prev, story_world_id: storyWorldId }));
+        
+        // Fetch the story world details
+        const fetchStoryWorld = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('story_worlds')
+              .select('*')
+              .eq('id', storyWorldId)
+              .single();
+              
+            if (error) throw error;
+            
+            if (data) {
+              // Set the form data with story world info
+              setFormData(prev => ({ 
+                ...prev, 
+                story_world_id: storyWorldId,
+              }));
+            }
+            
+            // Fetch available series options for this story world
+            const { data: seriesData, error: seriesError } = await supabase
+              .from('series')
+              .select('id, name')
+              .eq('storyworld_id', storyWorldId)
+              .order('name', { ascending: true });
+              
+            if (seriesError) throw seriesError;
+            
+            setSeriesOptions(seriesData || []);
+          } catch (err) {
+            console.error('Error fetching story world:', err);
+          }
+        };
+        
+        fetchStoryWorld();
+      }
+      
+      setLoading(false);
+    }
+  }, [id]);
 
   // Fetch story details and associated samples
   useEffect(() => {
     const fetchStoryDetails = async () => {
       if (!id) {
-        toast.error('Missing story ID');
-        setLoading(false);
-        return;
+        return; // New story creation is handled by the previous useEffect
       }
       
       try {
@@ -75,11 +133,11 @@ const StoryDetailPage: React.FC = () => {
         setSelectedSeriesId(story.series_id);
         
         // Get the StoryWorld information if available
-        if (story.storyworld_id) {
+        if (story.story_world_id) {
           const { data: storyWorldData } = await supabase
-            .from('storyworlds')
+            .from('story_worlds')
             .select('*')
-            .eq('id', story.storyworld_id)
+            .eq('id', story.story_world_id)
             .single();
             
           if (storyWorldData) {
@@ -101,11 +159,11 @@ const StoryDetailPage: React.FC = () => {
         }
         
         // Fetch available series options for this story's storyworld
-        if (story.storyworld_id) {
+        if (story.story_world_id) {
           const { data: availableSeriesData } = await supabase
             .from('series')
             .select('id, name')
-            .eq('storyworld_id', story.storyworld_id)
+            .eq('storyworld_id', story.story_world_id)
             .order('name', { ascending: true });
             
           if (availableSeriesData) {
@@ -165,8 +223,58 @@ const StoryDetailPage: React.FC = () => {
     setSelectedSeriesId(value === "" ? null : value);
   };
 
+  // Save new story
+  const handleCreateStory = async () => {
+    if (!formData.name || formData.name.trim() === '') {
+      toast.error('Story title is required');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Create the new story
+      const { data, error } = await supabase
+        .from('stories')
+        .insert([
+          {
+            name: formData.name,
+            description: formData.description || '',
+            status: 'active',
+            story_world_id: formData.story_world_id || null,
+            series_id: selectedSeriesId,
+            tags: formData.tags || [],
+            genre: formData.genre || []
+          }
+        ])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating story:', error);
+        toast.error('Failed to create story');
+        setLoading(false);
+        return;
+      }
+      
+      toast.success('Story created successfully!');
+      
+      // Navigate to the new story detail page
+      navigate(`/stories/${data.id}`);
+    } catch (err: any) {
+      console.error('Error creating story:', err);
+      toast.error('Failed to create story');
+      setLoading(false);
+    }
+  };
+
   // Save story changes
   const handleSaveStory = async () => {
+    if (isNewStory) {
+      handleCreateStory();
+      return;
+    }
+    
     if (!id) return;
     
     try {
@@ -371,10 +479,10 @@ const StoryDetailPage: React.FC = () => {
       toast.success('Story deleted successfully');
       
       // Navigate back to storyworld or stories list
-      if (story.storyworld_id) {
-        navigate(`/storyworlds/${story.storyworld_id}`);
+      if (story.story_world_id) {
+        navigate(`/story-worlds/${story.story_world_id}`);
       } else {
-        navigate('/storyworlds');
+        navigate('/story-worlds');
       }
     } catch (err: any) {
       console.error('Error deleting story:', err);
@@ -385,6 +493,12 @@ const StoryDetailPage: React.FC = () => {
 
   // Cancel editing
   const handleCancelEdit = () => {
+    if (isNewStory) {
+      // If canceling a new story creation, go back to story list
+      navigate('/stories');
+      return;
+    }
+    
     setFormData(story || {});
     setIsEditing(false);
   };
@@ -396,12 +510,101 @@ const StoryDetailPage: React.FC = () => {
   };
 
   // Show loading state on initial load
-  if (loading && !story) {
+  if (loading && !isNewStory && !story) {
     return <LoadingSpinner />;
   }
 
+  // Show creation form for new stories
+  if (isNewStory) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-wrap items-center mb-6 text-sm">
+          <Link 
+            to="/stories"
+            className="text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            <FaArrowLeft className="mr-1" />
+            Back to Stories
+          </Link>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-2xl font-bold mb-6">Create New Story</h1>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Story Title
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name || ''}
+              onChange={handleInputChange}
+              placeholder="Enter story title"
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description || ''}
+              onChange={handleInputChange}
+              placeholder="Enter story description"
+              rows={4}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          {formData.story_world_id && seriesOptions.length > 0 && (
+            <div className="mb-4">
+              <label className="block text-gray-700 font-medium mb-2">
+                Series (optional)
+              </label>
+              <select
+                value={selectedSeriesId || ""}
+                onChange={handleSeriesChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Standalone Story (No Series) --</option>
+                {seriesOptions.map(series => (
+                  <option key={series.id} value={series.id}>
+                    {series.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              onClick={handleCancelEdit}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 flex items-center"
+            >
+              <FaTimes className="mr-2" />
+              Cancel
+            </button>
+            
+            <button
+              onClick={handleCreateStory}
+              disabled={loading || !formData.name}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <FaSave className="mr-2" />
+              {loading ? 'Creating...' : 'Create Story'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Show 'not found' state
-  if (!story) {
+  if (!story && !isNewStory) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">
         <h3 className="text-xl font-medium mb-4 text-gray-800">
@@ -411,7 +614,7 @@ const StoryDetailPage: React.FC = () => {
           The story you're looking for does not exist or you may not have permission to view it.
         </p>
         <Link 
-          to="/storyworlds"
+          to="/story-worlds"
           className="inline-flex items-center bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
         >
           <FaArrowLeft className="mr-2" />
@@ -426,18 +629,18 @@ const StoryDetailPage: React.FC = () => {
       {/* Breadcrumb Navigation */}
       <div className="flex flex-wrap items-center mb-6 text-sm">
         <Link 
-          to="/storyworlds"
+          to="/story-worlds"
           className="text-blue-600 hover:text-blue-800 flex items-center"
         >
           <FaArrowLeft className="mr-1" />
           Story Worlds
         </Link>
         
-        {story.storyworld && (
+        {story?.storyworld && (
           <>
             <span className="mx-2 text-gray-500">/</span>
             <Link 
-              to={`/storyworlds/${story.storyworld_id}`}
+              to={`/story-worlds/${story.story_world_id}`}
               className="text-blue-600 hover:text-blue-800"
             >
               {story.storyworld.name}
@@ -445,7 +648,7 @@ const StoryDetailPage: React.FC = () => {
           </>
         )}
         
-        {story.series && (
+        {story?.series && (
           <>
             <span className="mx-2 text-gray-500">/</span>
             <Link 
@@ -458,7 +661,7 @@ const StoryDetailPage: React.FC = () => {
         )}
         
         <span className="mx-2 text-gray-500">/</span>
-        <span className="text-gray-700 font-medium">{story.name}</span>
+        <span className="text-gray-700 font-medium">{story?.name}</span>
       </div>
 
       {/* Story Header */}
@@ -474,7 +677,7 @@ const StoryDetailPage: React.FC = () => {
                 className="w-full text-2xl font-bold mb-2 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             ) : (
-              <h1 className="text-2xl font-bold mb-2">{story.name}</h1>
+              <h1 className="text-2xl font-bold mb-2">{story?.name}</h1>
             )}
             
             {isEditing ? (
@@ -488,20 +691,20 @@ const StoryDetailPage: React.FC = () => {
               />
             ) : (
               <p className="text-gray-600 mb-2">
-                {story.description || 'No description'}
+                {story?.description || 'No description'}
               </p>
             )}
             
             <div className="text-sm text-gray-500">
-              Created: {new Date(story.created_at || '').toLocaleDateString()}
-              {story.created_at !== story.updated_at && (
+              Created: {story && new Date(story.created_at || '').toLocaleDateString()}
+              {story && story.created_at !== story.updated_at && (
                 <span> • Updated: {new Date(story.updated_at || '').toLocaleDateString()}</span>
               )}
             </div>
             
             {/* Tags and Genre */}
             <div className="mt-3 flex flex-wrap gap-2">
-              {story.tags && story.tags.length > 0 && story.tags.map((tag, index) => (
+              {story?.tags && story.tags.length > 0 && story.tags.map((tag, index) => (
                 <span 
                   key={index}
                   className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-md"
@@ -510,7 +713,7 @@ const StoryDetailPage: React.FC = () => {
                 </span>
               ))}
               
-              {story.genre && story.genre.length > 0 && story.genre.map((genre, index) => (
+              {story?.genre && story.genre.length > 0 && story.genre.map((genre, index) => (
                 <span 
                   key={index}
                   className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-md"
@@ -565,7 +768,7 @@ const StoryDetailPage: React.FC = () => {
       </div>
 
       {/* Series Assignment Section */}
-      {story.storyworld_id && (
+      {story && story.story_world_id && (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">Series Assignment</h2>
@@ -639,7 +842,7 @@ const StoryDetailPage: React.FC = () => {
                 <div className="mt-2 text-sm text-gray-500">
                   No series available in this story world. 
                   <Link
-                    to={`/series/new?storyWorldId=${story.storyworld_id}`}
+                    to={`/series/new?storyWorldId=${story.story_world_id}`}
                     className="ml-1 text-blue-600 hover:underline"
                   >
                     Create a new series
