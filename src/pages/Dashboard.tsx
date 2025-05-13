@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
+// Dashboard card component with inline styles for consistency
 const FeatureCard: React.FC<{
   title: string;
   description: string;
@@ -8,11 +9,38 @@ const FeatureCard: React.FC<{
   linkText: string;
 }> = ({ title, description, linkTo, linkText }) => {
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-primary-200 dashboard-card">
-      <h3 className="text-lg font-medium text-primary-700 mb-2">{title}</h3>
-      <p className="text-primary-600 mb-4">{description}</p>
-      <Link to={linkTo} className="text-primary-600 hover:text-primary-700 font-medium">
-        {linkText} <span className="ml-1">→</span>
+    <div style={{
+      backgroundColor: 'white',
+      borderRadius: '0.5rem',
+      border: '1px solid #e8e1d9',
+      padding: '1.5rem',
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+    }}>
+      <h3 style={{ 
+        fontSize: '1.125rem', 
+        fontWeight: '500', 
+        color: '#654321', 
+        marginBottom: '0.5rem' 
+      }}>
+        {title}
+      </h3>
+      <p style={{ 
+        color: '#8a6d4d', 
+        marginBottom: '1rem' 
+      }}>
+        {description}
+      </p>
+      <Link 
+        to={linkTo} 
+        style={{ 
+          color: '#8a6d4d', 
+          fontWeight: '500',
+          textDecoration: 'none'
+        }}
+        onMouseOver={(e) => { e.currentTarget.style.color = '#654321' }}
+        onMouseOut={(e) => { e.currentTarget.style.color = '#8a6d4d' }}
+      >
+        {linkText} <span style={{ marginLeft: '0.25rem' }}>→</span>
       </Link>
     </div>
   );
@@ -21,9 +49,20 @@ const FeatureCard: React.FC<{
 const Dashboard: React.FC = () => {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-primary-700 mb-6">Dashboard</h1>
+      <h1 style={{
+        fontSize: '1.5rem',
+        fontWeight: 'bold',
+        color: '#654321',
+        marginBottom: '1.5rem'
+      }}>
+        Dashboard
+      </h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+        gap: '1.5rem'
+      }}>
         <FeatureCard
           title="Writing Samples"
           description="Manage your writing samples and analyze their style."
