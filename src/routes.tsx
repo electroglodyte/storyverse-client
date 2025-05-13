@@ -1,31 +1,35 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Outlet } from 'react-router-dom';
 import App from './App';
 import Dashboard from './components/Dashboard';
 import StoryWorldTable from './components/storyworld/StoryWorldTable';
 import SeriesTable from './components/series/SeriesTable';
 import StoryTable from './components/story/StoryTable';
-// Import other components as needed
+
+// Layout component with Navigation and outlet for nested routes
+const Layout = () => {
+  return <App />;
+};
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <App />,
+    element: <Layout />,
     children: [
       {
-        path: '/',
+        index: true,
         element: <Dashboard />,
       },
       {
-        path: '/story-worlds',
+        path: 'story-worlds',
         element: <StoryWorldTable />,
       },
       {
-        path: '/series',
+        path: 'series',
         element: <SeriesTable />,
       },
       {
-        path: '/stories',
+        path: 'stories',
         element: <StoryTable />,
       },
       // Add other routes as needed
