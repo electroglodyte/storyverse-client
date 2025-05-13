@@ -16,6 +16,15 @@ StoryVerse is a comprehensive system designed to help authors analyze, understan
 - **Vite**: Fast build tooling with Vite
 - **Supabase**: Backend database and authentication
 
+## UI Screens
+
+The application includes the following main screens:
+
+- **Dashboard**: Overview of key features with quick access cards
+- **Writing Samples**: Browse, filter, and manage writing samples
+- **Style Analysis**: View and create style profiles
+- **Claude Assistant**: Interface for using Claude with your writing style
+
 ## Development
 
 To run the development server:
@@ -40,6 +49,13 @@ This project is deployed on Vercel and automatically updates when changes are pu
 ## MCP Server
 
 The MCP server for Claude integration is in a separate repository. See the main project documentation for details on setting up the MCP server.
+
+## Recent Changes
+
+- **UI Update (May 2025)**: Refreshed the UI to match the design mockups
+- **SideNav Improvements**: Updated sidebar navigation with better icons and styling
+- **Dashboard Cards**: Implemented feature cards on the dashboard for quick access
+- **Empty States**: Added helpful empty states for when no data is available
 
 ## License
 
