@@ -6,14 +6,16 @@ import { useProject } from '../context/ProjectContext';
 // This is a simplified layout component using basic HTML and directly applied styles
 const BasicLayout: React.FC = () => {
   const { activeProject } = useProject();
+  const projectName = activeProject?.name || 'The Irish Mystery';
 
   return (
     <div style={{
       display: 'flex',
-      flexDirection: 'row',
+      flexDirection: 'row', // Keep the main layout as a row for sidebar + content
       height: '100vh',
       width: '100%',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      backgroundColor: '#f8f5f0' // Beige background
     }}>
       {/* Sidebar */}
       <div style={{
@@ -21,7 +23,11 @@ const BasicLayout: React.FC = () => {
         height: '100vh',
         backgroundColor: '#1f2024',
         color: 'white',
-        overflow: 'auto'
+        overflow: 'auto',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        zIndex: 10
       }}>
         <div style={{ padding: '20px' }}>
           <h1 style={{ color: '#fef3c7', marginBottom: '5px' }}>StoryVerse</h1>
@@ -45,7 +51,7 @@ const BasicLayout: React.FC = () => {
             display: 'flex',
             justifyContent: 'space-between'
           }}>
-            <span>{activeProject?.name || 'The Irish Mystery'}</span>
+            <span>{projectName}</span>
             <span>▼</span>
           </div>
         </div>
@@ -207,68 +213,72 @@ const BasicLayout: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content Area with padding for sidebar */}
       <div style={{
+        marginLeft: '260px', // Match sidebar width
         flex: 1,
         display: 'flex',
-        flexDirection: 'column',
+        flexDirection: 'column', // Stack content vertically
         height: '100vh',
         overflow: 'hidden'
       }}>
-        {/* Header */}
+        {/* Project Header */}
         <div style={{
-          backgroundColor: '#1f2024',
+          backgroundColor: '#181818',
           color: 'white',
-          padding: '15px 20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
+          padding: '15px 24px',
           borderBottom: '1px solid #3a3b41'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginRight: '8px' }}>📚</span>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: '500' }}>{activeProject?.name || 'The Irish Mystery'}</h2>
-          </div>
+          <h2 style={{ 
+            fontSize: '1.5rem', 
+            fontWeight: 'bold' 
+          }}>
+            {projectName}
+          </h2>
+          
           <div style={{
+            marginTop: '8px',
             display: 'flex',
-            alignItems: 'center'
+            gap: '8px'
           }}>
             <button style={{
               backgroundColor: '#2d2e33',
               color: 'white',
-              padding: '6px 12px',
+              padding: '4px 10px',
               borderRadius: '4px',
-              border: 'none',
-              marginRight: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              minWidth: '150px'
+              fontSize: '0.875rem'
             }}>
-              <span>{activeProject?.name || 'The Irish Mystery'}</span>
-              <span style={{ marginLeft: '8px' }}>▼</span>
+              {projectName} ▼
             </button>
             <button style={{
-              width: '32px',
-              height: '32px',
               backgroundColor: '#2d2e33',
               color: 'white',
-              borderRadius: '50%',
-              border: 'none',
+              width: '26px',
+              height: '26px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              borderRadius: '4px',
+              fontSize: '0.875rem'
             }}>
-              👤
+              🔄
             </button>
           </div>
+        </div>
+
+        {/* Dashboard Header */}
+        <div style={{
+          backgroundColor: '#392f2d', 
+          color: '#f0e6d2',
+          padding: '16px 24px',
+          borderBottom: '1px solid #4c4032'
+        }}>
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Dashboard</h1>
         </div>
 
         {/* Content Area */}
         <div style={{
           flex: 1,
-          backgroundColor: '#f8f5f0',
-          color: '#654321',
           padding: '24px',
           overflow: 'auto'
         }}>
