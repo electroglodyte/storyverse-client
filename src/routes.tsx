@@ -10,6 +10,7 @@ import SeriesDetailPage from './pages/SeriesDetailPage';
 import StoryDetailPage from './pages/StoryDetailPage';
 import StoryWorldsListPage from './pages/StoryWorldsListPage';
 import SetupPage from './pages/SetupPage';
+import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
@@ -25,10 +26,14 @@ const router = createBrowserRouter([
         index: true,
         element: <Dashboard />,
       },
-      // Setup route
+      // Setup routes
       {
         path: 'setup',
         element: <SetupPage />,
+      },
+      {
+        path: 'database-setup',
+        element: <DirectDatabaseSetupPage />,
       },
       // Story World routes
       {
