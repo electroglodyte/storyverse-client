@@ -59,13 +59,16 @@ const SeriesDetailPage: React.FC = () => {
               series_id,
               story_id,
               sequence_number,
-              story:stories(*)
+              story:stories(*) 
             `)
             .eq('series_id', id)
             .order('sequence_number', { ascending: true });
 
           if (seriesStoriesError) throw seriesStoriesError;
-          setSeriesStories(seriesStoriesData as SeriesStoryWithDetails[] || []);
+          
+          // Type assertion to tell TypeScript this is indeed the right format
+          const seriesStoriesWithDetails = (seriesStoriesData || []) as unknown as SeriesStoryWithDetails[];
+          setSeriesStories(seriesStoriesWithDetails);
 
           // Fetch available stories in the same story world that are not already in this series
           const { data: allStoriesData, error: allStoriesError } = await supabase
@@ -144,14 +147,17 @@ const SeriesDetailPage: React.FC = () => {
           series_id,
           story_id,
           sequence_number,
-          story:stories(*)
+          story:stories(*) 
         `)
         .single();
 
       if (error) throw error;
 
+      // Type assertion to tell TypeScript this is indeed the right format
+      const newSeriesStory = data as unknown as SeriesStoryWithDetails;
+      
       // Update the UI to show the newly added story
-      setSeriesStories([...seriesStories, data as SeriesStoryWithDetails]);
+      setSeriesStories([...seriesStories, newSeriesStory]);
       
       // Remove the story from the available stories list
       setAvailableStories(availableStories.filter(story => story.id !== storyId));
