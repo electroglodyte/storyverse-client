@@ -1,3 +1,6 @@
+// We're not using this component anymore as the navigation is now integrated directly in the App.tsx
+// This file is kept as a reference but it's not being used in the application
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FaBook, FaListUl, FaStream, FaTachometerAlt } from 'react-icons/fa';
