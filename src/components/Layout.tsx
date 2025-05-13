@@ -48,9 +48,7 @@ export default function Layout() {
         <header className="bg-white border-b border-primary-200 shadow-sm z-10">
           <div className="flex justify-between items-center py-3 px-6">
             <div className="flex items-center">
-              <svg className="h-6 w-6 text-primary-700 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
-              </svg>
+              <span className="text-primary-700 mr-2">📚</span>
               <h2 className="text-lg font-medium text-primary-700">{activeProject?.name || 'The Irish Mystery'}</h2>
             </div>
             
@@ -59,16 +57,12 @@ export default function Layout() {
               <div className="relative mr-4">
                 <button className="flex items-center bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded-md text-sm">
                   <span>{activeProject?.name || 'The Irish Mystery'}</span>
-                  <svg className="ml-2 h-4 w-4 text-primary-500" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
+                  <span className="ml-2">▼</span>
                 </button>
               </div>
               
               <button className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700">
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
+                👤
               </button>
             </div>
           </div>
