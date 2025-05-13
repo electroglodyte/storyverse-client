@@ -1,6 +1,6 @@
 // src/components/Layout.tsx
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { SideNav } from './SideNav';
 import { useProject } from '../context/ProjectContext';
 
@@ -10,8 +10,10 @@ export default function Layout() {
   
   return (
     <div className="flex h-screen bg-primary-50">
-      {/* Desktop Sidebar - this should be visible at md breakpoint and above */}
-      <SideNav />
+      {/* Desktop Sidebar */}
+      <div className="hidden md:block w-64 flex-shrink-0">
+        <SideNav />
+      </div>
       
       {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-20">
