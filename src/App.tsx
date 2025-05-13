@@ -1,7 +1,7 @@
 // src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
-import Layout from './components/Layout';
+import BasicLayout from './components/BasicLayout';
 import Dashboard from './pages/Dashboard';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
@@ -16,27 +16,11 @@ import './App.css';
 import './index.css';
 
 function App() {
-  // Force layout styles directly
-  const appStyles = `
-    body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-    }
-    #root {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      width: 100vw;
-    }
-  `;
-  
   return (
     <ProjectProvider>
-      <style dangerouslySetInnerHTML={{ __html: appStyles }} />
       <Router>
         <Routes>
-          <Route path="/" element={<Layout />}>
+          <Route path="/" element={<BasicLayout />}>
             <Route index element={<Dashboard />} />
             <Route path="projects" element={<ProjectsPage />} />
             <Route path="projects/new" element={<NewProjectPage />} />
