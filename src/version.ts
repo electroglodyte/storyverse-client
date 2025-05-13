@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 8,
+  patch: 9,
   date: '2025-05-13',
-  notes: 'Fixed navigation issues with Story creation workflow. Updated StoryDetailPage to properly handle new story creation. Fixed path inconsistencies between "storyworlds" and "story-worlds" routes.'
+  notes: 'Enhanced story creation with Series and StoryWorld dropdowns. Fixed Story World and Series creation pages that were previously showing only a loading spinner. Added proper forms for creating new Story Worlds and Series.'
 };
