@@ -64,3 +64,55 @@ a {
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+
+/* Nav styles */
+.sidebar {
+  background-color: #1f2024;
+  color: white;
+}
+
+.sidebar-brand {
+  color: #fef3c7;
+}
+
+.sidebar-subtitle {
+  color: #fde68a;
+}
+
+.sidebar-section-title {
+  color: #fcd34d;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 1.5rem;
+  color: white;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+
+.sidebar-item:hover {
+  background-color: #2d2e33;
+}
+
+.sidebar-item.active {
+  background-color: #2d2e33;
+  font-weight: 500;
+}
+
+.header {
+  background-color: #1f2024;
+  color: white;
+  padding: 1rem;
+  border-bottom: 1px solid #3a3b41;
+}
+
+.content-area {
+  background-color: #f8f5f0;
+  padding: 1.5rem;
+  color: #654321;
+}
