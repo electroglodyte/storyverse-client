@@ -21,6 +21,7 @@ const NewProjectPage: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const navigate = useNavigate();
   const { changeProject } = useProject();
@@ -44,6 +45,27 @@ const NewProjectPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      setErrorDetails(null);
+      
+      // First check if projects table exists
+      try {
+        const { error: tableError } = await supabase
+          .from('projects')
+          .select('id')
+          .limit(1);
+        
+        if (tableError) {
+          console.error('Error checking projects table:', tableError);
+          if (tableError.code === 'PGRST116') {
+            setError('Database error: The "projects" table does not exist');
+            setErrorDetails('The database needs to be set up with the required tables. Please check your Supabase database setup.');
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (tableErr) {
+        console.error('Error checking database tables:', tableErr);
+      }
       
       // Process tags and genre as arrays if provided
       const tagsArray = formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : undefined;
@@ -66,7 +88,27 @@ const NewProjectPage: React.FC = () => {
         .select()
         .single();
       
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Error creating project:', createError);
+        
+        // Provide specific error messages based on error code
+        if (createError.code === 'PGRST116') {
+          setError('Database access error: The "projects" table might not exist yet');
+          setErrorDetails('Please make sure your database is properly set up with the required tables');
+        } else if (createError.code === '23505') {
+          setError('A project with this name already exists');
+          setErrorDetails('Please use a different name for your project');
+        } else if (createError.message?.includes('auth')) {
+          setError('Authentication error: Please check your Supabase connection settings');
+          setErrorDetails('Your API key might not have the necessary permissions to create data');
+        } else {
+          setError(`Failed to create project: ${createError.message || 'Unknown error'}`);
+          setErrorDetails('There was an error while trying to save your project to the database');
+        }
+        
+        setLoading(false);
+        return;
+      }
       
       // Set as active project if created successfully
       if (data) {
@@ -79,10 +121,10 @@ const NewProjectPage: React.FC = () => {
       setTimeout(() => {
         navigate(`/projects/${data.id}`);
       }, 1000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error creating project:', err);
-      setError('Failed to create project. Please try again.');
-    } finally {
+      setError('Failed to create project');
+      setErrorDetails(err.message || 'An unexpected error occurred');
       setLoading(false);
     }
   };
@@ -172,7 +214,21 @@ const NewProjectPage: React.FC = () => {
               marginBottom: '1.5rem',
               border: '1px solid #fecaca'
             }}>
-              <p style={{ color: '#b91c1c' }}>{error}</p>
+              <p style={{ 
+                color: '#b91c1c',
+                fontWeight: '500',
+                marginBottom: errorDetails ? '0.5rem' : '0'
+              }}>
+                {error}
+              </p>
+              {errorDetails && (
+                <p style={{ 
+                  color: '#b91c1c',
+                  fontSize: '0.875rem'
+                }}>
+                  {errorDetails}
+                </p>
+              )}
             </div>
           )}
           
