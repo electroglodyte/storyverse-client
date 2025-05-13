@@ -3,9 +3,20 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ProjectProvider } from './context/ProjectContext';
 import BasicLayout from './components/BasicLayout';
 import Dashboard from './pages/Dashboard';
+
+// Original Project pages (now renamed to Story)
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import NewProjectPage from './pages/NewProjectPage';
+import NewStoryPage from './pages/NewStoryPage'; // Updated import
+
+// New StoryWorld and Series pages
+import StoryWorldsListPage from './pages/StoryWorldsListPage';
+import NewStoryWorldPage from './pages/NewStoryWorldPage';
+import StoryWorldDetailPage from './pages/StoryWorldDetailPage';
+import NewSeriesPage from './pages/NewSeriesPage';
+import SeriesDetailPage from './pages/SeriesDetailPage';
+
+// Sample pages
 import { SamplesPage } from './pages/SamplesPage';
 import { SampleDetailPage } from './pages/SampleDetailPage';
 import { NewSamplePage } from './pages/NewSamplePage';
@@ -22,13 +33,30 @@ function App() {
         <Routes>
           <Route path="/" element={<BasicLayout />}>
             <Route index element={<Dashboard />} />
-            <Route path="projects" element={<ProjectsPage />} />
-            <Route path="projects/new" element={<NewProjectPage />} />
-            <Route path="projects/:id" element={<ProjectDetailPage />} />
+            
+            {/* StoryWorld Routes */}
+            <Route path="storyworlds" element={<StoryWorldsListPage />} />
+            <Route path="storyworlds/new" element={<NewStoryWorldPage />} />
+            <Route path="storyworlds/:id" element={<StoryWorldDetailPage />} />
+            
+            {/* Series Routes */}
+            <Route path="series/new" element={<NewSeriesPage />} />
+            <Route path="series/:id" element={<SeriesDetailPage />} />
+            
+            {/* Story Routes (formerly Project) */}
+            <Route path="projects" element={<Navigate to="/storyworlds" replace />} /> {/* Redirect for backward compatibility */}
+            <Route path="projects/new" element={<Navigate to="/stories/new" replace />} /> {/* Redirect for backward compatibility */}
+            <Route path="projects/:id" element={<ProjectDetailPage />} /> {/* Keep for now for backward compatibility */}
+            
+            <Route path="stories/new" element={<NewStoryPage />} />
+            <Route path="stories/:id" element={<ProjectDetailPage />} /> {/* Using existing component for now */}
+            
+            {/* Sample Routes */}
             <Route path="samples" element={<SamplesPage />} />
             <Route path="samples/new" element={<NewSamplePage />} />
             <Route path="samples/:id" element={<SampleDetailPage />} />
             <Route path="samples/:id/edit" element={<EditSamplePage />} />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
