@@ -9,6 +9,7 @@ import StoryWorldDetailPage from './pages/StoryWorldDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
 import StoryDetailPage from './pages/StoryDetailPage';
 import StoryWorldsListPage from './pages/StoryWorldsListPage';
+import SetupPage from './pages/SetupPage';
 
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
@@ -23,6 +24,11 @@ const router = createBrowserRouter([
       {
         index: true,
         element: <Dashboard />,
+      },
+      // Setup route
+      {
+        path: 'setup',
+        element: <SetupPage />,
       },
       // Story World routes
       {
