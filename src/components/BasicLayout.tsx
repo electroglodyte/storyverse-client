@@ -1,6 +1,6 @@
 // src/components/BasicLayout.tsx
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext';
 
 // This is a simplified layout component using CSS classes from App.css
@@ -19,10 +19,14 @@ const BasicLayout: React.FC = () => {
 
         <div className="sidebar-section">
           <h3 className="sidebar-section-title">ACTIVE PROJECT</h3>
-          <div className="sidebar-project-selector">
+          <Link 
+            to="/projects"
+            className="sidebar-project-selector"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
             <span>{projectName}</span>
             <span>▼</span>
-          </div>
+          </Link>
         </div>
 
         <div style={{ marginBottom: '20px' }}>
@@ -32,6 +36,12 @@ const BasicLayout: React.FC = () => {
               <a href="/" className="sidebar-item">
                 <span className="sidebar-item-icon">🏠</span>
                 <span>Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a href="/projects" className="sidebar-item">
+                <span className="sidebar-item-icon">📚</span>
+                <span>Projects</span>
               </a>
             </li>
             <li>
@@ -94,12 +104,21 @@ const BasicLayout: React.FC = () => {
           <h2 className="project-title">{projectName}</h2>
           
           <div className="project-controls">
-            <button className="project-selector">
+            <Link 
+              to="/projects" 
+              className="project-selector" 
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
               {projectName} ▼
-            </button>
-            <button className="control-button">
+            </Link>
+            <Link 
+              to={activeProject ? `/projects/${activeProject.id}` : "/projects"} 
+              className="control-button" 
+              title="View Project Details"
+              style={{ textDecoration: 'none', color: 'inherit' }}
+            >
               🔄
-            </button>
+            </Link>
           </div>
         </div>
 
