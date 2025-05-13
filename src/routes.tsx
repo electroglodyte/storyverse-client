@@ -13,6 +13,15 @@ import StoryWorldsListPage from './pages/StoryWorldsListPage';
 import SetupPage from './pages/SetupPage';
 import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 
+// Writing Samples & Style Profiles Pages
+import WritingSamplesPage from './pages/writing/WritingSamplesPage';
+import SampleDetailPage from './pages/writing/SampleDetailPage';
+import CreateSamplePage from './pages/writing/CreateSamplePage';
+import StyleProfilesPage from './pages/style/StyleProfilesPage';
+import ProfileDetailPage from './pages/style/ProfileDetailPage';
+import CreateProfilePage from './pages/style/CreateProfilePage';
+import StyleWritingToolPage from './pages/writing/StyleWritingToolPage';
+
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
   return <App />;
@@ -110,6 +119,49 @@ const router = createBrowserRouter([
       {
         path: 'stories/new',
         element: <StoryDetailPage />,
+      },
+      // Writing Samples routes
+      {
+        path: 'samples',
+        element: <WritingSamplesPage />,
+      },
+      {
+        path: 'samples/:id',
+        element: <SampleDetailPage />,
+      },
+      {
+        path: 'samples/new',
+        element: <CreateSamplePage />,
+      },
+      {
+        path: 'samples/edit/:id',
+        element: <CreateSamplePage />,
+      },
+      // Style Profiles routes
+      {
+        path: 'profiles',
+        element: <StyleProfilesPage />,
+      },
+      {
+        path: 'profiles/:id',
+        element: <ProfileDetailPage />,
+      },
+      {
+        path: 'profiles/new',
+        element: <CreateProfilePage />,
+      },
+      {
+        path: 'profiles/edit/:id',
+        element: <CreateProfilePage />,
+      },
+      // Writing Tool
+      {
+        path: 'writing-tool',
+        element: <StyleWritingToolPage />,
+      },
+      {
+        path: 'writing-tool/:profileId',
+        element: <StyleWritingToolPage />,
       },
     ],
   },
