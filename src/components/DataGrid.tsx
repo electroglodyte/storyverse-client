@@ -74,20 +74,28 @@ const DataGrid: React.FC<DataGridProps> = ({
   const gridThemeClass = 'ag-theme-alpine custom-ag-theme';
 
   return (
-    <div ref={containerRef} className={`card w-full shadow-md rounded-lg overflow-hidden mb-6 ${className}`}>
+    <div ref={containerRef} className={`card w-full shadow-md rounded-lg overflow-hidden mb-6 ${className}`} style={{ width: '100%' }}>
+      {/* Full-Width Header */}
       {title && (
-        <div className="flex justify-between items-center px-6 py-4 bg-header text-white rounded-t-lg">
+        <div className="flex justify-between items-center px-6 py-4 bg-header text-white rounded-t-lg w-full" style={{ width: '100%' }}>
           <h2 className="text-xl font-semibold">{title}</h2>
           {actionButtons && <div className="flex space-x-2">{actionButtons}</div>}
         </div>
       )}
       
       {isLoading ? (
-        <div className="h-64 flex items-center justify-center bg-background">
+        <div className="h-64 flex items-center justify-center bg-background w-full">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
         </div>
       ) : (
-        <div className={`${gridThemeClass} w-full mx-auto bg-background`} style={{ height: '500px', width: '100%' }}>
+        <div 
+          className={`${gridThemeClass} w-full mx-auto bg-background`} 
+          style={{ 
+            height: '500px', 
+            width: '100%',
+            maxWidth: '100%'
+          }}
+        >
           <AgGridReact
             columnDefs={columnDefs}
             rowData={rowData}
@@ -105,6 +113,9 @@ const DataGrid: React.FC<DataGridProps> = ({
           />
         </div>
       )}
+
+      {/* Debug Width - Visible element to show container width */}
+      <div className="w-full h-1 bg-accent" style={{ width: '100%' }}></div>
     </div>
   );
 };
