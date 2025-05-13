@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 4,
+  patch: 5,
   date: '2025-05-13',
-  notes: 'Fixed AG Grid layout and database connectivity issues. Added enhanced setup process with diagnostics. Improved error handling throughout the application.'
+  notes: 'Added comprehensive database setup tools. Fixed the "relation does not exist" error by providing a way to create database tables through the web interface. Improved error handling throughout the application.'
 };
