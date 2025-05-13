@@ -10,7 +10,14 @@ import { SampleDetailPage } from './pages/SampleDetailPage';
 import { NewSamplePage } from './pages/NewSamplePage';
 import { EditSamplePage } from './pages/EditSamplePage';
 
+// Import CSS files
+import './App.css';
+import './index.css';
+
 function App() {
+  // Add a class to the body to ensure Tailwind is working
+  document.body.classList.add('bg-primary-50', 'text-primary-700', 'fallback-bg-light', 'fallback-text-dark');
+  
   return (
     <ProjectProvider>
       <Router>
