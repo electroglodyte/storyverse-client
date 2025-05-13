@@ -21,27 +21,32 @@ const BasicLayout: React.FC = () => {
         height: '100vh',
         backgroundColor: '#1f2024',
         color: 'white',
-        padding: '20px',
         overflow: 'auto'
       }}>
-        <h1 style={{ color: '#fef3c7', marginBottom: '5px' }}>StoryVerse</h1>
-        <p style={{ color: '#fde68a', marginBottom: '20px', fontSize: '14px' }}>World Builder</p>
+        <div style={{ padding: '20px' }}>
+          <h1 style={{ color: '#fef3c7', marginBottom: '5px' }}>StoryVerse</h1>
+          <p style={{ color: '#fde68a', marginBottom: '20px', fontSize: '14px' }}>World Builder</p>
+        </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '20px', padding: '0 20px' }}>
           <h3 style={{ 
             fontSize: '12px', 
             textTransform: 'uppercase', 
             color: '#fcd34d', 
-            marginBottom: '8px' 
+            marginBottom: '8px',
+            fontWeight: 'bold'
           }}>
             ACTIVE PROJECT
           </h3>
           <div style={{
             backgroundColor: '#2d2e33',
             padding: '8px 12px',
-            borderRadius: '4px'
+            borderRadius: '4px',
+            display: 'flex',
+            justifyContent: 'space-between'
           }}>
-            {activeProject?.name || 'The Irish Mystery'} ▼
+            <span>{activeProject?.name || 'The Irish Mystery'}</span>
+            <span>▼</span>
           </div>
         </div>
 
@@ -50,24 +55,59 @@ const BasicLayout: React.FC = () => {
             fontSize: '12px', 
             textTransform: 'uppercase', 
             color: '#fcd34d', 
-            marginBottom: '8px' 
+            marginBottom: '8px',
+            fontWeight: 'bold',
+            padding: '0 20px'
           }}>
             MAIN
           </h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                🏠 Dashboard
+            <li>
+              <a href="/" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>🏠</span>
+                <span>Dashboard</span>
               </a>
             </li>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/samples" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                📝 Writing Samples
+            <li>
+              <a href="/samples" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>📝</span>
+                <span>Writing Samples</span>
               </a>
             </li>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/search" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                🔍 Search
+            <li>
+              <a href="/search" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>🔍</span>
+                <span>Search</span>
               </a>
             </li>
           </ul>
@@ -78,37 +118,91 @@ const BasicLayout: React.FC = () => {
             fontSize: '12px', 
             textTransform: 'uppercase', 
             color: '#fcd34d', 
-            marginBottom: '8px' 
+            marginBottom: '8px',
+            fontWeight: 'bold',
+            padding: '0 20px'
           }}>
             TOOLS
           </h3>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/style-analysis" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                📊 Style Analysis
+            <li>
+              <a href="/style-analysis" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>📊</span>
+                <span>Style Analysis</span>
               </a>
             </li>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/plot-mapping" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                📈 Plot Mapping
+            <li>
+              <a href="/plot-mapping" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>📈</span>
+                <span>Plot Mapping</span>
               </a>
             </li>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/consistency-check" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                ⚡ Consistency Check
+            <li>
+              <a href="/consistency-check" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>⚡</span>
+                <span>Consistency Check</span>
               </a>
             </li>
-            <li style={{ marginBottom: '8px' }}>
-              <a href="/claude-assistant" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-                💬 Claude Assistant
+            <li>
+              <a href="/claude-assistant" style={{ 
+                color: 'white', 
+                display: 'flex', 
+                alignItems: 'center',
+                padding: '8px 20px',
+                backgroundColor: 'transparent',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <span style={{ marginRight: '8px' }}>💬</span>
+                <span>Claude Assistant</span>
               </a>
             </li>
           </ul>
         </div>
 
-        <div>
-          <a href="/settings" style={{ color: 'white', display: 'block', padding: '8px 0' }}>
-            ⚙️ Settings
+        <div style={{ marginTop: 'auto', padding: '20px' }}>
+          <a href="/settings" style={{ 
+            color: 'white', 
+            display: 'flex', 
+            alignItems: 'center',
+            padding: '8px 0',
+            backgroundColor: 'transparent',
+            transition: 'background-color 0.2s'
+          }}>
+            <span style={{ marginRight: '8px' }}>⚙️</span>
+            <span>Settings</span>
           </a>
         </div>
       </div>
@@ -131,8 +225,9 @@ const BasicLayout: React.FC = () => {
           alignItems: 'center',
           borderBottom: '1px solid #3a3b41'
         }}>
-          <div>
-            <h2>{activeProject?.name || 'The Irish Mystery'}</h2>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ marginRight: '8px' }}>📚</span>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: '500' }}>{activeProject?.name || 'The Irish Mystery'}</h2>
           </div>
           <div style={{
             display: 'flex',
@@ -144,9 +239,14 @@ const BasicLayout: React.FC = () => {
               padding: '6px 12px',
               borderRadius: '4px',
               border: 'none',
-              marginRight: '10px'
+              marginRight: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              minWidth: '150px'
             }}>
-              {activeProject?.name || 'The Irish Mystery'} ▼
+              <span>{activeProject?.name || 'The Irish Mystery'}</span>
+              <span style={{ marginLeft: '8px' }}>▼</span>
             </button>
             <button style={{
               width: '32px',
@@ -169,10 +269,12 @@ const BasicLayout: React.FC = () => {
           flex: 1,
           backgroundColor: '#f8f5f0',
           color: '#654321',
-          padding: '20px',
+          padding: '24px',
           overflow: 'auto'
         }}>
-          <Outlet />
+          <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+            <Outlet />
+          </div>
         </div>
       </div>
     </div>
