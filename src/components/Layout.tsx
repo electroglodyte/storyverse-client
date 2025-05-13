@@ -1,11 +1,10 @@
 // src/components/Layout.tsx
-import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { SideNav } from './SideNav';
 import { useProject } from '../context/ProjectContext';
 
 export default function Layout() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Removed unused mobileMenuOpen state
   const { activeProject } = useProject();
   
   // Direct styling with !important to override any conflicts
