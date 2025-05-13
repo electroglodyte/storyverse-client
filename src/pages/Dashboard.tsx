@@ -14,7 +14,8 @@ const FeatureCard: React.FC<{
       borderRadius: '0.5rem',
       border: '1px solid #e8e1d9',
       padding: '1.5rem',
-      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)'
+      boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+      marginBottom: '1.5rem'
     }}>
       <h3 style={{ 
         fontSize: '1.125rem', 
@@ -35,7 +36,8 @@ const FeatureCard: React.FC<{
         style={{ 
           color: '#8a6d4d', 
           fontWeight: '500',
-          textDecoration: 'none'
+          textDecoration: 'none',
+          display: 'inline-block'
         }}
         onMouseOver={(e) => { e.currentTarget.style.color = '#654321' }}
         onMouseOut={(e) => { e.currentTarget.style.color = '#8a6d4d' }}
@@ -47,43 +49,29 @@ const FeatureCard: React.FC<{
 };
 
 const Dashboard: React.FC = () => {
+  // We won't display the Dashboard title here as it's now part of the layout
   return (
-    <div>
-      <h1 style={{
-        fontSize: '1.5rem',
-        fontWeight: 'bold',
-        color: '#654321',
-        marginBottom: '1.5rem'
-      }}>
-        Dashboard
-      </h1>
+    <div style={{ maxWidth: '1000px' }}>
+      <FeatureCard
+        title="Writing Samples"
+        description="Manage your writing samples and analyze their style."
+        linkTo="/samples"
+        linkText="View Samples"
+      />
       
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-        gap: '1.5rem'
-      }}>
-        <FeatureCard
-          title="Writing Samples"
-          description="Manage your writing samples and analyze their style."
-          linkTo="/samples"
-          linkText="View Samples"
-        />
-        
-        <FeatureCard
-          title="Style Analysis"
-          description="Create and manage style profiles based on your writing."
-          linkTo="/style-analysis"
-          linkText="View Style Profiles"
-        />
-        
-        <FeatureCard
-          title="Claude Assistant"
-          description="Get writing assistance with context from your project."
-          linkTo="/claude-assistant"
-          linkText="Open Claude"
-        />
-      </div>
+      <FeatureCard
+        title="Style Analysis"
+        description="Create and manage style profiles based on your writing."
+        linkTo="/style-analysis"
+        linkText="View Style Profiles"
+      />
+      
+      <FeatureCard
+        title="Claude Assistant"
+        description="Get writing assistance with context from your project."
+        linkTo="/claude-assistant"
+        linkText="Open Claude"
+      />
     </div>
   );
 };
