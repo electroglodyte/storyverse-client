@@ -6,8 +6,7 @@ import Dashboard from './pages/Dashboard';
 
 // Original Project pages (now renamed to Story)
 import ProjectsPage from './pages/ProjectsPage';
-import ProjectDetailPage from './pages/ProjectDetailPage';
-import NewStoryPage from './pages/NewStoryPage'; // Updated import
+import StoryDetailPage from './pages/StoryDetailPage'; // Updated import
 
 // New StoryWorld and Series pages
 import StoryWorldsListPage from './pages/StoryWorldsListPage';
@@ -15,6 +14,7 @@ import NewStoryWorldPage from './pages/NewStoryWorldPage';
 import StoryWorldDetailPage from './pages/StoryWorldDetailPage';
 import NewSeriesPage from './pages/NewSeriesPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
+import NewStoryPage from './pages/NewStoryPage';
 
 // Sample pages
 import { SamplesPage } from './pages/SamplesPage';
@@ -32,7 +32,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<BasicLayout />}>
-            <Route index element={<Dashboard />} />
+            <Route index element={<Navigate to="/storyworlds" replace />} />
             
             {/* StoryWorld Routes */}
             <Route path="storyworlds" element={<StoryWorldsListPage />} />
@@ -46,10 +46,10 @@ function App() {
             {/* Story Routes (formerly Project) */}
             <Route path="projects" element={<Navigate to="/storyworlds" replace />} /> {/* Redirect for backward compatibility */}
             <Route path="projects/new" element={<Navigate to="/stories/new" replace />} /> {/* Redirect for backward compatibility */}
-            <Route path="projects/:id" element={<ProjectDetailPage />} /> {/* Keep for now for backward compatibility */}
+            <Route path="projects/:id" element={<Navigate to={params => `/stories/${params.id}`} replace />} /> {/* Redirect for backward compatibility */}
             
             <Route path="stories/new" element={<NewStoryPage />} />
-            <Route path="stories/:id" element={<ProjectDetailPage />} /> {/* Using existing component for now */}
+            <Route path="stories/:id" element={<StoryDetailPage />} /> {/* Now using the new StoryDetailPage */}
             
             {/* Sample Routes */}
             <Route path="samples" element={<SamplesPage />} />
@@ -57,7 +57,7 @@ function App() {
             <Route path="samples/:id" element={<SampleDetailPage />} />
             <Route path="samples/:id/edit" element={<EditSamplePage />} />
             
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/storyworlds" replace />} />
           </Route>
         </Routes>
       </Router>
