@@ -80,6 +80,17 @@ export const SideNav: React.FC = () => {
           </li>
           <li>
             <Link
+              to="/projects"
+              style={isActive('/projects') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/projects')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <span style={{ marginRight: '0.5rem' }}>📚</span>
+              <span>Projects</span>
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/samples"
               style={isActive('/samples') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
