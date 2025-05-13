@@ -7,6 +7,21 @@ export default {
   theme: {
     extend: {
       colors: {
+        sidebar: {
+          DEFAULT: '#1c1c1c',
+          header: '#111111',
+          sectionTitle: '#ffc107',
+        },
+        header: {
+          DEFAULT: '#3e322a',
+        },
+        accent: {
+          DEFAULT: '#a38671',
+          hover: '#8d7263',
+        },
+        background: {
+          DEFAULT: '#f5f3ef',
+        },
         blue: {
           50: '#eff6ff',
           100: '#dbeafe',
