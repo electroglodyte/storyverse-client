@@ -1,5 +1,4 @@
-import { supabase } from './supabaseClient';
-import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../supabaseClient';
 
 /**
  * One-time script to create initial data in Supabase
@@ -24,9 +23,8 @@ async function createInitialData() {
       return existingWorlds[0];
     }
     
-    // Create a new Narnia story world
+    // Create a new Narnia story world - use supabase's built-in UUID generation
     const newStoryWorld = {
-      id: uuidv4(),
       name: 'Narnia',
       description: 'The magical world of Narnia created by C.S. Lewis',
       tags: ['fantasy', 'magic', 'children'],
