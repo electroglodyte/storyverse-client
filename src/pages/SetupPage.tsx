@@ -32,20 +32,22 @@ const SetupPage = () => {
         const { data: healthData, error: healthError } = await supabase.rpc('ping');
         status.connected = !healthError && healthData;
 
-        // Check if story_worlds table exists
+        // Check if story_worlds table exists by trying to get any rows
         const { data: worldsData, error: worldsError } = await supabase
           .from('story_worlds')
-          .select('count(*)', { count: 'exact', head: true });
+          .select('id')
+          .limit(1);
         
         status.tablesExist = !worldsError;
-        status.storyWorldsExist = !worldsError && worldsData && worldsData.count > 0;
+        status.storyWorldsExist = !worldsError && worldsData && worldsData.length > 0;
 
         // Check if stories table exists
         const { data: storiesData, error: storiesError } = await supabase
           .from('stories')
-          .select('count(*)', { count: 'exact', head: true });
+          .select('id')
+          .limit(1);
         
-        status.storiesExist = !storiesError && storiesData && storiesData.count > 0;
+        status.storiesExist = !storiesError && storiesData && storiesData.length > 0;
       } catch (error) {
         console.error('Error checking database status:', error);
       }
