@@ -7,6 +7,7 @@ import SeriesTable from './components/series/SeriesTable';
 import StoryTable from './components/story/StoryTable';
 import StoryWorldDetailPage from './pages/StoryWorldDetailPage';
 import SeriesDetailPage from './pages/SeriesDetailPage';
+import SeriesEditPage from './pages/SeriesEditPage';
 import StoryDetailPage from './pages/StoryDetailPage';
 import StoryWorldsListPage from './pages/StoryWorldsListPage';
 import SetupPage from './pages/SetupPage';
@@ -87,7 +88,7 @@ const router = createBrowserRouter([
       },
       {
         path: 'series/edit/:id',
-        element: <SeriesDetailPage />,
+        element: <SeriesEditPage />,
       },
       {
         path: 'series/new',
