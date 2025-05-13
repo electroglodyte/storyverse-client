@@ -144,7 +144,7 @@ const SeriesDetailPage: React.FC = () => {
           const { data: allStoriesData, error: allStoriesError } = await supabase
             .from('stories')
             .select('*')
-            .eq('story_world_id', seriesData.storyworld_id);
+            .or(`story_world_id.eq.${seriesData.storyworld_id},storyworld_id.eq.${seriesData.storyworld_id}`);
 
           if (allStoriesError) throw allStoriesError;
           
@@ -204,6 +204,7 @@ const SeriesDetailPage: React.FC = () => {
             name: formData.name,
             description: formData.description || '',
             storyworld_id: selectedStoryWorldId,
+            story_world_id: selectedStoryWorldId, // Add both fields for consistency
             sequence_type: formData.sequence_type || 'Chronological',
           }
         ])
@@ -555,7 +556,7 @@ const SeriesDetailPage: React.FC = () => {
           </div>
           <div className="flex space-x-2">
             <Link
-              to={`/series/${series?.id}/edit`}
+              to={`/series/edit/${series?.id}`}
               className="inline-flex items-center text-blue-600 hover:text-blue-800"
             >
               <FaEdit className="mr-1" /> Edit
