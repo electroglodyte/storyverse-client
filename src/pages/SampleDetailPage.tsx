@@ -78,18 +78,22 @@ interface StyleAnalysis {
   descriptive_summary: string;
 }
 
+type TabType = 'content' | 'analysis' | 'usage';
+
 export const SampleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getSample, deleteSample } = useSamples();
-  const { getLatestAnalysis, analyzeSample } = useAnalysis();
+  const { getLatestAnalysis, getAnalyses, analyzeSample } = useAnalysis();
 
   const [sample, setSample] = useState<Sample | null>(null);
   const [analysis, setAnalysis] = useState<StyleAnalysis | null>(null);
+  const [analyses, setAnalyses] = useState<StyleAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [runningAnalysis, setRunningAnalysis] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('content');
 
   useEffect(() => {
     const loadData = async () => {
@@ -108,9 +112,17 @@ export const SampleDetailPage: React.FC = () => {
 
         setSample(sampleData);
 
-        // Fetch the latest analysis
-        const analysisData = await getLatestAnalysis(id);
-        setAnalysis(analysisData);
+        // Fetch all analyses
+        const analysesData = await getAnalyses(id);
+        setAnalyses(analysesData);
+        
+        // Set the latest analysis
+        if (analysesData.length > 0) {
+          setAnalysis(analysesData[0]);
+          
+          // If there's an analysis, default to that tab
+          setActiveTab('analysis');
+        }
       } catch (error) {
         setError('Error loading sample data');
         console.error(error);
@@ -136,9 +148,15 @@ export const SampleDetailPage: React.FC = () => {
       });
       
       if (result) {
-        // Refresh the latest analysis
-        const newAnalysis = await getLatestAnalysis(sample.id);
-        setAnalysis(newAnalysis);
+        // Refresh all analyses
+        const analysesData = await getAnalyses(sample.id);
+        setAnalyses(analysesData);
+        
+        // Set the latest analysis (should be the new one)
+        if (analysesData.length > 0) {
+          setAnalysis(analysesData[0]);
+          setActiveTab('analysis');
+        }
       }
     } catch (error) {
       console.error('Error running analysis:', error);
@@ -168,7 +186,7 @@ export const SampleDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8 flex justify-center">
-        <div>Loading...</div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
@@ -196,13 +214,13 @@ export const SampleDetailPage: React.FC = () => {
         <nav className="text-sm mb-2 sm:mb-0">
           <ul className="flex space-x-2">
             <li>
-              <Link to="/samples" className="text-blue-600 dark:text-blue-400 hover:underline">
+              <Link to="/samples" className="text-blue-500 hover:underline">
                 Samples
               </Link>
             </li>
             <li>
               <span className="text-gray-400 mx-2">/</span>
-              <span className="text-gray-700 dark:text-gray-300">{sample.title}</span>
+              <span className="text-gray-300">{sample.title}</span>
             </li>
           </ul>
         </nav>
@@ -224,14 +242,14 @@ export const SampleDetailPage: React.FC = () => {
       </div>
       
       {/* Sample Header */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
+      <div className="bg-gray-800 shadow rounded-lg p-6 mb-6">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-2xl font-bold text-white mb-2">
               {sample.title}
             </h1>
             
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400 mb-3">
+            <div className="flex flex-wrap gap-4 text-sm text-gray-400 mb-3">
               {sample.author && (
                 <div>By {sample.author}</div>
               )}
@@ -241,7 +259,7 @@ export const SampleDetailPage: React.FC = () => {
               <div>Updated {formatDate(sample.updated_at)}</div>
               
               {sample.sample_type && (
-                <div className="px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100 rounded-full">
+                <div className="px-2 py-0.5 bg-blue-900 text-blue-200 rounded-full">
                   {sample.sample_type}
                 </div>
               )}
@@ -252,7 +270,7 @@ export const SampleDetailPage: React.FC = () => {
                 {sample.tags.map((tag: string) => (
                   <span 
                     key={tag}
-                    className="text-xs px-2 py-1 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200 rounded-full"
+                    className="text-xs px-2 py-1 bg-gray-700 text-gray-300 rounded-full"
                   >
                     {tag}
                   </span>
@@ -275,55 +293,164 @@ export const SampleDetailPage: React.FC = () => {
         </div>
       </div>
       
-      {/* Analysis Section */}
-      {analysis ? (
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Style Analysis</h2>
-            <button
-              onClick={handleRunAnalysis}
-              disabled={runningAnalysis}
-              className={`text-sm px-3 py-1 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 ${
-                runningAnalysis ? 'opacity-70 cursor-not-allowed' : ''
-              }`}
-            >
-              {runningAnalysis ? 'Analyzing...' : 'Run New Analysis'}
-            </button>
-          </div>
-          <AnalysisVisualization analysis={analysis} />
+      {/* Tabs */}
+      <div className="mb-6">
+        <div className="border-b border-gray-700">
+          <ul className="flex flex-wrap -mb-px">
+            <li className="mr-2">
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`inline-block py-2 px-4 text-sm font-medium ${
+                  activeTab === 'content'
+                    ? 'text-blue-500 border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Content
+              </button>
+            </li>
+            <li className="mr-2">
+              <button
+                onClick={() => setActiveTab('analysis')}
+                disabled={!analysis && !runningAnalysis}
+                className={`inline-block py-2 px-4 text-sm font-medium ${
+                  activeTab === 'analysis'
+                    ? 'text-blue-500 border-b-2 border-blue-500'
+                    : (!analysis && !runningAnalysis)
+                      ? 'text-gray-600 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Style Analysis
+                {analyses.length > 0 && (
+                  <span className="ml-2 px-1.5 py-0.5 text-xs bg-blue-900 text-blue-200 rounded-full">
+                    {analyses.length}
+                  </span>
+                )}
+              </button>
+            </li>
+            <li className="mr-2">
+              <button
+                onClick={() => setActiveTab('usage')}
+                className={`inline-block py-2 px-4 text-sm font-medium ${
+                  activeTab === 'usage'
+                    ? 'text-blue-500 border-b-2 border-blue-500'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                Usage
+              </button>
+            </li>
+          </ul>
         </div>
-      ) : runningAnalysis ? (
-        <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6 text-center">
-          <p className="text-gray-700 dark:text-gray-300">
-            Running style analysis... This may take a moment.
-          </p>
-        </div>
-      ) : null}
+      </div>
       
-      {/* Sample Content */}
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Content</h2>
-        <div className="prose dark:prose-invert max-w-none">
-          {sample.content.split('\n').map((paragraph: string, i: number) => (
-            <p key={i}>{paragraph}</p>
-          ))}
-        </div>
+      {/* Tab Content */}
+      <div className="bg-gray-800 shadow rounded-lg p-6">
+        {/* Content Tab */}
+        {activeTab === 'content' && (
+          <div>
+            <h2 className="text-xl font-bold text-white mb-4">Sample Content</h2>
+            <div className="prose prose-invert max-w-none">
+              {sample.content.split('\n').map((paragraph: string, i: number) => (
+                <p key={i}>{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {/* Analysis Tab */}
+        {activeTab === 'analysis' && (
+          <div>
+            {runningAnalysis ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p className="text-gray-300">
+                  Running style analysis... This may take a moment.
+                </p>
+              </div>
+            ) : analysis ? (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-white">Style Analysis</h2>
+                  <button
+                    onClick={handleRunAnalysis}
+                    disabled={runningAnalysis}
+                    className="text-sm px-3 py-1 border border-gray-600 rounded text-gray-300 hover:bg-gray-700"
+                  >
+                    Run New Analysis
+                  </button>
+                </div>
+                
+                {/* Analysis date selector if multiple analyses */}
+                {analyses.length > 1 && (
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                      Analysis Version
+                    </label>
+                    <select
+                      value={analysis.id}
+                      onChange={(e) => {
+                        const selected = analyses.find(a => a.id === e.target.value);
+                        if (selected) setAnalysis(selected);
+                      }}
+                      className="bg-gray-700 border-gray-600 text-white rounded-md block w-full p-2.5"
+                    >
+                      {analyses.map((a, index) => (
+                        <option key={a.id} value={a.id}>
+                          {index === 0 ? 'Latest' : `Version ${analyses.length - index}`} - {formatDate(a.created_at)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                
+                <AnalysisVisualization analysis={analysis} />
+              </div>
+            ) : (
+              <div className="bg-gray-700 rounded-lg p-6 text-center">
+                <p className="text-gray-300 mb-4">No style analysis has been run yet.</p>
+                <button
+                  onClick={handleRunAnalysis}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Run Style Analysis
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Usage Tab */}
+        {activeTab === 'usage' && (
+          <div>
+            <h2 className="text-xl font-bold text-white mb-4">Sample Usage</h2>
+            
+            {/* TODO: Add information about profiles and other usage */}
+            <p className="text-gray-300">This tab will show where this sample is used in style profiles and other contexts.</p>
+            
+            {/* Placeholder content for now */}
+            <div className="bg-gray-700 rounded-lg p-6 mt-4">
+              <p className="text-gray-400 text-center">No usage information available yet.</p>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold text-white mb-4">
               Confirm Deletion
             </h3>
-            <p className="text-gray-700 dark:text-gray-300 mb-6">
+            <p className="text-gray-300 mb-6">
               Are you sure you want to delete "{sample.title}"? This action cannot be undone.
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setDeleteModalOpen(false)}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="px-4 py-2 border border-gray-600 rounded text-gray-300 hover:bg-gray-700"
               >
                 Cancel
               </button>
