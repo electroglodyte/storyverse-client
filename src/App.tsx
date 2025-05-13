@@ -1,16 +1,119 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import Navigation from './components/Navigation';
+import { 
+  FaHome, 
+  FaBook, 
+  FaStream, 
+  FaListUl, 
+  FaEdit, 
+  FaSearch,
+  FaMagic,
+  FaProjectDiagram,
+  FaBalanceScale,
+  FaCommentDots,
+  FaCog
+} from 'react-icons/fa';
 
 function App() {
+  const location = useLocation();
+  const [activeProject, setActiveProject] = useState('One Silly Story');
+  
+  // Helper function to determine if a path is active
+  const isActive = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  // Get current page title
+  const getPageTitle = () => {
+    if (location.pathname === '/') return 'Dashboard';
+    if (location.pathname.startsWith('/story-worlds')) return 'Story Worlds';
+    if (location.pathname.startsWith('/series')) return 'Series';
+    if (location.pathname.startsWith('/stories')) return 'Stories';
+    return 'StoryVerse';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
+    <div className="flex min-h-screen">
+      {/* Sidebar */}
+      <div className="sidebar">
+        <div className="sidebar-header">
+          <div>ACTIVE PROJECT</div>
+          <div className="flex items-center justify-between">
+            <span>{activeProject}</span>
+            <span>▼</span>
+          </div>
+        </div>
+        
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">MAIN</div>
+          <Link to="/" className={`sidebar-link ${isActive('/') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaHome /></span>
+            Dashboard
+          </Link>
+          <Link to="/story-worlds" className={`sidebar-link ${isActive('/story-worlds') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaBook /></span>
+            Story Worlds
+          </Link>
+          <Link to="/series" className={`sidebar-link ${isActive('/series') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaStream /></span>
+            Series
+          </Link>
+          <Link to="/stories" className={`sidebar-link ${isActive('/stories') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaListUl /></span>
+            Stories
+          </Link>
+          <Link to="/writing-samples" className={`sidebar-link ${isActive('/writing-samples') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaEdit /></span>
+            Writing Samples
+          </Link>
+          <Link to="/search" className={`sidebar-link ${isActive('/search') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaSearch /></span>
+            Search
+          </Link>
+        </div>
+        
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">TOOLS</div>
+          <Link to="/style-analysis" className={`sidebar-link ${isActive('/style-analysis') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaMagic /></span>
+            Style Analysis
+          </Link>
+          <Link to="/plot-mapping" className={`sidebar-link ${isActive('/plot-mapping') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaProjectDiagram /></span>
+            Plot Mapping
+          </Link>
+          <Link to="/consistency-check" className={`sidebar-link ${isActive('/consistency-check') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaBalanceScale /></span>
+            Consistency Check
+          </Link>
+          <Link to="/claude-assistant" className={`sidebar-link ${isActive('/claude-assistant') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaCommentDots /></span>
+            Claude Assistant
+          </Link>
+        </div>
+        
+        <div className="mt-auto">
+          <Link to="/settings" className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaCog /></span>
+            Settings
+          </Link>
+        </div>
+      </div>
       
-      <main className="pb-12">
-        <Outlet />
-      </main>
+      {/* Main Content */}
+      <div className="main-content">
+        <div className="main-header">
+          <h1 className="main-title">{getPageTitle()}</h1>
+        </div>
+        
+        <div className="content-area">
+          <Outlet />
+        </div>
+      </div>
       
       <Toaster 
         position="bottom-right"
