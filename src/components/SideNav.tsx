@@ -14,7 +14,7 @@ export const SideNav: React.FC = () => {
   };
 
   return (
-    <nav className="bg-primary-200 w-64 min-h-screen h-full p-4 border-r border-primary-300 fixed hidden md:block">
+    <nav className="bg-primary-200 w-64 h-screen overflow-y-auto p-4 border-r border-primary-300">
       {/* Logo and Subtitle */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-primary-700">StoryVerse</h1>
