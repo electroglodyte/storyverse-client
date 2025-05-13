@@ -1,10 +1,46 @@
-/* Remove default styles that might conflict with Tailwind */
-body {
-  background-color: #f8f5f0; /* Match the primary-50 color */
-  color: #654321; /* Match the primary-700 color for text */
+/* Explicitly set base styles to ensure they're applied */
+html, body {
+  background-color: #f8f5f0 !important; /* Match the primary-50 color */
+  color: #654321 !important; /* Match the primary-700 color for text */
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
 /* Override any dark mode settings */
 :root {
   color-scheme: light;
+}
+
+/* Fallback styles for when Tailwind doesn't load properly */
+.bg-primary-50, .fallback-bg-light {
+  background-color: #f8f5f0 !important;
+}
+.bg-primary-100, .fallback-bg-light-accent {
+  background-color: #f2eee6 !important;
+}
+.bg-primary-200, .fallback-bg-light-highlight {
+  background-color: #e8e1d9 !important;
+}
+.bg-primary-700, .fallback-text-dark {
+  color: #654321 !important;
+}
+.text-primary-700, .fallback-text-primary {
+  color: #654321 !important;
+}
+.border-primary-200, .fallback-border {
+  border-color: #e8e1d9 !important;
+}
+
+/* Add some basic layout classes as fallbacks */
+.fallback-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+.fallback-flex {
+  display: flex;
+}
+.fallback-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
 }
