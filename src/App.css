@@ -1,98 +1,66 @@
-/* Base styles */
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
 html, body {
   margin: 0;
   padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   height: 100%;
+  width: 100%;
 }
 
 body {
-  background-color: #f8f5f0; /* Light beige for content areas */
-  color: #654321; /* Brown text color */
+  background-color: #f8f5f0;
+  color: #654321;
 }
 
-/* Override any dark mode settings */
-:root {
-  color-scheme: light;
-}
-
-/* Primary color scheme - beige palette for content */
-.bg-primary-50 {
-  background-color: #f8f5f0 !important;
-}
-.bg-primary-100 {
-  background-color: #f2eee6 !important;
-}
-.bg-primary-200 {
-  background-color: #e8e1d9 !important;
-}
-.text-primary-500 {
-  color: #ab8760 !important;
-}
-.text-primary-600 {
-  color: #8a6d4d !important;
-}
-.text-primary-700 {
-  color: #654321 !important;
-}
-.border-primary-200 {
-  border-color: #e8e1d9 !important;
-}
-
-/* Dark theme for sidebar and header */
-.bg-neutral-900 {
-  background-color: #1f2024 !important;
-}
-.bg-neutral-800 {
-  background-color: #2d2e33 !important;
-}
-.bg-neutral-700 {
-  background-color: #3a3b41 !important;
-}
-.text-amber-100 {
-  color: #fef3c7 !important;
-}
-.text-amber-200 {
-  color: #fde68a !important;
-}
-.text-amber-300 {
-  color: #fcd34d !important;
-}
-
-/* Layout classes */
 #root {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
-/* Ensure that content stretches to fill available space */
-.h-screen, .min-h-screen {
-  height: 100vh;
-  min-height: 100vh;
+/* Make sure links look right */
+a {
+  text-decoration: none;
+  color: inherit;
 }
 
-/* Ensure flex layout works properly */
-.flex-1 {
-  flex: 1 1 0%;
+/* Primary beige colors for content */
+.bg-primary-50 {
+  background-color: #f8f5f0;
 }
 
-/* Card styling for dashboard and content areas */
+.bg-primary-100 {
+  background-color: #f2eee6;
+}
+
+.bg-primary-200 {
+  background-color: #e8e1d9;
+}
+
+.text-primary-500 {
+  color: #ab8760;
+}
+
+.text-primary-600 {
+  color: #8a6d4d;
+}
+
+.text-primary-700 {
+  color: #654321;
+}
+
+.border-primary-200 {
+  border-color: #e8e1d9;
+}
+
+/* Card styling for content areas */
 .dashboard-card {
   background-color: white;
   border-radius: 0.5rem;
   border: 1px solid #e8e1d9;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Mobile responsiveness adjustments */
-@media (max-width: 768px) {
-  .md\:flex-row {
-    flex-direction: column !important;
-  }
-  
-  .md\:w-64 {
-    width: 100% !important;
-  }
 }
