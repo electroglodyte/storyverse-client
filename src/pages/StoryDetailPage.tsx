@@ -1,8 +1,8 @@
-// /src/pages/StoryDetailPage.tsx (renamed from ProjectDetailPage.tsx)
+// /src/pages/StoryDetailPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { FaEdit, FaTrashAlt, FaPlus, FaArrowLeft, FaBook } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaPlus, FaArrowLeft, FaBook, FaSave, FaTimes } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 import { Story, StoryWorld, Series, WritingSample } from '../supabase-tables';
@@ -12,6 +12,11 @@ interface ExtendedStory extends Story {
   series?: Series;
 }
 
+interface SeriesOption {
+  id: string;
+  name: string;
+}
+
 const StoryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -19,7 +24,10 @@ const StoryDetailPage: React.FC = () => {
   const [samples, setSamples] = useState<WritingSample[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingSeries, setIsEditingSeries] = useState(false);
   const [formData, setFormData] = useState<Partial<Story>>({});
+  const [seriesOptions, setSeriesOptions] = useState<SeriesOption[]>([]);
+  const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
 
   // Fetch story details and associated samples
   useEffect(() => {
@@ -64,6 +72,7 @@ const StoryDetailPage: React.FC = () => {
         }
         
         const story: ExtendedStory = storyData;
+        setSelectedSeriesId(story.series_id);
         
         // Get the StoryWorld information if available
         if (story.storyworld_id) {
@@ -88,6 +97,19 @@ const StoryDetailPage: React.FC = () => {
             
           if (seriesData) {
             story.series = seriesData;
+          }
+        }
+        
+        // Fetch available series options for this story's storyworld
+        if (story.storyworld_id) {
+          const { data: availableSeriesData } = await supabase
+            .from('series')
+            .select('id, name')
+            .eq('storyworld_id', story.storyworld_id)
+            .order('name', { ascending: true });
+            
+          if (availableSeriesData) {
+            setSeriesOptions(availableSeriesData);
           }
         }
         
@@ -137,6 +159,12 @@ const StoryDetailPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle series select change
+  const handleSeriesChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedSeriesId(value === "" ? null : value);
+  };
+
   // Save story changes
   const handleSaveStory = async () => {
     if (!id) return;
@@ -172,6 +200,113 @@ const StoryDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Error updating story:', err);
       toast.error('Failed to update story');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save series assignment
+  const handleSaveSeries = async () => {
+    if (!id || !story) return;
+    
+    try {
+      setLoading(true);
+      
+      // First, check if we're changing the series
+      if (selectedSeriesId !== story.series_id) {
+        // If the story was previously in a series, remove it from the series_stories table
+        if (story.series_id) {
+          const { error: removeError } = await supabase
+            .from('series_stories')
+            .delete()
+            .eq('story_id', id);
+            
+          if (removeError) {
+            console.warn('Warning: Could not remove story from previous series:', removeError);
+          }
+        }
+        
+        // If we're adding the story to a new series, add an entry to the series_stories table
+        if (selectedSeriesId) {
+          // Find the highest sequence number in the target series
+          const { data: seriesStoriesData } = await supabase
+            .from('series_stories')
+            .select('sequence_number')
+            .eq('series_id', selectedSeriesId)
+            .order('sequence_number', { ascending: false })
+            .limit(1);
+            
+          const highestSequence = seriesStoriesData && seriesStoriesData.length > 0
+            ? seriesStoriesData[0].sequence_number
+            : 0;
+            
+          // Add the story to the series with the next sequence number
+          const { error: addError } = await supabase
+            .from('series_stories')
+            .insert([
+              {
+                series_id: selectedSeriesId,
+                story_id: id,
+                sequence_number: highestSequence + 1
+              }
+            ]);
+            
+          if (addError) {
+            console.error('Error adding story to series:', addError);
+            toast.error('Failed to add story to series');
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Update the story's series_id in the stories table
+        const { data, error } = await supabase
+          .from('stories')
+          .update({
+            series_id: selectedSeriesId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', id)
+          .select()
+          .single();
+          
+        if (error) {
+          console.error('Error updating story series:', error);
+          toast.error('Failed to update story series');
+          setLoading(false);
+          return;
+        }
+        
+        // If the update was successful, fetch the new series data if applicable
+        let updatedSeries = null;
+        if (selectedSeriesId) {
+          const { data: seriesData } = await supabase
+            .from('series')
+            .select('*')
+            .eq('id', selectedSeriesId)
+            .single();
+            
+          if (seriesData) {
+            updatedSeries = seriesData;
+          }
+        }
+        
+        // Update the story state with the new data
+        setStory(prevStory => ({
+          ...data,
+          storyworld: prevStory?.storyworld,
+          series: updatedSeries
+        }));
+        
+        setIsEditingSeries(false);
+        toast.success('Story series updated successfully');
+      } else {
+        // No change in series, just close the editing interface
+        setIsEditingSeries(false);
+      }
+    } catch (err: any) {
+      console.error('Error updating story series:', err);
+      toast.error('Failed to update story series');
     } finally {
       setLoading(false);
     }
@@ -252,6 +387,12 @@ const StoryDetailPage: React.FC = () => {
   const handleCancelEdit = () => {
     setFormData(story || {});
     setIsEditing(false);
+  };
+
+  // Cancel series editing
+  const handleCancelSeriesEdit = () => {
+    setSelectedSeriesId(story?.series_id || null);
+    setIsEditingSeries(false);
   };
 
   // Show loading state on initial load
@@ -422,6 +563,93 @@ const StoryDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Series Assignment Section */}
+      {story.storyworld_id && (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Series Assignment</h2>
+            
+            {!isEditingSeries && (
+              <button 
+                onClick={() => setIsEditingSeries(true)}
+                className="text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <FaEdit className="mr-1" />
+                Change
+              </button>
+            )}
+          </div>
+          
+          {isEditingSeries ? (
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex-1">
+                <select
+                  value={selectedSeriesId || ""}
+                  onChange={handleSeriesChange}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Standalone Story (No Series) --</option>
+                  {seriesOptions.map(series => (
+                    <option key={series.id} value={series.id}>
+                      {series.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelSeriesEdit}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 flex items-center"
+                >
+                  <FaTimes className="mr-2" />
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={handleSaveSeries}
+                  disabled={loading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  <FaSave className="mr-2" />
+                  {loading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {story.series ? (
+                <div className="flex items-center">
+                  <span>Part of series: </span>
+                  <Link
+                    to={`/series/${story.series_id}`}
+                    className="ml-2 text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    {story.series.name}
+                  </Link>
+                </div>
+              ) : (
+                <div className="text-gray-600">
+                  This is a standalone story (not part of any series)
+                </div>
+              )}
+              
+              {seriesOptions.length === 0 && (
+                <div className="mt-2 text-sm text-gray-500">
+                  No series available in this story world. 
+                  <Link
+                    to={`/series/new?storyWorldId=${story.storyworld_id}`}
+                    className="ml-1 text-blue-600 hover:underline"
+                  >
+                    Create a new series
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       
       {/* Samples Section */}
       <div className="mb-8">
