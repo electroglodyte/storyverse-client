@@ -82,17 +82,17 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
   const EmptyState = () => (
     <div className="text-center py-12">
       <div className="inline-block mb-4">
-        <svg className="w-16 h-16 text-primary-300" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2-1a1 1 0 00-1 1v12a1 1 0 001 1h8a1 1 0 001-1V4a1 1 0 00-1-1H6z" clipRule="evenodd" />
+        <svg className="w-16 h-16 text-primary-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       </div>
       <h3 className="text-lg font-medium text-primary-700 mb-2">No writing samples yet</h3>
-      <p className="text-primary-500 mb-6">Add your first writing sample to get started</p>
+      <p className="text-gray-500 mb-6">Add your first writing sample to get started</p>
       <Link 
         to="/samples/new"
-        className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 inline-flex items-center"
+        className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
       >
-        <span className="mr-2">+</span> Add Sample
+        <span className="mr-1">+</span> Add Sample
       </Link>
     </div>
   );
@@ -103,14 +103,14 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
         <h1 className="text-2xl font-bold text-primary-700">Writing Samples</h1>
         <Link 
           to="/samples/new"
-          className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 inline-flex items-center"
+          className="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
         >
           <span className="mr-1">+</span> Add Sample
         </Link>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row gap-4 bg-primary-50 p-4 rounded-md">
         <div className="flex-1">
           <label htmlFor="author" className="block text-sm font-medium text-primary-600 mb-1">Author</label>
           <select
@@ -157,8 +157,8 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           <button
             onClick={() => setViewMode('grid')}
             className={`px-3 py-1 ${viewMode === 'grid' ? 'bg-primary-200 text-primary-700' : 'bg-white text-primary-600'}`}
+            aria-label="Grid view"
           >
-            <span className="sr-only">Grid view</span>
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zm0 8a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zm6-6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zm0 8a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" clipRule="evenodd" />
             </svg>
@@ -166,8 +166,8 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           <button
             onClick={() => setViewMode('list')}
             className={`px-3 py-1 ${viewMode === 'list' ? 'bg-primary-200 text-primary-700' : 'bg-white text-primary-600'}`}
+            aria-label="List view"
           >
-            <span className="sr-only">List view</span>
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
             </svg>
@@ -193,7 +193,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
             <Link 
               key={sample.id}
               to={`/samples/${sample.id}`}
-              className="block bg-white rounded-lg shadow hover:shadow-md transition-shadow"
+              className="block bg-white rounded-lg shadow-sm hover:shadow transition-shadow"
             >
               <div className="p-4">
                 <h3 className="font-medium text-primary-700 mb-1">{sample.title}</h3>
@@ -212,7 +212,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <ul className="divide-y divide-primary-200">
             {filteredSamples.map(sample => (
               <li key={sample.id}>
