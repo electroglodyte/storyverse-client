@@ -1,8 +1,9 @@
 // This file is used to trigger deployments when updated
 // The version follows semver (major.minor.patch)
-export const VERSION = '0.2.1';
+export const VERSION = '0.2.2';
 
 // Changelog:
+// 0.2.2 - Trigger deployment for StoryWorld changes after Vercel upgrade
 // 0.2.1 - Fixed deployment issues with StoryWorld changes
 // 0.2.0 - Added StoryWorld and Series structure; renamed Projects to Stories
 // 0.1.5 - Added comprehensive Supabase table schema definitions for type safety
