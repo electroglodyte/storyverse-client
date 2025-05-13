@@ -42,7 +42,8 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
       try {
         setLoading(true);
         
-        let query = supabase.from('writing_samples').select('*');
+        // Update the table name to 'samples' to match the actual table in Supabase
+        let query = supabase.from('samples').select('*');
         
         // Filter by project if active
         if (activeProject?.id) {
@@ -394,7 +395,7 @@ export const SamplesPage: React.FC<SamplesPageProps> = () => {
                   fontSize: '0.75rem',
                   color: '#ab8760'
                 }}>
-                  <span>{sample.word_count} words</span>
+                  <span>{sample.word_count || 0} words</span>
                   <span>{new Date(sample.updated_at).toLocaleDateString()}</span>
                 </div>
               </div>
