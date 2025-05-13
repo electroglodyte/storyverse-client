@@ -54,9 +54,9 @@ const DataGrid: React.FC<DataGridProps> = ({
   };
 
   return (
-    <div className={`bg-white rounded-lg shadow-md p-4 ${className}`}>
+    <div className={`card w-full ${className}`}>
       {title && (
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center mb-4 px-4 py-3 bg-accent text-white rounded-t-lg">
           <h2 className="text-xl font-semibold">{title}</h2>
           {actionButtons && <div className="flex space-x-2">{actionButtons}</div>}
         </div>
@@ -64,10 +64,10 @@ const DataGrid: React.FC<DataGridProps> = ({
       
       {isLoading ? (
         <div className="h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
         </div>
       ) : (
-        <div className="ag-theme-alpine w-full" style={{ height: '500px' }}>
+        <div className="ag-theme-alpine w-full" style={{ height: '500px', width: '100%' }}>
           <AgGridReact
             columnDefs={columnDefs}
             rowData={rowData}
@@ -79,6 +79,7 @@ const DataGrid: React.FC<DataGridProps> = ({
             animateRows={true}
             pagination={true}
             paginationPageSize={20}
+            domLayout="autoHeight"
           />
         </div>
       )}
