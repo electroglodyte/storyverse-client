@@ -29,9 +29,7 @@ export const SideNav: React.FC = () => {
     fontWeight: '500'
   };
   
-  const hoverStyle = {
-    backgroundColor: '#2d2e33'
-  };
+  // Removed unused hoverStyle variable
 
   return (
     <nav style={{ width: '100%', height: '100%', padding: '1rem 0' }}>
