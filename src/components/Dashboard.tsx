@@ -41,76 +41,77 @@ const Dashboard = () => {
     fetchStats();
   }, []);
 
-  const StatCard = ({ title, count, icon, color, onClick }) => (
-    <div 
-      className={`bg-white p-6 rounded-lg shadow-md border-l-4 ${color} cursor-pointer hover:shadow-lg transition-shadow`}
-      onClick={onClick}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-700">{title}</h3>
-          <p className="text-3xl font-bold mt-2">{loading ? '-' : count}</p>
-        </div>
-        <div className={`text-3xl ${color.replace('border', 'text')}`}>
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
-
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">StoryVerse Dashboard</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard 
-          title="Story Worlds" 
-          count={stats.storyWorlds} 
-          icon={<FaBook />} 
-          color="border-blue-500" 
+    <div>
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div 
+          className="stat-card stat-card-story-worlds"
           onClick={() => navigate('/story-worlds')}
-        />
-        <StatCard 
-          title="Series" 
-          count={stats.series} 
-          icon={<FaStream />} 
-          color="border-green-500" 
+        >
+          <div className="stat-info">
+            <h3>Story Worlds</h3>
+            <p>{loading ? '-' : stats.storyWorlds}</p>
+          </div>
+          <div className="stat-icon icon-story-worlds">
+            <FaBook />
+          </div>
+        </div>
+        
+        <div 
+          className="stat-card stat-card-series"
           onClick={() => navigate('/series')}
-        />
-        <StatCard 
-          title="Stories" 
-          count={stats.stories} 
-          icon={<FaListUl />} 
-          color="border-purple-500" 
+        >
+          <div className="stat-info">
+            <h3>Series</h3>
+            <p>{loading ? '-' : stats.series}</p>
+          </div>
+          <div className="stat-icon icon-series">
+            <FaStream />
+          </div>
+        </div>
+        
+        <div 
+          className="stat-card stat-card-stories"
           onClick={() => navigate('/stories')}
-        />
+        >
+          <div className="stat-info">
+            <h3>Stories</h3>
+            <p>{loading ? '-' : stats.stories}</p>
+          </div>
+          <div className="stat-icon icon-stories">
+            <FaListUl />
+          </div>
+        </div>
       </div>
-      
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-800">Recent Stories</h2>
+
+      {/* Recent Stories */}
+      <div className="card mt-8">
+        <h2 className="section-title">Recent Stories</h2>
+        
         {loading ? (
-          <div className="animate-pulse space-y-3">
+          <div className="animate-pulse space-y-3 mt-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="h-10 bg-gray-200 rounded"></div>
             ))}
           </div>
         ) : stats.recentStories.length > 0 ? (
-          <div className="divide-y">
+          <div className="recent-list">
             {stats.recentStories.map((story) => (
               <div 
                 key={story.id} 
-                className="py-3 cursor-pointer hover:bg-gray-50"
+                className="recent-item"
                 onClick={() => navigate(`/stories/${story.id}`)}
               >
-                <div className="font-medium">{story.title}</div>
-                <div className="text-sm text-gray-500">
+                <div className="recent-item-title">{story.title}</div>
+                <div className="recent-item-meta">
                   {story.status} • {new Date(story.created_at).toLocaleDateString()}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-gray-500">No stories created yet.</p>
+          <p className="text-gray-500 mt-4">No stories created yet.</p>
         )}
       </div>
     </div>
