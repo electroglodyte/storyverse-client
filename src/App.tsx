@@ -1,3 +1,4 @@
+// src/App.tsx
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
 import Layout from './components/Layout';
@@ -15,11 +16,24 @@ import './App.css';
 import './index.css';
 
 function App() {
-  // Add a class to the body to ensure Tailwind is working
-  document.body.classList.add('bg-primary-50', 'text-primary-700', 'fallback-bg-light', 'fallback-text-dark');
+  // Force layout styles directly
+  const appStyles = `
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    #root {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100vw;
+    }
+  `;
   
   return (
     <ProjectProvider>
+      <style dangerouslySetInnerHTML={{ __html: appStyles }} />
       <Router>
         <Routes>
           <Route path="/" element={<Layout />}>
