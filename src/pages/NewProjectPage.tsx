@@ -39,6 +39,7 @@ const NewProjectPage: React.FC = () => {
     // Basic validation
     if (!formData.name.trim()) {
       setError('Project name is required');
+      setErrorDetails('Please provide a name for your project to continue.');
       return;
     }
     
@@ -61,10 +62,26 @@ const NewProjectPage: React.FC = () => {
             setErrorDetails('The database needs to be set up with the required tables. Please check your Supabase database setup.');
             setLoading(false);
             return;
+          } else if (tableError.message?.includes('auth')) {
+            setError('Authentication error: Please check your Supabase connection settings');
+            setErrorDetails('Your API key might not have the necessary permissions to access data.');
+            setLoading(false);
+            return;
+          } else if (tableError.message?.includes('Failed to fetch')) {
+            setError('Network error: Unable to connect to the database');
+            setErrorDetails('Please check your internet connection and try again.');
+            setLoading(false);
+            return;
+          } else {
+            throw tableError;
           }
         }
-      } catch (tableErr) {
+      } catch (tableErr: any) {
         console.error('Error checking database tables:', tableErr);
+        setError('Database connection error');
+        setErrorDetails(tableErr.message || 'Could not verify database structure. Please try again later.');
+        setLoading(false);
+        return;
       }
       
       // Process tags and genre as arrays if provided
@@ -229,6 +246,23 @@ const NewProjectPage: React.FC = () => {
                   {errorDetails}
                 </p>
               )}
+              
+              <div style={{ 
+                marginTop: '0.75rem',
+                fontSize: '0.75rem',
+                color: '#b91c1c'
+              }}>
+                <p>Common troubleshooting steps:</p>
+                <ul style={{ 
+                  paddingLeft: '1.25rem',
+                  marginTop: '0.25rem',
+                  marginBottom: '0'
+                }}>
+                  <li>Check your database connection and API keys</li>
+                  <li>Verify that the required tables exist in your Supabase project</li>
+                  <li>Make sure your internet connection is working</li>
+                </ul>
+              </div>
             </div>
           )}
           
