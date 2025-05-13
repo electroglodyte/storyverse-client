@@ -113,7 +113,7 @@ const SeriesDetailPage: React.FC = () => {
         if (seriesData.storyworld_id) {
           // Fetch the story world
           const { data: storyWorldData, error: storyWorldError } = await supabase
-            .from('storyworlds')
+            .from('story_worlds')
             .select('*')
             .eq('id', seriesData.storyworld_id)
             .single();
@@ -144,7 +144,7 @@ const SeriesDetailPage: React.FC = () => {
           const { data: allStoriesData, error: allStoriesError } = await supabase
             .from('stories')
             .select('*')
-            .eq('storyworld_id', seriesData.storyworld_id);
+            .eq('story_world_id', seriesData.storyworld_id);
 
           if (allStoriesError) throw allStoriesError;
           
