@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Series, Story, StoryWorld } from '../supabase-tables';
-import { FaEdit, FaTrashAlt, FaPlus, FaArrowLeft, FaArrowUp, FaArrowDown, FaBook } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaPlus, FaArrowLeft, FaArrowUp, FaArrowDown, FaBook, FaSave, FaTimes } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
@@ -14,6 +14,11 @@ interface SeriesStoryWithDetails {
   story: Story;
 }
 
+interface StoryWorldOption {
+  id: string;
+  name: string;
+}
+
 const SeriesDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -22,10 +27,75 @@ const SeriesDetailPage: React.FC = () => {
   const [seriesStories, setSeriesStories] = useState<SeriesStoryWithDetails[]>([]);
   const [availableStories, setAvailableStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isNewSeries, setIsNewSeries] = useState(!id);
+  const [formData, setFormData] = useState<Partial<Series>>({
+    name: '',
+    description: '',
+    sequence_type: 'Chronological',
+  });
+  const [storyWorldOptions, setStoryWorldOptions] = useState<StoryWorldOption[]>([]);
+  const [selectedStoryWorldId, setSelectedStoryWorldId] = useState<string | null>(null);
+
+  // Get query parameters (for new series creation)
+  useEffect(() => {
+    if (!id) {
+      setIsNewSeries(true);
+      
+      // Check for storyWorldId in query params
+      const queryParams = new URLSearchParams(window.location.search);
+      const storyWorldId = queryParams.get('storyWorldId');
+      
+      if (storyWorldId) {
+        setFormData(prev => ({ ...prev, storyworld_id: storyWorldId }));
+        setSelectedStoryWorldId(storyWorldId);
+        
+        // Fetch the story world details
+        const fetchStoryWorld = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('story_worlds')
+              .select('*')
+              .eq('id', storyWorldId)
+              .single();
+              
+            if (error) throw error;
+            
+            if (data) {
+              setStoryWorld(data);
+            }
+          } catch (err) {
+            console.error('Error fetching story world:', err);
+          }
+        };
+        
+        fetchStoryWorld();
+      } else {
+        // Fetch all story worlds for the dropdown
+        const fetchStoryWorlds = async () => {
+          try {
+            const { data, error } = await supabase
+              .from('story_worlds')
+              .select('id, name')
+              .order('name', { ascending: true });
+              
+            if (error) throw error;
+            
+            setStoryWorldOptions(data || []);
+          } catch (err) {
+            console.error('Error fetching story worlds:', err);
+          }
+        };
+        
+        fetchStoryWorlds();
+      }
+      
+      setLoading(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     const fetchSeriesData = async () => {
-      if (!id) return;
+      if (!id || isNewSeries) return;
 
       try {
         setLoading(true);
@@ -96,7 +166,67 @@ const SeriesDetailPage: React.FC = () => {
     };
 
     fetchSeriesData();
-  }, [id]);
+  }, [id, isNewSeries]);
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle story world select change
+  const handleStoryWorldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedStoryWorldId(value === "" ? null : value);
+    setFormData(prev => ({ ...prev, storyworld_id: value === "" ? null : value }));
+  };
+
+  // Create new series
+  const handleCreateSeries = async () => {
+    if (!formData.name || formData.name.trim() === '') {
+      toast.error('Series name is required');
+      return;
+    }
+
+    if (!selectedStoryWorldId) {
+      toast.error('Please select a story world');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      
+      // Create the new series
+      const { data, error } = await supabase
+        .from('series')
+        .insert([
+          {
+            name: formData.name,
+            description: formData.description || '',
+            storyworld_id: selectedStoryWorldId,
+            sequence_type: formData.sequence_type || 'Chronological',
+          }
+        ])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error creating series:', error);
+        toast.error('Failed to create series');
+        setLoading(false);
+        return;
+      }
+      
+      toast.success('Series created successfully!');
+      
+      // Navigate to the new series detail page
+      navigate(`/series/${data.id}`);
+    } catch (err: any) {
+      console.error('Error creating series:', err);
+      toast.error('Failed to create series');
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (!series) return;
@@ -261,11 +391,126 @@ const SeriesDetailPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  const handleCancelCreate = () => {
+    // Go back to story worlds
+    navigate('/story-worlds');
+  };
+
+  if (loading && !isNewSeries) {
     return <LoadingSpinner />;
   }
 
-  if (!series) {
+  // Form for creating a new series
+  if (isNewSeries) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex flex-wrap items-center mb-6 text-sm">
+          <Link 
+            to="/story-worlds"
+            className="text-blue-600 hover:text-blue-800 flex items-center"
+          >
+            <FaArrowLeft className="mr-1" />
+            Back to Story Worlds
+          </Link>
+        </div>
+        
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h1 className="text-2xl font-bold mb-6">Create New Series</h1>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Series Name
+            </label>
+            <input
+              type="text"
+              name="name"
+              value={formData.name || ''}
+              onChange={handleInputChange}
+              placeholder="Enter series name"
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Description
+            </label>
+            <textarea
+              name="description"
+              value={formData.description || ''}
+              onChange={handleInputChange}
+              placeholder="Enter series description"
+              rows={4}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Story World
+            </label>
+            {selectedStoryWorldId && storyWorld ? (
+              <div className="p-2 border border-gray-300 rounded-md bg-gray-50">
+                <span className="font-medium">{storyWorld.name}</span>
+              </div>
+            ) : (
+              <select
+                value={selectedStoryWorldId || ""}
+                onChange={handleStoryWorldChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">-- Select a Story World --</option>
+                {storyWorldOptions.map(storyWorld => (
+                  <option key={storyWorld.id} value={storyWorld.id}>
+                    {storyWorld.name}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-gray-700 font-medium mb-2">
+              Sequence Type
+            </label>
+            <select
+              name="sequence_type"
+              value={formData.sequence_type || 'Chronological'}
+              onChange={handleInputChange}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Chronological">Chronological</option>
+              <option value="Publication">Publication</option>
+              <option value="Narrative">Narrative</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              onClick={handleCancelCreate}
+              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 flex items-center"
+            >
+              <FaTimes className="mr-2" />
+              Cancel
+            </button>
+            
+            <button
+              onClick={handleCreateSeries}
+              disabled={loading || !formData.name || !selectedStoryWorldId}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center disabled:opacity-70 disabled:cursor-not-allowed"
+            >
+              <FaSave className="mr-2" />
+              {loading ? 'Creating...' : 'Create Series'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!series && !isNewSeries) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
@@ -274,7 +519,7 @@ const SeriesDetailPage: React.FC = () => {
             The series you're looking for doesn't exist or has been deleted.
           </p>
           <Link
-            to="/storyworlds"
+            to="/story-worlds"
             className="inline-flex items-center text-blue-600 hover:text-blue-800"
           >
             <FaArrowLeft className="mr-2" /> Back to Story Worlds
@@ -287,7 +532,7 @@ const SeriesDetailPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <Link
-        to={series.storyworld_id ? `/storyworlds/${series.storyworld_id}` : '/storyworlds'}
+        to={series?.storyworld_id ? `/story-worlds/${series.storyworld_id}` : '/story-worlds'}
         className="inline-flex items-center text-blue-600 hover:text-blue-800 mb-6"
       >
         <FaArrowLeft className="mr-2" /> 
@@ -297,20 +542,20 @@ const SeriesDetailPage: React.FC = () => {
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold mb-4">{series.name}</h1>
-            {series.description && (
+            <h1 className="text-3xl font-bold mb-4">{series?.name}</h1>
+            {series?.description && (
               <p className="text-gray-700 mb-4">{series.description}</p>
             )}
             <p className="text-sm text-gray-500 mb-2">
-              Order: {series.sequence_type || 'Chronological'}
+              Order: {series?.sequence_type || 'Chronological'}
             </p>
             <p className="text-sm text-gray-500">
-              Created: {new Date(series.created_at || '').toLocaleDateString()}
+              Created: {series && new Date(series.created_at || '').toLocaleDateString()}
             </p>
           </div>
           <div className="flex space-x-2">
             <Link
-              to={`/series/${series.id}/edit`}
+              to={`/series/${series?.id}/edit`}
               className="inline-flex items-center text-blue-600 hover:text-blue-800"
             >
               <FaEdit className="mr-1" /> Edit
@@ -411,7 +656,7 @@ const SeriesDetailPage: React.FC = () => {
                 </p>
                 <div className="mt-4">
                   <Link
-                    to={`/stories/new?storyWorldId=${series.storyworld_id}`}
+                    to={`/stories/new?storyWorldId=${series?.storyworld_id}`}
                     className="inline-flex items-center text-blue-600 hover:text-blue-800"
                   >
                     <FaPlus className="mr-1" /> Create New Story
@@ -441,7 +686,7 @@ const SeriesDetailPage: React.FC = () => {
 
             <div className="mt-6">
               <Link
-                to={`/stories/new?storyWorldId=${series.storyworld_id}`}
+                to={`/stories/new?storyWorldId=${series?.storyworld_id}`}
                 className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
               >
                 <FaPlus className="inline mr-2" />
