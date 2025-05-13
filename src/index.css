@@ -11,6 +11,7 @@
   --header-bg: #3e322a;
   --main-bg: #f5f3ef;
   --accent-color: #a38671;
+  --accent-hover: #8d7263;
   --text-light: #ffffff;
   --text-dark: #333333;
 }
@@ -131,7 +132,7 @@ body {
 }
 
 .create-button:hover {
-  background-color: #8d7263;
+  background-color: var(--accent-hover);
 }
 
 .stats-grid {
@@ -236,4 +237,76 @@ body {
   --ag-selected-row-background-color: #dbeafe;
   --ag-font-size: 14px;
   --ag-font-family: inherit;
+  width: 100%;
+}
+
+/* Custom AG Grid theme for brown/beige styling */
+.custom-ag-theme {
+  --ag-header-height: 50px;
+  --ag-header-foreground-color: var(--text-dark);
+  --ag-header-background-color: var(--main-bg);
+  --ag-header-cell-hover-background-color: var(--main-bg);
+  --ag-header-cell-moving-background-color: var(--main-bg);
+  
+  --ag-background-color: white;
+  --ag-foreground-color: var(--text-dark);
+  
+  --ag-odd-row-background-color: #faf7f3;
+  --ag-row-hover-color: #f5f0e9;
+  --ag-selected-row-background-color: #f0e6da;
+  
+  --ag-border-color: #e5e0d8;
+  --ag-cell-horizontal-border: solid #e5e0d8;
+  
+  --ag-input-disabled-background-color: #f0e6da;
+  --ag-input-disabled-border-color: #e5e0d8;
+  
+  --ag-checkbox-checked-color: var(--accent-color);
+  --ag-checkbox-indeterminate-color: var(--accent-color);
+  --ag-range-selection-border-color: var(--accent-color);
+  --ag-range-selection-background-color: rgba(163, 134, 113, 0.2);
+  
+  /* Ensuring full-width display */
+  width: 100%;
+  margin: 0 auto;
+}
+
+.custom-ag-theme .ag-header {
+  font-weight: 600;
+  text-transform: none;
+  border-bottom: 2px solid var(--accent-color);
+}
+
+.custom-ag-theme .ag-header-cell {
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.custom-ag-theme .ag-cell {
+  padding-left: 16px;
+  padding-right: 16px;
+  line-height: 1.5;
+}
+
+.custom-ag-theme .ag-paging-panel {
+  padding: 16px;
+  color: var(--text-dark);
+  background-color: #f5f3ef;
+  border-top: 1px solid #e5e0d8;
+}
+
+.custom-ag-theme .ag-paging-button {
+  color: var(--accent-color);
+}
+
+.custom-ag-theme .ag-paging-button:hover {
+  color: var(--accent-hover);
+}
+
+.custom-ag-theme .ag-row-selected {
+  background-color: #f0e6da;
+}
+
+.custom-ag-theme .ag-row-selected:hover {
+  background-color: #e8dccb;
 }
