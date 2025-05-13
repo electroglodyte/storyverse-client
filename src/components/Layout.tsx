@@ -1,6 +1,6 @@
 // src/components/Layout.tsx
 import { useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { SideNav } from './SideNav';
 import { useProject } from '../context/ProjectContext';
 
