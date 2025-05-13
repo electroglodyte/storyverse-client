@@ -84,7 +84,7 @@ export const SampleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getSample, deleteSample } = useSamples();
-  const { getLatestAnalysis, getAnalyses, analyzeSample } = useAnalysis();
+  const { getAnalyses, analyzeSample } = useAnalysis();
 
   const [sample, setSample] = useState<Sample | null>(null);
   const [analysis, setAnalysis] = useState<StyleAnalysis | null>(null);
