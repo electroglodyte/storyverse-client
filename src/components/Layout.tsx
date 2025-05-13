@@ -9,9 +9,9 @@ export default function Layout() {
   const { activeProject } = useProject();
   
   return (
-    <div className="flex h-screen bg-primary-50">
-      {/* Fixed Sidebar (always visible on desktop) */}
-      <aside className="fixed top-0 left-0 h-full w-64 hidden md:block">
+    <div className="flex flex-col md:flex-row min-h-screen bg-primary-50">
+      {/* Fixed Sidebar - dark styling */}
+      <aside className="bg-neutral-900 text-white h-auto md:h-screen md:min-h-screen md:w-64 md:flex-shrink-0 overflow-y-auto">
         <SideNav />
       </aside>
       
@@ -20,7 +20,7 @@ export default function Layout() {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-primary-700 hover:text-primary-600 focus:outline-none"
+          className="text-white hover:text-gray-300 focus:outline-none"
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
@@ -28,13 +28,13 @@ export default function Layout() {
       
       {/* Mobile Sidebar */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-10 bg-primary-50 bg-opacity-75 md:hidden">
-          <div className="w-64 h-full">
+        <div className="fixed inset-0 z-10 bg-black bg-opacity-75 md:hidden">
+          <div className="w-64 h-full bg-neutral-900">
             <SideNav />
           </div>
           <button
             type="button"
-            className="absolute top-0 right-0 p-4 text-primary-700"
+            className="absolute top-0 right-0 p-4 text-white"
             onClick={() => setMobileMenuOpen(false)}
           >
             ✕
@@ -42,33 +42,33 @@ export default function Layout() {
         </div>
       )}
       
-      {/* Main Content Area (with left padding for the sidebar on desktop) */}
-      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
-        {/* Header Bar */}
-        <header className="bg-white border-b border-primary-200 shadow-sm z-10 sticky top-0">
+      {/* Main Content Area - flexes to take remaining space */}
+      <div className="flex flex-col flex-1">
+        {/* Header Bar - dark styling */}
+        <header className="bg-neutral-900 text-white border-b border-neutral-700 shadow-sm z-10">
           <div className="flex justify-between items-center py-3 px-6">
             <div className="flex items-center">
-              <span className="text-primary-700 mr-2">📚</span>
-              <h2 className="text-lg font-medium text-primary-700">{activeProject?.name || 'The Irish Mystery'}</h2>
+              <span className="text-white mr-2">📚</span>
+              <h2 className="text-lg font-medium text-white">{activeProject?.name || 'The Irish Mystery'}</h2>
             </div>
             
             {/* Project Selector and User */}
             <div className="flex items-center">
               <div className="relative mr-4">
-                <button className="flex items-center bg-primary-50 hover:bg-primary-100 text-primary-700 px-3 py-1.5 rounded-md text-sm">
+                <button className="flex items-center bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-md text-sm">
                   <span>{activeProject?.name || 'The Irish Mystery'}</span>
                   <span className="ml-2">▼</span>
                 </button>
               </div>
               
-              <button className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700">
+              <button className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-white">
                 👤
               </button>
             </div>
           </div>
         </header>
         
-        {/* Main Content */}
+        {/* Main Content - light beige styling */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-primary-50">
           <div className="max-w-7xl mx-auto py-6 px-6">
             <Outlet />
