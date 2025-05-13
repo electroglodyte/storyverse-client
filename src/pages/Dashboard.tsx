@@ -12,7 +12,7 @@ const FeatureCard: React.FC<{
       <h3 className="text-lg font-medium text-primary-700 mb-2">{title}</h3>
       <p className="text-gray-600 mb-4">{description}</p>
       <Link to={linkTo} className="text-primary-600 hover:text-primary-700 font-medium">
-        {linkText} &rarr;
+        {linkText} <span className="ml-1">→</span>
       </Link>
     </div>
   );
