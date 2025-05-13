@@ -8,11 +8,30 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="pb-12">
         <Outlet />
       </main>
       
-      <Toaster position="bottom-right" />
+      <Toaster 
+        position="bottom-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#333',
+            color: '#fff',
+          },
+          success: {
+            style: {
+              background: '#166534',
+            },
+          },
+          error: {
+            style: {
+              background: '#991b1b',
+            },
+          },
+        }}
+      />
     </div>
   );
 }
