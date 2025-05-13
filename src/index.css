@@ -10,3 +10,8 @@
     @apply bg-primary-50 text-primary-700;
   }
 }
+
+/* Force proper loading of Tailwind */
+.ensure-tailwind {
+  @apply bg-white text-black p-4 m-4 rounded-lg shadow-sm;
+}
