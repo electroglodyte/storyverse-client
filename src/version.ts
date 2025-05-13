@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 0,
+  patch: 1,
   date: '2025-05-13',
-  notes: 'Added AG Grid table views for Story Worlds, Series, and Stories management. Implemented new UI with sidebar navigation and brown/beige theme.'
+  notes: 'Improved AG Grid table views with better styling, responsive layouts, and brown/beige theme integration. Fixed layout issues with tables to properly use available space.'
 };
