@@ -32,7 +32,7 @@ const ProjectsPage: React.FC = () => {
         setError(null);
         
         // First check if 'projects' table exists
-        const { data: tableData, error: tableError } = await supabase
+        const { error: tableError } = await supabase
           .from('projects')
           .select('id')
           .limit(1);
