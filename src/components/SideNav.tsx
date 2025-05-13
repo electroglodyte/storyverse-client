@@ -13,67 +13,94 @@ export const SideNav: React.FC = () => {
     return location.pathname.startsWith(path);
   };
 
+  // Direct styling for menu items
+  const navItemStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0.5rem 1.5rem',
+    color: 'white',
+    textDecoration: 'none',
+    transition: 'background-color 0.2s'
+  };
+  
+  const activeStyle = {
+    ...navItemStyle,
+    backgroundColor: '#2d2e33',
+    fontWeight: '500'
+  };
+  
+  const hoverStyle = {
+    backgroundColor: '#2d2e33'
+  };
+
   return (
-    <nav className="w-full h-full py-4">
+    <nav style={{ width: '100%', height: '100%', padding: '1rem 0' }}>
       {/* Logo and Subtitle */}
-      <div className="px-6 mb-8">
-        <h1 className="text-2xl font-bold text-amber-100">StoryVerse</h1>
-        <p className="text-sm text-amber-200/80">World Builder</p>
+      <div style={{ padding: '0 1.5rem', marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fef3c7' }}>StoryVerse</h1>
+        <p style={{ fontSize: '0.875rem', color: 'rgba(253, 230, 138, 0.8)' }}>World Builder</p>
       </div>
       
       {/* Active Project */}
-      <div className="px-6 mb-6">
-        <h3 className="text-xs uppercase text-amber-300/70 font-medium mb-2">ACTIVE PROJECT</h3>
-        <div className="relative">
+      <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>ACTIVE PROJECT</h3>
+        <div>
           <button 
-            className="w-full p-2 bg-neutral-800 rounded-md text-white font-medium text-left flex justify-between items-center"
+            style={{ 
+              width: '100%', 
+              padding: '0.5rem', 
+              backgroundColor: '#2d2e33', 
+              borderRadius: '0.375rem', 
+              color: 'white', 
+              fontWeight: '500', 
+              textAlign: 'left', 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center' 
+            }}
           >
-            <span className="truncate">{activeProject?.name || 'The Irish Mystery'}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeProject?.name || 'The Irish Mystery'}
+            </span>
             <span>▼</span>
           </button>
         </div>
       </div>
       
       {/* Main Navigation */}
-      <div className="mb-6">
-        <h3 className="px-6 text-xs uppercase text-amber-300/70 font-medium mb-2">MAIN</h3>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>MAIN</h3>
         <ul>
           <li>
             <Link
               to="/"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/') && !isActive('/projects') && !isActive('/samples') && !isActive('/search')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/') && !isActive('/projects') && !isActive('/samples') && !isActive('/search') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/') || isActive('/projects') || isActive('/samples') || isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">🏠</span>
+              <span style={{ marginRight: '0.5rem' }}>🏠</span>
               <span>Dashboard</span>
             </Link>
           </li>
           <li>
             <Link
               to="/samples"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/samples')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/samples') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/samples')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">📝</span>
+              <span style={{ marginRight: '0.5rem' }}>📝</span>
               <span>Writing Samples</span>
             </Link>
           </li>
           <li>
             <Link
               to="/search"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/search')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/search') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">🔍</span>
+              <span style={{ marginRight: '0.5rem' }}>🔍</span>
               <span>Search</span>
             </Link>
           </li>
@@ -81,58 +108,50 @@ export const SideNav: React.FC = () => {
       </div>
       
       {/* Tools */}
-      <div className="mb-6">
-        <h3 className="px-6 text-xs uppercase text-amber-300/70 font-medium mb-2">TOOLS</h3>
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>TOOLS</h3>
         <ul>
           <li>
             <Link
               to="/style-analysis"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/style-analysis')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/style-analysis') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/style-analysis')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">📊</span>
+              <span style={{ marginRight: '0.5rem' }}>📊</span>
               <span>Style Analysis</span>
             </Link>
           </li>
           <li>
             <Link
               to="/plot-mapping"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/plot-mapping')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/plot-mapping') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/plot-mapping')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">📈</span>
+              <span style={{ marginRight: '0.5rem' }}>📈</span>
               <span>Plot Mapping</span>
             </Link>
           </li>
           <li>
             <Link
               to="/consistency-check"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/consistency-check')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/consistency-check') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/consistency-check')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">⚡</span>
+              <span style={{ marginRight: '0.5rem' }}>⚡</span>
               <span>Consistency Check</span>
             </Link>
           </li>
           <li>
             <Link
               to="/claude-assistant"
-              className={`flex items-center px-6 py-2 text-white transition-colors ${
-                isActive('/claude-assistant')
-                  ? 'bg-neutral-800 font-medium'
-                  : 'hover:bg-neutral-800'
-              }`}
+              style={isActive('/claude-assistant') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/claude-assistant')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span className="mr-2">💬</span>
+              <span style={{ marginRight: '0.5rem' }}>💬</span>
               <span>Claude Assistant</span>
             </Link>
           </li>
@@ -140,16 +159,14 @@ export const SideNav: React.FC = () => {
       </div>
       
       {/* Settings */}
-      <div className="mt-auto pt-4 px-6">
+      <div style={{ marginTop: 'auto', paddingTop: '1rem' }}>
         <Link
           to="/settings"
-          className={`flex items-center px-6 py-2 text-white transition-colors ${
-            isActive('/settings')
-              ? 'bg-neutral-800 font-medium'
-              : 'hover:bg-neutral-800'
-          }`}
+          style={isActive('/settings') ? activeStyle : navItemStyle}
+          onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+          onMouseOut={(e) => {if (!isActive('/settings')) e.currentTarget.style.backgroundColor = 'transparent'}}
         >
-          <span className="mr-2">⚙️</span>
+          <span style={{ marginRight: '0.5rem' }}>⚙️</span>
           <span>Settings</span>
         </Link>
       </div>
