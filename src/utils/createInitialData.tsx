@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient';
+import createDatabaseTablesSQL from './createDatabaseTables';
 
 /**
  * One-time script to set up the database schema and create initial data
@@ -7,17 +8,43 @@ async function createInitialData() {
   try {
     console.log('Starting database initialization...');
     
-    // First, check if necessary tables exist
-    const { data: tables, error: tablesError } = await supabase
-      .from('pg_tables')
-      .select('tablename')
-      .eq('schemaname', 'public');
+    // First, try to create the necessary tables
+    console.log('Attempting to create database tables...');
+    try {
+      // Execute the raw SQL to create the tables
+      const { data: createTablesData, error: createTablesError } = await supabase.rpc(
+        'exec_sql',
+        { sql: createDatabaseTablesSQL }
+      );
       
-    if (tablesError) {
-      console.warn('Error checking existing tables:', tablesError);
-      // Continue anyway as we may not have permission to query pg_tables
-    } else {
-      console.log('Existing tables:', tables);
+      if (createTablesError) {
+        // If the exec_sql function doesn't exist, we'll try another approach
+        console.warn('Error executing SQL via RPC:', createTablesError);
+        
+        // Try alternate method with separate SQL statements
+        console.log('Trying alternate method to create tables...');
+        
+        // Enable UUID extension first
+        await supabase.rpc('create_uuid_extension', {});
+        
+        // Split the SQL script into separate statements and execute them one by one
+        const statements = createDatabaseTablesSQL
+          .split(';')
+          .map(stmt => stmt.trim())
+          .filter(stmt => stmt.length > 0);
+        
+        for (const stmt of statements) {
+          const { error } = await supabase.rpc('execute_sql', { sql_statement: stmt });
+          if (error) {
+            console.warn(`Error executing statement: ${stmt}`, error);
+          }
+        }
+      } else {
+        console.log('Tables created successfully via RPC.');
+      }
+    } catch (tableCreateError) {
+      console.warn('Error creating tables:', tableCreateError);
+      // We'll continue anyway and see if we can add data to existing tables
     }
     
     // Check if Narnia already exists
@@ -29,28 +56,28 @@ async function createInitialData() {
     if (checkError) {
       console.error('Error checking story worlds:', checkError);
       
-      if (checkError.code === '42P01') { // table does not exist
-        console.log('Story worlds table does not exist. Attempting to create it...');
-        
-        // Create story_worlds table
-        const createTableResult = await supabase.rpc('create_story_worlds_table', {});
-        console.log('Create table result:', createTableResult);
-      } else {
-        throw checkError;
+      if (checkError.code === '42P01') { // Table does not exist error
+        return {
+          success: false,
+          message: 'Database tables do not exist. Please contact the administrator.',
+          error: checkError
+        };
       }
-    } else {
-      console.log('Found existing story worlds:', existingWorlds);
       
-      if (existingWorlds && existingWorlds.length > 0) {
-        const narniaWorld = existingWorlds.find(world => world.name === 'Narnia');
-        if (narniaWorld) {
-          console.log('Narnia story world already exists!', narniaWorld);
-          return {
-            success: true,
-            message: 'Narnia story world already exists',
-            data: narniaWorld
-          };
-        }
+      throw checkError;
+    }
+    
+    console.log('Found existing story worlds:', existingWorlds);
+    
+    if (existingWorlds && existingWorlds.length > 0) {
+      const narniaWorld = existingWorlds.find(world => world.name === 'Narnia');
+      if (narniaWorld) {
+        console.log('Narnia story world already exists!', narniaWorld);
+        return {
+          success: true,
+          message: 'Narnia story world already exists',
+          data: narniaWorld
+        };
       }
     }
     
@@ -84,6 +111,7 @@ async function createInitialData() {
         title: 'The Lion, the Witch and the Wardrobe',
         description: 'Four children are evacuated to a country house during the war where they find a magical wardrobe that leads to Narnia.',
         storyworld_id: storyWorldId,
+        story_world_id: storyWorldId, // Include both versions of the field
         status: 'Complete',
         word_count: 36000,
         created_at: new Date().toISOString(),
