@@ -1,31 +1,4 @@
-/* Reset and base styles */
-* {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  height: 100%;
-  width: 100%;
-}
-
-body {
-  background-color: #f8f5f0;
-  color: #654321;
-}
-
-#root {
-  height: 100%;
-  width: 100%;
-}
-
-/* Make sure links look right */
-a {
-  text-decoration: none;
-  color: inherit;
-}
+/* Reset and base styles are now handled in index.css */
 
 /* Primary beige colors for content */
 .bg-primary-50 {
@@ -56,42 +29,65 @@ a {
   border-color: #e8e1d9;
 }
 
-/* Card styling for content areas */
-.dashboard-card {
-  background-color: white;
-  border-radius: 0.5rem;
-  border: 1px solid #e8e1d9;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+/* Layout Components */
+.app-container {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
 }
 
-/* Nav styles */
+/* Sidebar Styling */
 .sidebar {
+  width: 260px;
+  height: 100vh;
   background-color: #1f2024;
   color: white;
+  overflow: auto;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10;
 }
 
 .sidebar-brand {
   color: #fef3c7;
+  margin-bottom: 5px;
 }
 
 .sidebar-subtitle {
   color: #fde68a;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.sidebar-section {
+  margin-bottom: 20px;
+  padding: 0 20px;
 }
 
 .sidebar-section-title {
-  color: #fcd34d;
+  font-size: 12px;
   text-transform: uppercase;
-  font-size: 0.75rem;
-  font-weight: 500;
+  color: #fcd34d;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.sidebar-project-selector {
+  background-color: #2d2e33;
+  padding: 8px 12px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .sidebar-item {
+  color: white;
   display: flex;
   align-items: center;
-  padding: 0.5rem 1.5rem;
-  color: white;
-  text-decoration: none;
+  padding: 8px 20px;
   transition: background-color 0.2s;
 }
 
@@ -99,20 +95,114 @@ a {
   background-color: #2d2e33;
 }
 
-.sidebar-item.active {
-  background-color: #2d2e33;
-  font-weight: 500;
+.sidebar-item-icon {
+  margin-right: 8px;
 }
 
-.header {
-  background-color: #1f2024;
+/* Main Content Styling */
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.project-header {
+  background-color: #181818;
   color: white;
-  padding: 1rem;
+  padding: 15px 24px;
   border-bottom: 1px solid #3a3b41;
 }
 
+.project-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+.project-controls {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.project-selector {
+  background-color: #2d2e33;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+}
+
+.control-button {
+  background-color: #2d2e33;
+  color: white;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+}
+
+.section-header {
+  background-color: #392f2d;
+  color: #f0e6d2;
+  padding: 16px 24px;
+  border-bottom: 1px solid #4c4032;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
 .content-area {
-  background-color: #f8f5f0;
+  flex: 1;
+  padding: 24px;
+  overflow: auto;
+}
+
+.content-container {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+/* Card Styling for Dashboard */
+.feature-card {
+  background-color: white;
+  border-radius: 0.5rem;
+  border: 1px solid #e8e1d9;
   padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.5rem;
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #654321;
+  margin-bottom: 0.5rem;
+}
+
+.card-description {
+  color: #8a6d4d;
+  margin-bottom: 1rem;
+}
+
+.card-link {
+  color: #8a6d4d;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.card-link:hover {
   color: #654321;
 }
