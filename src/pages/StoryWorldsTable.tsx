@@ -23,7 +23,7 @@ const StoryWorldsTable = () => {
 
       if (worldsError) throw worldsError;
 
-      // Fetch the counts separately for each world
+      // Then fetch counts separately for each world
       const worldsWithCounts = await Promise.all(
         worldsData.map(async (world) => {
           // Get series count
