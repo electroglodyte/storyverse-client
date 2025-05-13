@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
-  minor: 3,
-  patch: 12,
+  minor: 4,
+  patch: 0,
   date: '2025-05-13',
-  notes: 'Fixed Series Detail Page issues: 1) Used OR query for story_world_id and storyworld_id fields to handle database schema variations, 2) Fixed routing for SeriesEditPage to properly handle the Edit link.'
+  notes: 'Added Writing Samples and Style Profiles system: Implemented UI for viewing, creating, and editing writing samples and style profiles. Added functionality to analyze samples and create style profiles based on multiple samples with weighted influence.'
 };
