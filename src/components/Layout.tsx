@@ -8,73 +8,105 @@ export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { activeProject } = useProject();
   
+  // Direct styling with !important to override any conflicts
+  const layoutStyles = `
+    .layout-container {
+      display: flex !important;
+      flex-direction: row !important;
+      height: 100vh !important;
+      width: 100% !important;
+      overflow: hidden !important;
+    }
+    
+    .sidebar {
+      width: 260px !important;
+      min-width: 260px !important;
+      height: 100vh !important;
+      background-color: #1f2024 !important;
+      color: white !important;
+      overflow-y: auto !important;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1) !important;
+      z-index: 10 !important;
+    }
+    
+    .main-content {
+      flex: 1 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 0 !important;
+      height: 100vh !important;
+      overflow: hidden !important;
+    }
+    
+    .header {
+      background-color: #1f2024 !important;
+      color: white !important;
+      padding: 1rem !important;
+      border-bottom: 1px solid #3a3b41 !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+    }
+    
+    .content-area {
+      flex: 1 !important;
+      background-color: #f8f5f0 !important;
+      overflow-y: auto !important;
+      padding: 1.5rem !important;
+    }
+    
+    @media (max-width: 768px) {
+      .layout-container {
+        flex-direction: column !important;
+      }
+      
+      .sidebar {
+        width: 100% !important;
+        height: auto !important;
+      }
+    }
+  `;
+  
   return (
-    <div className="flex flex-col md:flex-row min-h-screen">
-      {/* Fixed Sidebar - dark styling */}
-      <aside className="bg-neutral-900 text-white w-full md:w-64 md:h-screen md:min-h-screen md:flex-shrink-0 overflow-y-auto">
-        <SideNav />
-      </aside>
-      
-      {/* Mobile menu button */}
-      <div className="md:hidden fixed top-4 left-4 z-20">
-        <button
-          type="button"
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-white hover:text-gray-300 focus:outline-none"
-        >
-          {mobileMenuOpen ? '✕' : '☰'}
-        </button>
-      </div>
-      
-      {/* Mobile Sidebar */}
-      {mobileMenuOpen && (
-        <div className="fixed inset-0 z-10 bg-black bg-opacity-75 md:hidden">
-          <div className="w-64 h-full bg-neutral-900">
-            <SideNav />
-          </div>
-          <button
-            type="button"
-            className="absolute top-0 right-0 p-4 text-white"
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-      
-      {/* Main Content Area - flexes to take remaining space */}
-      <div className="flex flex-col flex-1 min-w-0">
-        {/* Header Bar - dark styling */}
-        <header className="bg-neutral-900 text-white border-b border-neutral-700 shadow-sm z-10">
-          <div className="flex justify-between items-center py-3 px-6">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: layoutStyles }} />
+      <div className="layout-container">
+        {/* Sidebar */}
+        <aside className="sidebar">
+          <SideNav />
+        </aside>
+        
+        {/* Main Content Area */}
+        <div className="main-content">
+          {/* Header */}
+          <header className="header">
             <div className="flex items-center">
-              <span className="text-white mr-2">📚</span>
-              <h2 className="text-lg font-medium text-white">{activeProject?.name || 'The Irish Mystery'}</h2>
+              <span className="mr-2">📚</span>
+              <h2 className="text-lg font-medium">{activeProject?.name || 'The Irish Mystery'}</h2>
             </div>
             
-            {/* Project Selector and User */}
             <div className="flex items-center">
-              <div className="relative mr-4">
-                <button className="flex items-center bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 rounded-md text-sm">
+              <div className="mr-4">
+                <button style={{ backgroundColor: '#2d2e33', padding: '0.375rem 0.75rem', borderRadius: '0.375rem' }}>
                   <span>{activeProject?.name || 'The Irish Mystery'}</span>
                   <span className="ml-2">▼</span>
                 </button>
               </div>
               
-              <button className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center text-white">
+              <button style={{ width: '2rem', height: '2rem', borderRadius: '9999px', backgroundColor: '#2d2e33', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 👤
               </button>
             </div>
-          </div>
-        </header>
-        
-        {/* Main Content - light beige styling */}
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-primary-50">
-          <div className="max-w-7xl mx-auto py-6 px-6">
-            <Outlet />
-          </div>
-        </main>
+          </header>
+          
+          {/* Content Area */}
+          <main className="content-area">
+            <div style={{ maxWidth: '1280px', margin: '0 auto' }}>
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
