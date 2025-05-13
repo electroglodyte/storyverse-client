@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ProjectProvider } from './context/ProjectContext';
 import Layout from './components/Layout'; // Check this path matches your actual Layout component

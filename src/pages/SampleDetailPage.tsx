@@ -1,4 +1,3 @@
-// /src/pages/SampleDetailPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useSamples } from '../hooks/useSamples';
@@ -83,7 +82,7 @@ export const SampleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getSample, deleteSample } = useSamples();
-  const { getLatestAnalysis, analyzeSample, loading: analysisLoading } = useAnalysis();
+  const { getLatestAnalysis, analyzeSample } = useAnalysis();
 
   const [sample, setSample] = useState<Sample | null>(null);
   const [analysis, setAnalysis] = useState<StyleAnalysis | null>(null);

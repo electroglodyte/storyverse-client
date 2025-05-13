@@ -1,6 +1,5 @@
-// /src/pages/EditSamplePage.tsx
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { SampleForm } from '../components/samples/SampleForm';
 import { useSamples } from '../hooks/useSamples';
 
@@ -21,7 +20,6 @@ interface Sample {
 
 export const EditSamplePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { getSample, updateSample, loading } = useSamples();
   
   const [sample, setSample] = useState<Sample | null>(null);
