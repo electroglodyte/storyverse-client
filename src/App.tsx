@@ -46,7 +46,7 @@ function App() {
             {/* Story Routes (formerly Project) */}
             <Route path="projects" element={<Navigate to="/storyworlds" replace />} /> {/* Redirect for backward compatibility */}
             <Route path="projects/new" element={<Navigate to="/stories/new" replace />} /> {/* Redirect for backward compatibility */}
-            <Route path="projects/:id" element={<Navigate to={`/stories/${id}`} replace />} /> {/* Fixed redirect */}
+            <Route path="projects/:id" element={<Navigate to="/stories/:id" replace />} /> {/* Simplified redirect */}
             
             <Route path="stories/new" element={<NewStoryPage />} />
             <Route path="stories/:id" element={<StoryDetailPage />} /> {/* Now using the new StoryDetailPage */}
