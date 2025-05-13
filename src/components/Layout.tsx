@@ -1,6 +1,6 @@
 // src/components/Layout.tsx
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import { SideNav } from './SideNav';
 import { useProject } from '../context/ProjectContext';
 
@@ -25,7 +25,7 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen bg-[#f4f1ec]">
+    <div className="flex h-screen bg-primary-50">
       {/* Desktop Sidebar */}
       <SideNav />
       
@@ -34,7 +34,7 @@ export default function Layout() {
         <button
           type="button"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="text-[#654321] hover:text-[#8a7968] focus:outline-none"
+          className="text-primary-700 hover:text-primary-600 focus:outline-none"
         >
           {mobileMenuOpen ? '✕' : '☰'}
         </button>
@@ -42,13 +42,13 @@ export default function Layout() {
       
       {/* Mobile Sidebar */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-10 bg-[#f4f1ec] bg-opacity-75">
+        <div className="fixed inset-0 z-10 bg-primary-50 bg-opacity-75">
           <div className="w-64 h-full">
             <SideNav />
           </div>
           <button
             type="button"
-            className="absolute top-0 right-0 p-4 text-[#654321]"
+            className="absolute top-0 right-0 p-4 text-primary-700"
             onClick={() => setMobileMenuOpen(false)}
           >
             ✕
@@ -59,23 +59,23 @@ export default function Layout() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header Bar */}
-        <header className="bg-[#e8e1d9] border-b border-[#d6cfc5] shadow-sm z-10">
+        <header className="bg-primary-200 border-b border-primary-300 shadow-sm z-10">
           <div className="flex justify-between items-center py-3 px-6">
             <div className="flex items-center">
-              <div className="w-6 h-6 bg-[#654321] rounded-sm mr-2"></div>
-              <h2 className="text-lg font-medium text-[#654321]">{activeProject?.name || 'StoryVerse'}</h2>
+              <div className="w-6 h-6 bg-primary-700 rounded-sm mr-2"></div>
+              <h2 className="text-lg font-medium text-primary-700">{activeProject?.name || 'StoryVerse'}</h2>
             </div>
             
             {/* Project Selector and User */}
             <div className="flex items-center">
               <div className="relative mr-4">
-                <button className="flex items-center bg-[#d6cfc5] hover:bg-[#c9c0b4] text-[#654321] px-3 py-1.5 rounded-md text-sm">
+                <button className="flex items-center bg-primary-100 hover:bg-primary-200 text-primary-700 px-3 py-1.5 rounded-md text-sm">
                   <span>{activeProject?.name || 'Select Project'}</span>
                   <span className="ml-2">▼</span>
                 </button>
               </div>
               
-              <button className="w-8 h-8 rounded-full bg-[#d6cfc5] flex items-center justify-center text-[#654321]">
+              <button className="w-8 h-8 rounded-full bg-primary-300 flex items-center justify-center text-primary-700">
                 👤
               </button>
             </div>
@@ -84,7 +84,6 @@ export default function Layout() {
         
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
           <div className="max-w-7xl mx-auto py-6 px-6">
-            <h1 className="text-2xl font-bold text-[#654321] mb-6">{getPageTitle()}</h1>
             <Outlet />
           </div>
         </main>
