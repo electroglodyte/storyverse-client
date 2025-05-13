@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 11,
+  patch: 12,
   date: '2025-05-13',
-  notes: 'Fixed issue with stories not loading correctly in Story World detail page. Extended field consistency handling to stories table.'
+  notes: 'Fixed Series Detail page: corrected database table name from "storyworlds" to "story_worlds" and updated stories query to use "story_world_id" instead of "storyworld_id".'
 };
