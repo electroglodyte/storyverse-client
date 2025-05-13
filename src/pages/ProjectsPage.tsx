@@ -29,6 +29,24 @@ const ProjectsPage: React.FC = () => {
     const fetchProjects = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // First check if 'projects' table exists
+        const { data: tableData, error: tableError } = await supabase
+          .from('projects')
+          .select('id')
+          .limit(1);
+        
+        if (tableError) {
+          console.error('Error checking projects table:', tableError);
+          if (tableError.message.includes('does not exist')) {
+            setError('The projects table does not exist yet in the database. Please initialize the database schema first.');
+            setLoading(false);
+            return;
+          } else {
+            throw tableError;
+          }
+        }
         
         // Get projects with a count of associated samples
         const { data, error } = await supabase
@@ -44,13 +62,23 @@ const ProjectsPage: React.FC = () => {
         // Transform the data to have sample_count as a number
         const projectsWithCounts = data?.map(project => ({
           ...project,
-          sample_count: project.sample_count[0]?.count || 0
+          sample_count: project.sample_count?.[0]?.count || 0
         })) || [];
         
         setProjects(projectsWithCounts);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching projects:', err);
-        setError('Failed to load projects');
+        
+        // Provide more specific error messages based on the error type
+        if (err.code === 'PGRST116') {
+          setError('Database access error: The "samples" table might not exist yet. Please initialize the database schema.');
+        } else if (err.code?.includes('auth')) {
+          setError('Authentication error: Please check your Supabase connection settings.');
+        } else if (err.message?.includes('Failed to fetch')) {
+          setError('Network error: Unable to connect to the database. Please check your internet connection.');
+        } else {
+          setError(`Failed to load projects: ${err.message || 'Unknown error'}`);
+        }
       } finally {
         setLoading(false);
       }
@@ -205,6 +233,22 @@ const ProjectsPage: React.FC = () => {
           border: '1px solid #fecaca'
         }}>
           <p style={{ color: '#b91c1c' }}>{error}</p>
+          <div style={{ marginTop: '0.5rem' }}>
+            <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+              Please make sure:
+            </p>
+            <ul style={{ 
+              fontSize: '0.875rem', 
+              color: '#b91c1c', 
+              paddingLeft: '1.5rem',
+              marginTop: '0.25rem'
+            }}>
+              <li>Your Supabase database is set up properly</li>
+              <li>The required tables (projects, samples) exist</li>
+              <li>Your API key and URL are correct</li>
+              <li>Your internet connection is working</li>
+            </ul>
+          </div>
         </div>
       )}
 
@@ -224,7 +268,7 @@ const ProjectsPage: React.FC = () => {
             animation: 'spin 1s linear infinite'
           }}></div>
         </div>
-      ) : projects.length === 0 ? (
+      ) : projects.length === 0 && !error ? (
         <EmptyState />
       ) : viewMode === 'grid' ? (
         <div style={{
