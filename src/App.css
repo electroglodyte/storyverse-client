@@ -1,10 +1,14 @@
-/* Explicitly set base styles to ensure they're applied */
+/* Base styles */
 html, body {
-  background-color: #f8f5f0 !important; /* Match the primary-50 color */
-  color: #654321 !important; /* Match the primary-700 color for text */
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   margin: 0;
   padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  height: 100%;
+}
+
+body {
+  background-color: #f8f5f0; /* Light beige for content areas */
+  color: #654321; /* Brown text color */
 }
 
 /* Override any dark mode settings */
@@ -12,18 +16,15 @@ html, body {
   color-scheme: light;
 }
 
-/* Primary color scheme - beige palette */
-.bg-primary-50, .fallback-bg-light {
+/* Primary color scheme - beige palette for content */
+.bg-primary-50 {
   background-color: #f8f5f0 !important;
 }
-.bg-primary-100, .fallback-bg-light-accent {
+.bg-primary-100 {
   background-color: #f2eee6 !important;
 }
-.bg-primary-200, .fallback-bg-light-highlight {
+.bg-primary-200 {
   background-color: #e8e1d9 !important;
-}
-.bg-primary-700, .fallback-text-dark {
-  color: #654321 !important;
 }
 .text-primary-500 {
   color: #ab8760 !important;
@@ -31,29 +32,34 @@ html, body {
 .text-primary-600 {
   color: #8a6d4d !important;
 }
-.text-primary-700, .fallback-text-primary {
+.text-primary-700 {
   color: #654321 !important;
 }
-.border-primary-200, .fallback-border {
+.border-primary-200 {
   border-color: #e8e1d9 !important;
 }
 
-/* Add some basic layout classes as fallbacks */
-.fallback-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1rem;
+/* Dark theme for sidebar and header */
+.bg-neutral-900 {
+  background-color: #1f2024 !important;
 }
-.fallback-flex {
-  display: flex;
+.bg-neutral-800 {
+  background-color: #2d2e33 !important;
 }
-.fallback-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1rem;
+.bg-neutral-700 {
+  background-color: #3a3b41 !important;
+}
+.text-amber-100 {
+  color: #fef3c7 !important;
+}
+.text-amber-200 {
+  color: #fde68a !important;
+}
+.text-amber-300 {
+  color: #fcd34d !important;
 }
 
-/* Fix for layout height issue */
+/* Layout classes */
 #root {
   min-height: 100vh;
   display: flex;
@@ -61,9 +67,14 @@ html, body {
 }
 
 /* Ensure that content stretches to fill available space */
-.h-screen {
+.h-screen, .min-h-screen {
   height: 100vh;
   min-height: 100vh;
+}
+
+/* Ensure flex layout works properly */
+.flex-1 {
+  flex: 1 1 0%;
 }
 
 /* Card styling for dashboard and content areas */
@@ -73,4 +84,15 @@ html, body {
   border: 1px solid #e8e1d9;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Mobile responsiveness adjustments */
+@media (max-width: 768px) {
+  .md\:flex-row {
+    flex-direction: column !important;
+  }
+  
+  .md\:w-64 {
+    width: 100% !important;
+  }
 }
