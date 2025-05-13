@@ -9,9 +9,9 @@ export default function Layout() {
   const { activeProject } = useProject();
   
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-primary-50">
+    <div className="flex flex-col md:flex-row min-h-screen">
       {/* Fixed Sidebar - dark styling */}
-      <aside className="bg-neutral-900 text-white h-auto md:h-screen md:min-h-screen md:w-64 md:flex-shrink-0 overflow-y-auto">
+      <aside className="bg-neutral-900 text-white w-full md:w-64 md:h-screen md:min-h-screen md:flex-shrink-0 overflow-y-auto">
         <SideNav />
       </aside>
       
@@ -43,7 +43,7 @@ export default function Layout() {
       )}
       
       {/* Main Content Area - flexes to take remaining space */}
-      <div className="flex flex-col flex-1">
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Header Bar - dark styling */}
         <header className="bg-neutral-900 text-white border-b border-neutral-700 shadow-sm z-10">
           <div className="flex justify-between items-center py-3 px-6">
