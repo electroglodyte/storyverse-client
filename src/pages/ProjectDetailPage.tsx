@@ -45,7 +45,12 @@ const ProjectDetailPage: React.FC = () => {
   // Fetch project details and associated samples
   useEffect(() => {
     const fetchProjectDetails = async () => {
-      if (!id) return;
+      if (!id) {
+        setError('Missing project ID');
+        setErrorDetails('No project ID was provided in the URL. Please navigate to a specific project.');
+        setLoading(false);
+        return;
+      }
       
       try {
         setLoading(true);
@@ -247,6 +252,7 @@ const ProjectDetailPage: React.FC = () => {
     setIsEditing(false);
   };
 
+  // Show loading state on initial load
   if (loading && !project) {
     return (
       <div style={{
@@ -267,6 +273,7 @@ const ProjectDetailPage: React.FC = () => {
     );
   }
 
+  // Show error state
   if (error) {
     return (
       <div style={{
@@ -330,6 +337,7 @@ const ProjectDetailPage: React.FC = () => {
     );
   }
 
+  // Show 'not found' state
   if (!project) {
     return (
       <div style={{
