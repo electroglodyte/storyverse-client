@@ -1,8 +1,9 @@
 // This file is used to trigger deployments when updated
 // The version follows semver (major.minor.patch)
-export const VERSION = '0.2.2';
+export const VERSION = '0.2.3';
 
 // Changelog:
+// 0.2.3 - Fix vercel.json format to resolve deployment issues
 // 0.2.2 - Trigger deployment for StoryWorld changes after Vercel upgrade
 // 0.2.1 - Fixed deployment issues with StoryWorld changes
 // 0.2.0 - Added StoryWorld and Series structure; renamed Projects to Stories
