@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 3,
-  patch: 7,
+  patch: 8,
   date: '2025-05-13',
-  notes: 'Fixed Stories page display issues by adding title field and renaming storyworld_id to story_world_id for consistency. Now story titles and their associated story worlds should display correctly.'
+  notes: 'Fixed navigation issues with Story creation workflow. Updated StoryDetailPage to properly handle new story creation. Fixed path inconsistencies between "storyworlds" and "story-worlds" routes.'
 };
