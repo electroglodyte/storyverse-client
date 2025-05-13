@@ -1,224 +1,178 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPlus, FaEdit, FaTrashAlt, FaEye } from 'react-icons/fa';
-import { format } from 'date-fns';
-import { toast } from 'react-hot-toast';
 import { supabase } from '../supabaseClient';
-import { StoryWorld } from '../supabase-tables';
 import DataGrid from '../components/DataGrid';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { FaPlus, FaTrash, FaEdit } from 'react-icons/fa';
+import toast from 'react-hot-toast';
+import { formatDistance } from 'date-fns';
 
-const StoryWorldsTable: React.FC = () => {
-  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
-  const [storyCountMap, setStoryCountMap] = useState<Record<string, number>>({});
-  const [seriesCountMap, setSeriesCountMap] = useState<Record<string, number>>({});
+const StoryWorldsTable = () => {
+  const [storyWorlds, setStoryWorlds] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchStoryWorlds = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all story worlds
-        const { data: storyWorldsData, error: storyWorldsError } = await supabase
-          .from('storyworlds')
-          .select('*')
-          .order('name');
+  const fetchStoryWorlds = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Get story worlds with counts of related series and stories
+      // First, fetch the story worlds
+      const { data: worldsData, error: worldsError } = await supabase
+        .from('story_worlds')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-        if (storyWorldsError) throw storyWorldsError;
-        
-        // Fetch story counts for each story world
-        const { data: storyCounts, error: storyCountsError } = await supabase
-          .from('stories')
-          .select('storyworld_id, count(*)')
-          .group('storyworld_id');
-          
-        if (storyCountsError) throw storyCountsError;
-        
-        // Fetch series counts for each story world
-        const { data: seriesCounts, error: seriesCountsError } = await supabase
-          .from('series')
-          .select('storyworld_id, count(*)')
-          .group('storyworld_id');
-          
-        if (seriesCountsError) throw seriesCountsError;
-        
-        // Transform the counts into a map
-        const storyCountsByWorldId = storyCounts?.reduce((acc, item) => {
-          acc[item.storyworld_id] = item.count;
-          return acc;
-        }, {} as Record<string, number>) || {};
-        
-        const seriesCountsByWorldId = seriesCounts?.reduce((acc, item) => {
-          acc[item.storyworld_id] = item.count;
-          return acc;
-        }, {} as Record<string, number>) || {};
-        
-        setStoryWorlds(storyWorldsData || []);
-        setStoryCountMap(storyCountsByWorldId);
-        setSeriesCountMap(seriesCountsByWorldId);
-      } catch (error: any) {
-        toast.error(`Error loading story worlds: ${error.message}`);
-        console.error('Error loading story worlds:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (worldsError) throw worldsError;
 
-    fetchStoryWorlds();
+      // Fetch the counts separately for each world
+      const worldsWithCounts = await Promise.all(
+        worldsData.map(async (world) => {
+          // Get series count
+          const { count: seriesCount, error: seriesError } = await supabase
+            .from('series')
+            .select('id', { count: 'exact', head: true })
+            .eq('storyworld_id', world.id);
+
+          if (seriesError) throw seriesError;
+
+          // Get stories count
+          const { count: storiesCount, error: storiesError } = await supabase
+            .from('stories')
+            .select('id', { count: 'exact', head: true })
+            .eq('storyworld_id', world.id);
+
+          if (storiesError) throw storiesError;
+
+          return {
+            ...world,
+            seriesCount: seriesCount || 0,
+            storiesCount: storiesCount || 0,
+            createdTimeAgo: world.created_at ? formatDistance(new Date(world.created_at), new Date(), { addSuffix: true }) : '',
+          };
+        })
+      );
+
+      setStoryWorlds(worldsWithCounts);
+    } catch (error) {
+      console.error('Error fetching story worlds:', error);
+      toast.error('Failed to load story worlds');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const handleDelete = async (id: string) => {
-    const confirmed = window.confirm('Are you sure you want to delete this story world? This will also delete all associated series and stories.');
-    
-    if (confirmed) {
+  useEffect(() => {
+    fetchStoryWorlds();
+  }, [fetchStoryWorlds]);
+
+  const handleCreateNew = () => {
+    navigate('/story-worlds/new');
+  };
+
+  const handleRowSelected = (storyWorld) => {
+    navigate(`/story-worlds/${storyWorld.id}`);
+  };
+
+  const handleCellValueChanged = async (event) => {
+    try {
+      // Only update if the data actually changed
+      if (event.oldValue === event.newValue) return;
+
+      const { error } = await supabase
+        .from('story_worlds')
+        .update({ [event.colDef.field]: event.newValue })
+        .eq('id', event.data.id);
+
+      if (error) throw error;
+      toast.success('Story world updated');
+    } catch (error) {
+      console.error('Error updating story world:', error);
+      toast.error('Failed to update story world');
+      // Refresh to get the original data
+      fetchStoryWorlds();
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this story world? This will also delete all associated series and stories.')) {
       try {
         const { error } = await supabase
-          .from('storyworlds')
+          .from('story_worlds')
           .delete()
           .eq('id', id);
-          
+
         if (error) throw error;
         
-        setStoryWorlds(storyWorlds.filter(world => world.id !== id));
-        toast.success('Story world deleted successfully');
-      } catch (error: any) {
-        toast.error(`Error deleting story world: ${error.message}`);
+        toast.success('Story world deleted');
+        fetchStoryWorlds();
+      } catch (error) {
         console.error('Error deleting story world:', error);
+        toast.error('Failed to delete story world');
       }
     }
   };
 
-  const handleCellValueChanged = async (event: any) => {
-    if (!event.data || !event.data.id) return;
-    
-    try {
-      const { error } = await supabase
-        .from('storyworlds')
-        .update({ [event.column.colId]: event.newValue })
-        .eq('id', event.data.id);
-        
-      if (error) throw error;
-      
-      toast.success('Story world updated successfully');
-    } catch (error: any) {
-      toast.error(`Error updating story world: ${error.message}`);
-      console.error('Error updating story world:', error);
-      
-      // Revert the change in the grid
-      event.node.setDataValue(event.column.colId, event.oldValue);
-    }
-  };
-
-  const columnDefs = useMemo(() => [
+  const columnDefs = [
     { 
       headerName: 'Name', 
-      field: 'name',
+      field: 'name', 
+      cellRenderer: (params) => (
+        <div className="font-medium text-blue-600 hover:underline cursor-pointer">
+          {params.value}
+        </div>
+      )
     },
-    { 
-      headerName: 'Description', 
-      field: 'description',
-      flex: 2,
-    },
-    { 
-      headerName: 'Created', 
-      field: 'created_at',
-      editable: false,
-      valueFormatter: (params: any) => {
-        return params.value ? format(new Date(params.value), 'PPP') : '';
-      },
-    },
-    { 
-      headerName: 'Series', 
-      field: 'id',
-      editable: false,
-      valueGetter: (params: any) => {
-        return seriesCountMap[params.data.id] || 0;
-      },
-    },
-    { 
-      headerName: 'Stories', 
-      field: 'id',
-      editable: false,
-      valueGetter: (params: any) => {
-        return storyCountMap[params.data.id] || 0;
-      },
-    },
+    { headerName: 'Description', field: 'description', flex: 2 },
+    { headerName: 'Created', field: 'createdTimeAgo', editable: false },
+    { headerName: 'Series', field: 'seriesCount', editable: false, width: 120 },
+    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 120 },
     {
       headerName: 'Actions',
-      field: 'id',
+      width: 120,
       editable: false,
       sortable: false,
       filter: false,
-      cellRenderer: (params: any) => {
-        return (
-          <div className="flex space-x-2">
-            <button 
-              onClick={() => navigate(`/storyworlds/${params.value}`)}
-              className="text-blue-600 hover:text-blue-800"
-              title="View"
-            >
-              <FaEye />
-            </button>
-            <button 
-              onClick={() => navigate(`/storyworlds/${params.value}/edit`)}
-              className="text-green-600 hover:text-green-800"
-              title="Edit"
-            >
-              <FaEdit />
-            </button>
-            <button 
-              onClick={() => handleDelete(params.value)}
-              className="text-red-600 hover:text-red-800"
-              title="Delete"
-            >
-              <FaTrashAlt />
-            </button>
-          </div>
-        );
-      }
+      cellRenderer: (params) => (
+        <div className="flex items-center space-x-2">
+          <button 
+            onClick={() => navigate(`/story-worlds/edit/${params.data.id}`)} 
+            className="text-blue-500 hover:text-blue-700"
+          >
+            <FaEdit />
+          </button>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(params.data.id);
+            }} 
+            className="text-red-500 hover:text-red-700"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      )
     }
-  ], [navigate, storyCountMap, seriesCountMap]);
+  ];
 
   const actionButtons = (
     <button
-      onClick={() => navigate('/storyworlds/new')}
-      className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+      onClick={handleCreateNew}
+      className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
     >
-      <FaPlus className="mr-2" /> New Story World
+      <FaPlus />
+      <span>New Story World</span>
     </button>
   );
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Story Worlds</h1>
-        <div className="flex space-x-4">
-          <button 
-            onClick={() => navigate('/storyworlds')}
-            className="flex items-center text-gray-700 hover:text-gray-900"
-          >
-            Card View
-          </button>
-          <span className="text-gray-400">|</span>
-          <button 
-            className="flex items-center text-blue-600 font-semibold"
-          >
-            Table View
-          </button>
-        </div>
-      </div>
-
+    <div className="container mx-auto py-8">
       <DataGrid
+        title="Story Worlds"
         columnDefs={columnDefs}
         rowData={storyWorlds}
+        onRowSelected={handleRowSelected}
         onCellValueChanged={handleCellValueChanged}
         actionButtons={actionButtons}
+        isLoading={loading}
       />
     </div>
   );
