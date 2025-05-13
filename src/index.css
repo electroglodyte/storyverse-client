@@ -15,6 +15,8 @@ html, body, #root {
 
 body {
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #f8f5f0; /* Beige background from mockup */
+  color: #654321; /* Brown text */
 }
 
 a {
@@ -28,6 +30,15 @@ button {
   border: none;
   font: inherit;
   color: inherit;
+}
+
+/* Card styling */
+.card {
+  background-color: #fff;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e8e1d9;
 }
 
 /* Tailwind Classes */
