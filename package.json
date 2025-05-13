@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
+    "ag-grid-community": "^31.0.1",
+    "ag-grid-react": "^31.0.1",
     "date-fns": "^4.1.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
