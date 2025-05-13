@@ -16,19 +16,19 @@ export const SideNav: React.FC = () => {
   return (
     <nav className="bg-primary-100 w-64 h-screen overflow-y-auto py-4 border-r border-primary-200">
       {/* Logo and Subtitle */}
-      <div className="px-4 mb-8">
+      <div className="px-6 mb-8">
         <h1 className="text-2xl font-bold text-primary-700">StoryVerse</h1>
         <p className="text-sm text-primary-600">World Builder</p>
       </div>
       
       {/* Active Project */}
-      <div className="px-4 mb-6">
+      <div className="px-6 mb-6">
         <h3 className="text-xs uppercase text-primary-500 font-medium mb-2">ACTIVE PROJECT</h3>
         <div className="relative">
           <button 
-            className="w-full p-2 bg-primary-50 rounded-md text-primary-700 font-medium text-left flex justify-between items-center"
+            className="w-full p-2 bg-primary-50 rounded-md text-primary-700 font-medium text-left flex justify-between items-center shadow-sm"
           >
-            <span className="truncate">{activeProject?.name || 'Select a Project'}</span>
+            <span className="truncate">{activeProject?.name || 'The Irish Mystery'}</span>
             <span>▼</span>
           </button>
         </div>
@@ -36,12 +36,12 @@ export const SideNav: React.FC = () => {
       
       {/* Main Navigation */}
       <div className="mb-6">
-        <h3 className="px-4 text-xs uppercase text-primary-500 font-medium mb-2">MAIN</h3>
+        <h3 className="px-6 text-xs uppercase text-primary-500 font-medium mb-2">MAIN</h3>
         <ul>
           <li>
             <Link
               to="/"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/') && !isActive('/projects') && !isActive('/samples') && !isActive('/search')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -54,7 +54,7 @@ export const SideNav: React.FC = () => {
           <li>
             <Link
               to="/samples"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/samples')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -67,7 +67,7 @@ export const SideNav: React.FC = () => {
           <li>
             <Link
               to="/search"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/search')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -82,12 +82,12 @@ export const SideNav: React.FC = () => {
       
       {/* Tools */}
       <div className="mb-6">
-        <h3 className="px-4 text-xs uppercase text-primary-500 font-medium mb-2">TOOLS</h3>
+        <h3 className="px-6 text-xs uppercase text-primary-500 font-medium mb-2">TOOLS</h3>
         <ul>
           <li>
             <Link
               to="/style-analysis"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/style-analysis')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -100,7 +100,7 @@ export const SideNav: React.FC = () => {
           <li>
             <Link
               to="/plot-mapping"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/plot-mapping')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -113,7 +113,7 @@ export const SideNav: React.FC = () => {
           <li>
             <Link
               to="/consistency-check"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/consistency-check')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -126,7 +126,7 @@ export const SideNav: React.FC = () => {
           <li>
             <Link
               to="/claude-assistant"
-              className={`flex items-center px-4 py-2 transition-colors ${
+              className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
                 isActive('/claude-assistant')
                   ? 'bg-primary-200 text-primary-700 font-medium'
                   : 'text-primary-700 hover:bg-primary-200'
@@ -140,10 +140,10 @@ export const SideNav: React.FC = () => {
       </div>
       
       {/* Settings */}
-      <div className="px-4 mt-auto pt-6">
+      <div className="mt-auto pt-4 px-6">
         <Link
           to="/settings"
-          className={`flex items-center px-4 py-2 rounded-md transition-colors ${
+          className={`flex items-center px-6 py-2 mx-2 rounded-md transition-colors ${
             isActive('/settings')
               ? 'bg-primary-200 text-primary-700 font-medium'
               : 'text-primary-700 hover:bg-primary-200'
