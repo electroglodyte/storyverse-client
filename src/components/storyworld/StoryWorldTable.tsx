@@ -15,26 +15,43 @@ const StoryWorldTable = () => {
     setLoading(true);
     try {
       // Get story worlds with counts of related series and stories
-      const { data, error } = await supabase
+      // First, fetch the story worlds
+      const { data: worldsData, error: worldsError } = await supabase
         .from('story_worlds')
-        .select(`
-          *,
-          series:series(count),
-          stories:stories(count)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (worldsError) throw worldsError;
 
-      // Process the data to get the counts
-      const processedData = data.map(world => ({
-        ...world,
-        seriesCount: world.series?.[0]?.count || 0,
-        storiesCount: world.stories?.[0]?.count || 0,
-        createdTimeAgo: world.created_at ? formatDistance(new Date(world.created_at), new Date(), { addSuffix: true }) : '',
-      }));
+      // Fetch the counts separately for each world
+      const worldsWithCounts = await Promise.all(
+        worldsData.map(async (world) => {
+          // Get series count
+          const { count: seriesCount, error: seriesError } = await supabase
+            .from('series')
+            .select('id', { count: 'exact', head: true })
+            .eq('storyworld_id', world.id);
 
-      setStoryWorlds(processedData);
+          if (seriesError) throw seriesError;
+
+          // Get stories count
+          const { count: storiesCount, error: storiesError } = await supabase
+            .from('stories')
+            .select('id', { count: 'exact', head: true })
+            .eq('storyworld_id', world.id);
+
+          if (storiesError) throw storiesError;
+
+          return {
+            ...world,
+            seriesCount: seriesCount || 0,
+            storiesCount: storiesCount || 0,
+            createdTimeAgo: world.created_at ? formatDistance(new Date(world.created_at), new Date(), { addSuffix: true }) : '',
+          };
+        })
+      );
+
+      setStoryWorlds(worldsWithCounts);
     } catch (error) {
       console.error('Error fetching story worlds:', error);
       toast.error('Failed to load story worlds');
@@ -118,7 +135,7 @@ const StoryWorldTable = () => {
         <div className="flex items-center space-x-2">
           <button 
             onClick={() => navigate(`/story-worlds/edit/${params.data.id}`)} 
-            className="text-blue-500 hover:text-blue-700"
+            className="text-accent hover:text-accent-hover"
           >
             <FaEdit />
           </button>
@@ -139,7 +156,7 @@ const StoryWorldTable = () => {
   const actionButtons = (
     <button
       onClick={handleCreateNew}
-      className="flex items-center space-x-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+      className="create-button"
     >
       <FaPlus />
       <span>New Story World</span>
@@ -147,17 +164,15 @@ const StoryWorldTable = () => {
   );
 
   return (
-    <div className="container mx-auto py-8">
-      <DataGrid
-        title="Story Worlds"
-        columnDefs={columnDefs}
-        rowData={storyWorlds}
-        onRowSelected={handleRowSelected}
-        onCellValueChanged={handleCellValueChanged}
-        actionButtons={actionButtons}
-        isLoading={loading}
-      />
-    </div>
+    <DataGrid
+      title="Story Worlds"
+      columnDefs={columnDefs}
+      rowData={storyWorlds}
+      onRowSelected={handleRowSelected}
+      onCellValueChanged={handleCellValueChanged}
+      actionButtons={actionButtons}
+      isLoading={loading}
+    />
   );
 };
 
