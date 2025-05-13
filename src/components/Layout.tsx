@@ -10,10 +10,10 @@ export default function Layout() {
   
   return (
     <div className="flex h-screen bg-primary-50">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:block w-64 flex-shrink-0">
+      {/* Fixed Sidebar (always visible on desktop) */}
+      <aside className="fixed top-0 left-0 h-full w-64 hidden md:block">
         <SideNav />
-      </div>
+      </aside>
       
       {/* Mobile menu button */}
       <div className="md:hidden fixed top-4 left-4 z-20">
@@ -42,10 +42,10 @@ export default function Layout() {
         </div>
       )}
       
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Main Content Area (with left padding for the sidebar on desktop) */}
+      <div className="flex-1 md:ml-64 flex flex-col min-h-screen">
         {/* Header Bar */}
-        <header className="bg-white border-b border-primary-200 shadow-sm z-10">
+        <header className="bg-white border-b border-primary-200 shadow-sm z-10 sticky top-0">
           <div className="flex justify-between items-center py-3 px-6">
             <div className="flex items-center">
               <span className="text-primary-700 mr-2">📚</span>
@@ -68,7 +68,8 @@ export default function Layout() {
           </div>
         </header>
         
-        <main className="flex-1 overflow-x-hidden overflow-y-auto">
+        {/* Main Content */}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-primary-50">
           <div className="max-w-7xl mx-auto py-6 px-6">
             <Outlet />
           </div>
