@@ -57,15 +57,41 @@ const StoryWorldDetailPage: React.FC = () => {
         if (storiesError) throw storiesError;
         setStories(storiesData || []);
 
-        // Fetch the series in this storyworld
-        const { data: seriesData, error: seriesError } = await supabase
-          .from('series')
-          .select('*')
-          .eq('storyworld_id', id)
-          .order('name', { ascending: true });
-
-        if (seriesError) throw seriesError;
-        setSeries(seriesData || []);
+        // Try to fetch series with both storyworld_id and story_world_id fields
+        // This handles the case where the database might be using either field
+        const seriesPromises = [
+          // First try with storyworld_id
+          supabase
+            .from('series')
+            .select('*')
+            .eq('storyworld_id', id)
+            .order('name', { ascending: true }),
+          
+          // Also try with story_world_id
+          supabase
+            .from('series')
+            .select('*')
+            .eq('story_world_id', id)
+            .order('name', { ascending: true })
+        ];
+        
+        const seriesResults = await Promise.all(seriesPromises);
+        
+        // Combine unique results from both queries
+        const seriesData1 = seriesResults[0].data || [];
+        const seriesData2 = seriesResults[1].data || [];
+        
+        // Combine and deduplicate series (in case both queries return the same series)
+        const allSeriesData = [...seriesData1];
+        
+        // Add series from second query that aren't already included
+        for (const series of seriesData2) {
+          if (!allSeriesData.some(s => s.id === series.id)) {
+            allSeriesData.push(series);
+          }
+        }
+        
+        setSeries(allSeriesData);
 
       } catch (error: any) {
         toast.error(`Error loading story world: ${error.message}`);
