@@ -119,6 +119,7 @@ const SeriesTable = () => {
     { 
       headerName: 'Name', 
       field: 'name', 
+      width: 220,
       cellRenderer: (params) => (
         <div className="font-medium text-blue-600 hover:underline cursor-pointer">
           {params.value}
@@ -128,6 +129,7 @@ const SeriesTable = () => {
     { 
       headerName: 'Story World', 
       field: 'storyworld_id',
+      width: 160,
       cellRenderer: (params) => storyWorlds[params.value] || 'Unknown',
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
@@ -141,14 +143,15 @@ const SeriesTable = () => {
     { 
       headerName: 'Sequence Type', 
       field: 'sequence_type',
+      width: 160,
       cellEditor: 'agSelectCellEditor',
       cellEditorParams: {
         values: sequenceTypeOptions
       }
     },
-    { headerName: 'Description', field: 'description', flex: 2 },
-    { headerName: 'Created', field: 'createdTimeAgo', editable: false },
-    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 120 },
+    { headerName: 'Description', field: 'description', flex: 2, minWidth: 250 },
+    { headerName: 'Created', field: 'createdTimeAgo', editable: false, width: 140 },
+    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 100, type: 'numericColumn' },
     {
       headerName: 'Actions',
       width: 120,
@@ -158,10 +161,14 @@ const SeriesTable = () => {
       cellRenderer: (params) => (
         <div className="flex items-center space-x-2">
           <button 
-            onClick={() => navigate(`/series/edit/${params.data.id}`)} 
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/series/edit/${params.data.id}`);
+            }} 
             className="text-accent hover:text-accent-hover"
+            title="Edit Series"
           >
-            <FaEdit />
+            <FaEdit size={16} />
           </button>
           <button 
             onClick={(e) => {
@@ -169,8 +176,9 @@ const SeriesTable = () => {
               handleDelete(params.data.id);
             }} 
             className="text-red-500 hover:text-red-700"
+            title="Delete Series"
           >
-            <FaTrash />
+            <FaTrash size={16} />
           </button>
         </div>
       )
