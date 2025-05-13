@@ -1,32 +1,16 @@
 // src/components/Layout.tsx
 import { useState } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SideNav } from './SideNav';
 import { useProject } from '../context/ProjectContext';
 
 export default function Layout() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { activeProject } = useProject();
-  const location = useLocation();
-
-  // Function to get page title based on current URL
-  const getPageTitle = () => {
-    const path = location.pathname;
-    if (path === '/') return 'Dashboard';
-    if (path.startsWith('/samples')) return 'Writing Samples';
-    if (path.startsWith('/style-analysis')) return 'Style Analysis';
-    if (path.startsWith('/plot-mapping')) return 'Plot Mapping';
-    if (path.startsWith('/consistency-check')) return 'Consistency Check';
-    if (path.startsWith('/claude-assistant')) return 'Claude Assistant';
-    if (path.startsWith('/projects')) return 'Projects';
-    if (path.startsWith('/settings')) return 'Settings';
-    if (path.startsWith('/search')) return 'Search';
-    return 'StoryVerse';
-  };
-
+  
   return (
     <div className="flex h-screen bg-primary-50">
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar - this should be visible at md breakpoint and above */}
       <SideNav />
       
       {/* Mobile menu button */}
@@ -42,7 +26,7 @@ export default function Layout() {
       
       {/* Mobile Sidebar */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 z-10 bg-primary-50 bg-opacity-75">
+        <div className="fixed inset-0 z-10 bg-primary-50 bg-opacity-75 md:hidden">
           <div className="w-64 h-full">
             <SideNav />
           </div>
