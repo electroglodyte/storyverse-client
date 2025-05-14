@@ -1,6 +1,6 @@
 /**
  * StoryVerse Database Schema
- * Version: 0.4.0
+ * Version: 0.4.1
  * 
  * This file contains TypeScript types for all tables in the Supabase database.
  */
@@ -15,6 +15,7 @@ export interface StoryWorld {
   time_period?: string;
   rules?: string;
   image_url?: string;
+  cover_image?: string; // Added to support both naming conventions
   notes?: string;
   attributes?: Record<string, any>;
   created_at: string;
