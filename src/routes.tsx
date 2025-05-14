@@ -16,6 +16,8 @@ import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 // Characters, Settings, Factions Pages
 import CharactersListPage from './pages/CharactersListPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
+import SettingsListPage from './pages/SettingsListPage';
+import SettingDetailPage from './pages/SettingDetailPage';
 
 // Writing Samples & Style Profiles Pages
 import WritingSamplesPage from './pages/writing/WritingSamplesPage';
@@ -143,6 +145,23 @@ const router = createBrowserRouter([
       {
         path: 'characters/new',
         element: <CharacterDetailPage />,
+      },
+      // Setting routes
+      {
+        path: 'settings',
+        element: <SettingsListPage />,
+      },
+      {
+        path: 'settings/:id',
+        element: <SettingDetailPage />,
+      },
+      {
+        path: 'settings/edit/:id',
+        element: <SettingDetailPage />,
+      },
+      {
+        path: 'settings/new',
+        element: <SettingDetailPage />,
       },
       // Writing Samples routes
       {
