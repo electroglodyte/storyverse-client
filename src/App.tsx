@@ -12,7 +12,8 @@ import {
   FaProjectDiagram,
   FaBalanceScale,
   FaCommentDots,
-  FaCog
+  FaCog,
+  FaCalendarAlt
 } from 'react-icons/fa';
 
 function App() {
@@ -33,6 +34,7 @@ function App() {
     if (location.pathname.startsWith('/story-worlds')) return 'Story Worlds';
     if (location.pathname.startsWith('/series')) return 'Series';
     if (location.pathname.startsWith('/stories')) return 'Stories';
+    if (location.pathname.startsWith('/timeline')) return 'Timeline';
     return 'StoryVerse';
   };
 
@@ -69,6 +71,10 @@ function App() {
           <Link to="/writing-samples" className={`sidebar-link ${isActive('/writing-samples') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaEdit /></span>
             Writing Samples
+          </Link>
+          <Link to="/timeline" className={`sidebar-link ${isActive('/timeline') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaCalendarAlt /></span>
+            Timeline
           </Link>
           <Link to="/search" className={`sidebar-link ${isActive('/search') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaSearch /></span>
