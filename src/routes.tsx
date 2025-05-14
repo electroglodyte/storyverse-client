@@ -33,6 +33,15 @@ import StyleWritingToolPage from './pages/writing/StyleWritingToolPage';
 // Timeline Page
 import TimelinePage from './pages/timeline/TimelinePage';
 
+// Scene Management Pages
+import ScenesExplorerPage from './pages/scenes/ScenesExplorerPage';
+import SceneEditorPage from './pages/scenes/SceneEditorPage';
+import SceneVersionsPage from './pages/scenes/SceneVersionsPage';
+import SceneCommentsPage from './pages/scenes/SceneCommentsPage';
+import SceneVersionCompare from './pages/scenes/SceneVersionCompare';
+import SceneImportPage from './pages/scenes/SceneImportPage';
+import SceneExportPage from './pages/scenes/SceneExportPage';
+
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
   return <App />;
@@ -250,6 +259,43 @@ const router = createBrowserRouter([
       {
         path: 'timeline/:storyId',
         element: <TimelinePage />,
+      },
+      // Scene Management Routes
+      {
+        path: 'scenes',
+        element: <ScenesExplorerPage />,
+      },
+      {
+        path: 'scenes/new',
+        element: <SceneEditorPage />,
+      },
+      {
+        path: 'scenes/:id',
+        element: <SceneEditorPage />,
+      },
+      {
+        path: 'scenes/edit/:id',
+        element: <SceneEditorPage />,
+      },
+      {
+        path: 'scenes/:id/versions',
+        element: <SceneVersionsPage />,
+      },
+      {
+        path: 'scenes/:id/comments',
+        element: <SceneCommentsPage />,
+      },
+      {
+        path: 'scenes/:id/compare/:version1Id/:version2Id',
+        element: <SceneVersionCompare />,
+      },
+      {
+        path: 'scenes/import',
+        element: <SceneImportPage />,
+      },
+      {
+        path: 'scenes/export',
+        element: <SceneExportPage />,
       },
     ],
   },
