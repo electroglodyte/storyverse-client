@@ -16,8 +16,8 @@ import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 // Characters, Settings, Factions Pages
 import CharactersListPage from './pages/CharactersListPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
-import SettingsListPage from './pages/SettingsListPage';
-import SettingDetailPage from './pages/SettingDetailPage';
+import LocationsListPage from './pages/SettingsListPage';
+import LocationDetailPage from './pages/SettingDetailPage';
 
 // Writing Samples & Style Profiles Pages
 import WritingSamplesPage from './pages/writing/WritingSamplesPage';
@@ -146,22 +146,39 @@ const router = createBrowserRouter([
         path: 'characters/new',
         element: <CharacterDetailPage />,
       },
-      // Setting routes
+      // Location routes (replacing Settings routes)
+      {
+        path: 'locations',
+        element: <LocationsListPage />,
+      },
+      {
+        path: 'locations/:id',
+        element: <LocationDetailPage />,
+      },
+      {
+        path: 'locations/edit/:id',
+        element: <LocationDetailPage />,
+      },
+      {
+        path: 'locations/new',
+        element: <LocationDetailPage />,
+      },
+      // Maintain backward compatibility with old settings routes
       {
         path: 'settings',
-        element: <SettingsListPage />,
+        element: <LocationsListPage />,
       },
       {
         path: 'settings/:id',
-        element: <SettingDetailPage />,
+        element: <LocationDetailPage />,
       },
       {
         path: 'settings/edit/:id',
-        element: <SettingDetailPage />,
+        element: <LocationDetailPage />,
       },
       {
         path: 'settings/new',
-        element: <SettingDetailPage />,
+        element: <LocationDetailPage />,
       },
       // Writing Samples routes
       {
