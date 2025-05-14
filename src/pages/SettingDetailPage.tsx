@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { Setting, StoryWorld } from '../supabase-tables';
+import { Location, StoryWorld } from '../supabase-tables';
 import { FaSave, FaArrowLeft } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -11,23 +11,23 @@ interface AttributesForm {
   [key: string]: string;
 }
 
-const SettingDetailPage: React.FC = () => {
+const LocationDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const isNewSetting = id === 'new';
+  const isNewLocation = id === 'new';
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
-  const [availableParentSettings, setAvailableParentSettings] = useState<Setting[]>([]);
+  const [availableParentLocations, setAvailableParentLocations] = useState<Location[]>([]);
   
-  // Setting form state
-  const [setting, setSetting] = useState<Partial<Setting>>({
+  // Location form state
+  const [location, setLocation] = useState<Partial<Location>>({
     name: '',
     location_type: '',
     time_period: '',
     description: '',
     story_world_id: '',
-    parent_setting_id: '',
+    parent_location_id: '',
     attributes: {},
   });
   
@@ -51,11 +51,11 @@ const SettingDetailPage: React.FC = () => {
 
         setStoryWorlds(data || []);
         
-        // If this is a new setting and we have story worlds, select the first one by default
-        if (isNewSetting && data && data.length > 0) {
-          setSetting(prev => ({ ...prev, story_world_id: data[0].id }));
-          // Load available parent settings for the selected story world
-          fetchParentSettings(data[0].id);
+        // If this is a new location and we have story worlds, select the first one by default
+        if (isNewLocation && data && data.length > 0) {
+          setLocation(prev => ({ ...prev, story_world_id: data[0].id }));
+          // Load available parent locations for the selected story world
+          fetchParentLocations(data[0].id);
         }
       } catch (error: any) {
         toast.error(`Error fetching story worlds: ${error.message}`);
@@ -64,10 +64,10 @@ const SettingDetailPage: React.FC = () => {
     };
 
     fetchStoryWorlds();
-  }, [isNewSetting]);
+  }, [isNewLocation]);
 
-  // Fetch available parent settings when story world is selected or changed
-  const fetchParentSettings = async (storyWorldId: string) => {
+  // Fetch available parent locations when story world is selected or changed
+  const fetchParentLocations = async (storyWorldId: string) => {
     if (!storyWorldId) return;
     
     try {
@@ -81,23 +81,23 @@ const SettingDetailPage: React.FC = () => {
         throw error;
       }
 
-      // When editing a setting, we need to exclude the current setting and any of its children
-      const filteredSettings = isNewSetting 
+      // When editing a location, we need to exclude the current location and any of its children
+      const filteredLocations = isNewLocation 
         ? data || [] 
         : (data || []).filter(s => s.id !== id);
         
-      setAvailableParentSettings(filteredSettings);
+      setAvailableParentLocations(filteredLocations);
     } catch (error: any) {
-      toast.error(`Error fetching parent settings: ${error.message}`);
-      console.error('Error fetching parent settings:', error);
+      toast.error(`Error fetching parent locations: ${error.message}`);
+      console.error('Error fetching parent locations:', error);
     }
   };
 
-  // Load setting data if editing an existing setting
+  // Load location data if editing an existing location
   useEffect(() => {
-    if (isNewSetting) return;
+    if (isNewLocation) return;
     
-    const fetchSetting = async () => {
+    const fetchLocation = async () => {
       try {
         setLoading(true);
         const { data, error } = await supabase
@@ -111,11 +111,11 @@ const SettingDetailPage: React.FC = () => {
         }
 
         if (data) {
-          setSetting(data);
+          setLocation(data);
           
-          // Fetch parent settings for the setting's story world
+          // Fetch parent locations for the location's story world
           if (data.story_world_id) {
-            fetchParentSettings(data.story_world_id);
+            fetchParentLocations(data.story_world_id);
           }
           
           // Initialize attributes form state from JSON
@@ -124,26 +124,26 @@ const SettingDetailPage: React.FC = () => {
           }
         }
       } catch (error: any) {
-        toast.error(`Error fetching setting: ${error.message}`);
-        console.error('Error fetching setting:', error);
+        toast.error(`Error fetching location: ${error.message}`);
+        console.error('Error fetching location:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSetting();
-  }, [id, isNewSetting]);
+    fetchLocation();
+  }, [id, isNewLocation]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     
-    // If story_world_id changes, update available parent settings
-    if (name === 'story_world_id' && value !== setting.story_world_id) {
-      fetchParentSettings(value);
-      // Clear parent setting when story world changes
-      setSetting(prev => ({ ...prev, [name]: value, parent_setting_id: '' }));
+    // If story_world_id changes, update available parent locations
+    if (name === 'story_world_id' && value !== location.story_world_id) {
+      fetchParentLocations(value);
+      // Clear parent location when story world changes
+      setLocation(prev => ({ ...prev, [name]: value, parent_location_id: '' }));
     } else {
-      setSetting(prev => ({ ...prev, [name]: value }));
+      setLocation(prev => ({ ...prev, [name]: value }));
     }
   };
 
@@ -174,22 +174,22 @@ const SettingDetailPage: React.FC = () => {
     try {
       setSaving(true);
       
-      // Prepare the setting data with JSON fields
-      const settingData = {
-        ...setting,
+      // Prepare the location data with JSON fields
+      const locationData = {
+        ...location,
         attributes: attributes,
       };
       
       let result;
       
-      if (isNewSetting) {
+      if (isNewLocation) {
         result = await supabase
           .from('settings')
-          .insert([settingData]);
+          .insert([locationData]);
       } else {
         result = await supabase
           .from('settings')
-          .update(settingData)
+          .update(locationData)
           .eq('id', id);
       }
       
@@ -199,11 +199,11 @@ const SettingDetailPage: React.FC = () => {
         throw error;
       }
       
-      toast.success(`Setting ${isNewSetting ? 'created' : 'updated'} successfully`);
-      navigate('/settings');
+      toast.success(`Location ${isNewLocation ? 'created' : 'updated'} successfully`);
+      navigate('/locations');
     } catch (error: any) {
-      toast.error(`Error ${isNewSetting ? 'creating' : 'updating'} setting: ${error.message}`);
-      console.error(`Error ${isNewSetting ? 'creating' : 'updating'} setting:`, error);
+      toast.error(`Error ${isNewLocation ? 'creating' : 'updating'} location: ${error.message}`);
+      console.error(`Error ${isNewLocation ? 'creating' : 'updating'} location:`, error);
     } finally {
       setSaving(false);
     }
@@ -218,13 +218,13 @@ const SettingDetailPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <button
-            onClick={() => navigate('/settings')}
+            onClick={() => navigate('/locations')}
             className="mr-4 text-gray-600 hover:text-gray-900"
           >
             <FaArrowLeft size={20} />
           </button>
           <h1 className="text-3xl font-bold">
-            {isNewSetting ? 'Create New Setting' : 'Edit Setting'}
+            {isNewLocation ? 'Create New Location' : 'Edit Location'}
           </h1>
         </div>
       </div>
@@ -236,7 +236,7 @@ const SettingDetailPage: React.FC = () => {
           </label>
           <select
             name="story_world_id"
-            value={setting.story_world_id || ''}
+            value={location.story_world_id || ''}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
@@ -252,23 +252,23 @@ const SettingDetailPage: React.FC = () => {
 
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Parent Setting (Optional)
+            Parent Location (Optional)
           </label>
           <select
-            name="parent_setting_id"
-            value={setting.parent_setting_id || ''}
+            name="parent_location_id"
+            value={location.parent_location_id || ''}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">No Parent (Top Level)</option>
-            {availableParentSettings.map((parentSetting) => (
-              <option key={parentSetting.id} value={parentSetting.id}>
-                {parentSetting.name}
+            {availableParentLocations.map((parentLocation) => (
+              <option key={parentLocation.id} value={parentLocation.id}>
+                {parentLocation.name}
               </option>
             ))}
           </select>
           <p className="mt-1 text-sm text-gray-500">
-            If this setting is inside another setting (e.g., a room in a building), select the parent.
+            If this location is inside another location (e.g., a room in a building), select the parent.
           </p>
         </div>
 
@@ -279,7 +279,7 @@ const SettingDetailPage: React.FC = () => {
           <input
             type="text"
             name="name"
-            value={setting.name || ''}
+            value={location.name || ''}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             required
@@ -293,7 +293,7 @@ const SettingDetailPage: React.FC = () => {
           <input
             type="text"
             name="location_type"
-            value={setting.location_type || ''}
+            value={location.location_type || ''}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Interior, Exterior, Virtual, Planet, City, Building"
@@ -307,7 +307,7 @@ const SettingDetailPage: React.FC = () => {
           <input
             type="text"
             name="time_period"
-            value={setting.time_period || ''}
+            value={location.time_period || ''}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="e.g., Modern Day, Victorian Era, Future, 1920s"
@@ -320,11 +320,11 @@ const SettingDetailPage: React.FC = () => {
           </label>
           <textarea
             name="description"
-            value={setting.description || ''}
+            value={location.description || ''}
             onChange={handleChange}
             rows={4}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="Describe the setting..."
+            placeholder="Describe the location..."
           />
         </div>
 
@@ -400,7 +400,7 @@ const SettingDetailPage: React.FC = () => {
               </>
             ) : (
               <>
-                <FaSave className="mr-2" /> Save Setting
+                <FaSave className="mr-2" /> Save Location
               </>
             )}
           </button>
@@ -410,4 +410,4 @@ const SettingDetailPage: React.FC = () => {
   );
 };
 
-export default SettingDetailPage;
+export default LocationDetailPage;
