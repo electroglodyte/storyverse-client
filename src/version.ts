@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 1,
+  patch: 2,
   date: '2025-05-14',
-  notes: 'Fixed TypeScript type issues with character roles, location types, and image properties. Added support for cover_image property in StoryWorld interface. Previous version (0.9.0) added complete scene management UI with Explorer, Editor, Version Control, Comments, Import/Export. Implemented in-depth support for Fountain screenplay format and Markdown. Added scene versioning, comparison, and commenting features.'
+  notes: 'Enhanced scene management UI with improved editing, versioning, and commenting. Added format-specific editing for Fountain and Markdown with live preview and split view mode. Improved version comparison with side-by-side diff view. Added timeline visualization for version history. Enhanced comment management with filtering, grouping, and better categorization. Previous version (0.9.1) fixed TypeScript type issues with character roles, location types, and image properties.'
 };
