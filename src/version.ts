@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 6,
-  patch: 10,
+  patch: 11,
   date: '2025-05-14',
-  notes: 'Fixed TypeScript errors in FactionDetailPage with comprehensive type handling for character data from join queries.'
+  notes: 'Enhanced event relationships system with proper dependencies and character journeys. Updated TypeScript interfaces to match database schema.'
 };
