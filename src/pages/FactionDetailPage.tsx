@@ -6,7 +6,8 @@ import { FaArrowLeft, FaSave, FaUserPlus, FaUserMinus, FaChevronDown, FaChevronU
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
-interface FactionMember extends Character {
+// Modified interface to correctly extend Character with appropriate role type
+interface FactionMember extends Omit<Character, 'role'> {
   role: string;
   faction_character_id: string;
 }
@@ -15,7 +16,7 @@ interface CharacterData {
   id: string;
   name: string;
   description: string;
-  role: string;
+  role: 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other'; // Use the correct enum type
   attributes: any;
   relationships: any;
   story_world_id: string;
@@ -406,7 +407,7 @@ const FactionDetailPage: React.FC = () => {
         const characterToAdd: Character = {
           id: removedMember.id,
           name: removedMember.name,
-          role: removedMember.role,
+          role: 'other', // Set to 'other' to match enum type
           description: removedMember.description,
           attributes: removedMember.attributes,
           relationships: removedMember.relationships,
