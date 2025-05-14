@@ -35,17 +35,6 @@ export const SideNav: React.FC = () => {
     fontWeight: '500'
   };
 
-  // Styling for section headers
-  const sectionHeaderStyle = {
-    padding: '0 1.5rem',
-    fontSize: '0.75rem',
-    textTransform: 'uppercase' as const,
-    color: 'rgba(252, 211, 77, 0.7)',
-    fontWeight: '500',
-    marginBottom: '0.5rem',
-    marginTop: '1rem'
-  };
-
   return (
     <nav style={{ width: '100%', height: '100%', padding: '1rem 0', overflow: 'auto' }}>
       {/* Logo and Subtitle */}
@@ -56,7 +45,7 @@ export const SideNav: React.FC = () => {
       
       {/* Active Project */}
       <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
-        <h3 style={sectionHeaderStyle}>ACTIVE PROJECT</h3>
+        <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>ACTIVE PROJECT</h3>
         <div>
           <button 
             style={{ 
@@ -82,14 +71,14 @@ export const SideNav: React.FC = () => {
       
       {/* Main Navigation */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={sectionHeaderStyle}>MAIN</h3>
+        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>MAIN</h3>
         <ul>
           <li>
             <Link
               to="/"
-              style={isActive('/') && !isActive('/story-worlds') && !isActive('/series') && !isActive('/stories') ? activeStyle : navItemStyle}
+              style={location.pathname === '/' ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/') || isActive('/story-worlds') || isActive('/series') || isActive('/stories')) e.currentTarget.style.backgroundColor = 'transparent'}}
+              onMouseOut={(e) => {if (location.pathname !== '/') e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaHome style={{ marginRight: '0.5rem' }} />
               <span>Dashboard</span>
@@ -163,6 +152,17 @@ export const SideNav: React.FC = () => {
           </li>
           <li>
             <Link
+              to="/scenes"
+              style={isActive('/scenes') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/scenes')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaTheaterMasks style={{ marginRight: '0.5rem' }} />
+              <span>Scenes</span>
+            </Link>
+          </li>
+          <li>
+            <Link
               to="/samples"
               style={isActive('/samples') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
@@ -197,93 +197,9 @@ export const SideNav: React.FC = () => {
         </ul>
       </div>
       
-      {/* Scene Management */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={sectionHeaderStyle}>SCENES</h3>
-        <ul>
-          <li>
-            <Link
-              to="/scenes"
-              style={location.pathname === '/scenes' ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (location.pathname !== '/scenes') e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaTheaterMasks style={{ marginRight: '0.5rem' }} />
-              <span>Scene Explorer</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/edit"
-              style={location.pathname.includes('/scenes/edit') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!location.pathname.includes('/scenes/edit')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaEdit style={{ marginRight: '0.5rem' }} />
-              <span>Scene Editor</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/versions"
-              style={location.pathname.includes('/versions') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!location.pathname.includes('/versions')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaHistory style={{ marginRight: '0.5rem' }} />
-              <span>Version History</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/compare"
-              style={location.pathname.includes('/compare') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!location.pathname.includes('/compare')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaExchangeAlt style={{ marginRight: '0.5rem' }} />
-              <span>Compare Versions</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/comments"
-              style={location.pathname.includes('/comments') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!location.pathname.includes('/comments')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaComments style={{ marginRight: '0.5rem' }} />
-              <span>Comments</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/import"
-              style={location.pathname === '/scenes/import' ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (location.pathname !== '/scenes/import') e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaFileImport style={{ marginRight: '0.5rem' }} />
-              <span>Import</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/export"
-              style={location.pathname === '/scenes/export' ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (location.pathname !== '/scenes/export') e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaFileExport style={{ marginRight: '0.5rem' }} />
-              <span>Export</span>
-            </Link>
-          </li>
-        </ul>
-      </div>
-      
       {/* Tools */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={sectionHeaderStyle}>TOOLS</h3>
+        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>TOOLS</h3>
         <ul>
           <li>
             <Link
@@ -341,7 +257,7 @@ export const SideNav: React.FC = () => {
           onMouseOut={(e) => {if (!isActive('/settings')) e.currentTarget.style.backgroundColor = 'transparent'}}
         >
           <FaCog style={{ marginRight: '0.5rem' }} />
-          <span>Settings</span>
+          <span>App Settings</span>
         </Link>
       </div>
     </nav>
