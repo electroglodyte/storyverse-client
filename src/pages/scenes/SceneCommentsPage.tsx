@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { FaArrowLeft, FaComments, FaTrash, FaPlus, FaCheck, FaTimes, FaRegComment, FaRegLightbulb, FaRegQuestionCircle, FaRegEdit, FaFilter, FaTasks, FaChevronDown, FaChevronUp } from 'react-icons/fa';
+import { FaArrowLeft, FaComments, FaTrash, FaPlus, FaCheck, FaTimes, FaRegComment, FaRegLightbulb, FaRegQuestionCircle, FaRegEdit, FaFilter, FaTasks, FaChevronDown, FaChevronUp, FaEdit } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { Scene, SceneComment } from '../../supabase-tables';
 import { formatDistanceToNow } from 'date-fns';
