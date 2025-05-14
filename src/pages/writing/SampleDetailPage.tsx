@@ -37,6 +37,16 @@ interface Profile {
   weight?: number;
 }
 
+interface ProfileWithStyle {
+  profile_id: string;
+  weight: number;
+  style_profiles: {
+    id: string;
+    name: string;
+    description: string;
+  };
+}
+
 const SampleDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -95,7 +105,7 @@ const SampleDetailPage: React.FC = () => {
         if (profilesError) throw profilesError;
         
         // Transform profiles data
-        const formattedProfiles = profilesData?.map(item => ({
+        const formattedProfiles = profilesData?.map((item: ProfileWithStyle) => ({
           id: item.style_profiles.id,
           name: item.style_profiles.name,
           description: item.style_profiles.description,
