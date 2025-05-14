@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
-  minor: 5,
-  patch: 3,
+  minor: 6,
+  patch: 0,
   date: '2025-05-14',
-  notes: 'Fixed TypeScript interface errors in ProfileDetailPage and SampleDetailPage components. Updated ProfileSample and ProfileWithStyle interfaces to correctly handle array data structures from Supabase.'
+  notes: 'Added support for factions and modified characters and settings to be associated with story worlds instead of individual stories. Added database tables for factions and faction_characters.'
 };
