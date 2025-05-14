@@ -6,8 +6,13 @@ import { FaPlus, FaBook } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
 
+// Add image_url property to extend StoryWorld type
+interface ExtendedStoryWorld extends StoryWorld {
+  image_url?: string;
+}
+
 const StoryWorldsListPage: React.FC = () => {
-  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
+  const [storyWorlds, setStoryWorlds] = useState<ExtendedStoryWorld[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -76,9 +81,9 @@ const StoryWorldsListPage: React.FC = () => {
               className="border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 overflow-hidden flex flex-col"
             >
               <div className="h-40 bg-gray-200 flex items-center justify-center overflow-hidden">
-                {storyWorld.cover_image ? (
+                {storyWorld.image_url ? (
                   <img
-                    src={storyWorld.cover_image}
+                    src={storyWorld.image_url}
                     alt={storyWorld.name}
                     className="w-full h-full object-cover"
                   />
