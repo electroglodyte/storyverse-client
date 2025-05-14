@@ -169,8 +169,25 @@ const FactionDetailPage: React.FC = () => {
         // Create properly typed member objects
         if (data && data.length > 0) {
           const membersList: FactionMember[] = data.map(item => {
-            // Create a proper character object
-            const character = item.characters as Character;
+            if (!item.characters) {
+              console.error('Character data missing for faction member:', item);
+              return null;
+            }
+            
+            // Explicitly type the character from the joined data
+            const character: Character = {
+              id: item.characters.id,
+              name: item.characters.name,
+              role: item.characters.role,
+              description: item.characters.description,
+              attributes: item.characters.attributes,
+              relationships: item.characters.relationships || {},
+              story_world_id: item.characters.story_world_id,
+              storyworld_id: item.characters.storyworld_id,
+              created_at: item.characters.created_at,
+              updated_at: item.characters.updated_at,
+              user_id: item.characters.user_id || ''
+            };
             
             // Create a proper FactionMember by extending the character
             const member: FactionMember = {
@@ -180,7 +197,7 @@ const FactionDetailPage: React.FC = () => {
             };
             
             return member;
-          });
+          }).filter((item): item is FactionMember => item !== null);
           
           setMembers(membersList);
         } else {
