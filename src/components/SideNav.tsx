@@ -1,10 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useProject } from '../context/ProjectContext';
+import { 
+  FaHome, FaBook, FaFileAlt, FaSearch, 
+  FaChartBar, FaProjectDiagram, FaBolt, FaRobot, 
+  FaCog, FaChevronDown, FaChevronUp, FaTheaterMasks, 
+  FaPen, FaHistory, FaComments, FaExchangeAlt, 
+  FaFileImport, FaFileExport
+} from 'react-icons/fa';
 
 export const SideNav: React.FC = () => {
   const location = useLocation();
   const { activeProject } = useProject();
+  const [scenesExpanded, setScenesExpanded] = useState(true);
 
   const isActive = (path: string) => {
     if (path === '/') {
@@ -28,9 +36,21 @@ export const SideNav: React.FC = () => {
     backgroundColor: '#2d2e33',
     fontWeight: '500'
   };
+  
+  const subItemStyle = {
+    ...navItemStyle,
+    paddingLeft: '2.5rem',
+    fontSize: '0.9rem'
+  };
+  
+  const activeSubItemStyle = {
+    ...subItemStyle,
+    backgroundColor: '#2d2e33',
+    fontWeight: '500'
+  };
 
   return (
-    <nav style={{ width: '100%', height: '100%', padding: '1rem 0' }}>
+    <nav style={{ width: '100%', height: '100%', padding: '1rem 0', overflow: 'auto' }}>
       {/* Logo and Subtitle */}
       <div style={{ padding: '0 1.5rem', marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#fef3c7' }}>StoryVerse</h1>
@@ -74,7 +94,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/') || isActive('/projects') || isActive('/samples') || isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>🏠</span>
+              <FaHome style={{ marginRight: '0.5rem' }} />
               <span>Dashboard</span>
             </Link>
           </li>
@@ -85,7 +105,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/projects')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>📚</span>
+              <FaBook style={{ marginRight: '0.5rem' }} />
               <span>Projects</span>
             </Link>
           </li>
@@ -96,7 +116,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/samples')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>📝</span>
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
               <span>Writing Samples</span>
             </Link>
           </li>
@@ -107,11 +127,78 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>🔍</span>
+              <FaSearch style={{ marginRight: '0.5rem' }} />
               <span>Search</span>
             </Link>
           </li>
         </ul>
+      </div>
+      
+      {/* Scene Management */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <div 
+          style={{ 
+            padding: '0 1.5rem', 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            cursor: 'pointer',
+            marginBottom: '0.5rem' 
+          }}
+          onClick={() => setScenesExpanded(!scenesExpanded)}
+        >
+          <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500' }}>SCENES</h3>
+          {scenesExpanded ? <FaChevronUp size={10} color="rgba(252, 211, 77, 0.7)" /> : <FaChevronDown size={10} color="rgba(252, 211, 77, 0.7)" />}
+        </div>
+        
+        {scenesExpanded && (
+          <ul>
+            <li>
+              <Link
+                to="/scenes"
+                style={location.pathname === '/scenes' ? activeSubItemStyle : subItemStyle}
+                onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+                onMouseOut={(e) => {if (location.pathname !== '/scenes') e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <FaTheaterMasks style={{ marginRight: '0.5rem' }} />
+                <span>Scene Explorer</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/scenes/new"
+                style={location.pathname === '/scenes/new' ? activeSubItemStyle : subItemStyle}
+                onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+                onMouseOut={(e) => {if (location.pathname !== '/scenes/new') e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <FaPen style={{ marginRight: '0.5rem' }} />
+                <span>New Scene</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/scenes/import"
+                style={location.pathname === '/scenes/import' ? activeSubItemStyle : subItemStyle}
+                onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+                onMouseOut={(e) => {if (location.pathname !== '/scenes/import') e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <FaFileImport style={{ marginRight: '0.5rem' }} />
+                <span>Import</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/scenes/export"
+                style={location.pathname === '/scenes/export' ? activeSubItemStyle : subItemStyle}
+                onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+                onMouseOut={(e) => {if (location.pathname !== '/scenes/export') e.currentTarget.style.backgroundColor = 'transparent'}}
+              >
+                <FaFileExport style={{ marginRight: '0.5rem' }} />
+                <span>Export</span>
+              </Link>
+            </li>
+          </ul>
+        )}
       </div>
       
       {/* Tools */}
@@ -125,7 +212,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/style-analysis')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>📊</span>
+              <FaChartBar style={{ marginRight: '0.5rem' }} />
               <span>Style Analysis</span>
             </Link>
           </li>
@@ -136,7 +223,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/plot-mapping')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>📈</span>
+              <FaProjectDiagram style={{ marginRight: '0.5rem' }} />
               <span>Plot Mapping</span>
             </Link>
           </li>
@@ -147,7 +234,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/consistency-check')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>⚡</span>
+              <FaBolt style={{ marginRight: '0.5rem' }} />
               <span>Consistency Check</span>
             </Link>
           </li>
@@ -158,7 +245,7 @@ export const SideNav: React.FC = () => {
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/claude-assistant')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <span style={{ marginRight: '0.5rem' }}>💬</span>
+              <FaRobot style={{ marginRight: '0.5rem' }} />
               <span>Claude Assistant</span>
             </Link>
           </li>
@@ -173,7 +260,7 @@ export const SideNav: React.FC = () => {
           onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
           onMouseOut={(e) => {if (!isActive('/settings')) e.currentTarget.style.backgroundColor = 'transparent'}}
         >
-          <span style={{ marginRight: '0.5rem' }}>⚙️</span>
+          <FaCog style={{ marginRight: '0.5rem' }} />
           <span>Settings</span>
         </Link>
       </div>
