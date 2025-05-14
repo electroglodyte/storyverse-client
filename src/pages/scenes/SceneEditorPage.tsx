@@ -384,7 +384,7 @@ const SceneEditorPage: React.FC = () => {
             </div>
             <p className="text-xs text-gray-600">
               <strong>Tips:</strong> Use # for headings, ** for bold, * for italic, 
-              - for lists, and > for blockquotes.
+              - for lists, and &gt; for blockquotes.
             </p>
           </div>
         );
