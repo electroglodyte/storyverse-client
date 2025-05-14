@@ -39,8 +39,16 @@ interface RepresentativeSample {
 }
 
 interface ProfileSample {
-  writing_samples: WritingSample;
   weight: number;
+  writing_samples: {
+    id: string;
+    title: string;
+    author?: string;
+    sample_type?: string;
+    word_count: number;
+    content: string;
+    excerpt?: string;
+  };
 }
 
 const ProfileDetailPage: React.FC = () => {
@@ -120,7 +128,13 @@ const ProfileDetailPage: React.FC = () => {
         
         // Transform the data structure
         const formattedSamples: WritingSample[] = profileSamplesData?.map((item: ProfileSample) => ({
-          ...item.writing_samples,
+          id: item.writing_samples.id,
+          title: item.writing_samples.title,
+          author: item.writing_samples.author,
+          sample_type: item.writing_samples.sample_type,
+          word_count: item.writing_samples.word_count,
+          content: item.writing_samples.content,
+          excerpt: item.writing_samples.excerpt,
           weight: item.weight || 1.0
         })) || [];
         
