@@ -66,7 +66,10 @@ const BasicLayout: React.FC = () => {
     if (path === '/plot-mapping') return 'Plot Mapping';
     if (path === '/consistency-check') return 'Consistency Check';
     if (path === '/claude-assistant') return 'Claude Assistant';
-    if (path === '/settings') return 'Settings';
+    if (path === '/locations') return 'Locations';
+    if (path.startsWith('/locations/')) return 'Location Details';
+    if (path === '/settings') return 'Locations';
+    if (path.startsWith('/settings/')) return 'Location Details';
     return 'Dashboard';
   };
 
@@ -227,9 +230,9 @@ const BasicLayout: React.FC = () => {
         </div>
 
         <div style={{ marginTop: 'auto', padding: '20px' }}>
-          <Link to="/settings" className="sidebar-item" style={{ padding: '8px 0' }}>
+          <Link to="/locations" className="sidebar-item" style={{ padding: '8px 0' }}>
             <span className="sidebar-item-icon">⚙️</span>
-            <span>Settings</span>
+            <span>Locations</span>
           </Link>
         </div>
       </div>
