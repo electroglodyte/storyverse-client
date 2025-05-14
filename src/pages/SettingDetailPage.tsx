@@ -23,7 +23,7 @@ const LocationDetailPage: React.FC = () => {
   // Location form state
   const [location, setLocation] = useState<Partial<Location>>({
     name: '',
-    location_type: '',
+    location_type: 'other', // Set a default valid value
     time_period: '',
     description: '',
     story_world_id: '',
@@ -290,14 +290,20 @@ const LocationDetailPage: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Location Type
           </label>
-          <input
-            type="text"
+          <select
             name="location_type"
-            value={location.location_type || ''}
+            value={location.location_type || 'other'}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="e.g., Interior, Exterior, Virtual, Planet, City, Building"
-          />
+          >
+            <option value="city">City</option>
+            <option value="building">Building</option>
+            <option value="natural">Natural</option>
+            <option value="country">Country</option>
+            <option value="planet">Planet</option>
+            <option value="realm">Realm</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <div className="mb-6">
