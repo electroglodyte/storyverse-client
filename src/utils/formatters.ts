@@ -2,30 +2,33 @@
  * Formatters for different text formats (Fountain, Markdown)
  * Version: 0.1.0
  */
+import React from 'react';
 
 /**
  * Basic Fountain renderer for preview
  */
-export const renderFountainPreview = (content: string): JSX.Element[] => {
+export const renderFountainPreview = (content: string): React.ReactNode[] => {
   if (!content) return [];
   
   const lines = content.split('\n');
   return lines.map((line, index) => {
     // Scene headings
     if (line.match(/^(INT|EXT|I\/E)[\.\\s]/i) || line.startsWith('.')) {
-      return <p key={index} className="font-bold mt-4 mb-2 uppercase">{line.startsWith('.') ? line.substring(1) : line}</p>;
+      return React.createElement("p", { key: index, className: "font-bold mt-4 mb-2 uppercase" }, 
+        line.startsWith('.') ? line.substring(1) : line
+      );
     }
     
     // Character names
     if (line.trim() === line.toUpperCase() && line.trim() !== '' && 
         !line.startsWith('(') && !line.startsWith('!') && !line.startsWith('@') && 
         !line.startsWith('#') && !line.startsWith('.') && !line.startsWith('~')) {
-      return <p key={index} className="font-bold text-center mt-4">{line}</p>;
+      return React.createElement("p", { key: index, className: "font-bold text-center mt-4" }, line);
     }
     
     // Parentheticals
     if (line.startsWith('(') && line.endsWith(')')) {
-      return <p key={index} className="italic text-center ml-8 mr-8">{line}</p>;
+      return React.createElement("p", { key: index, className: "italic text-center ml-8 mr-8" }, line);
     }
     
     // Dialogue - following character names
@@ -33,40 +36,43 @@ export const renderFountainPreview = (content: string): JSX.Element[] => {
         (lines[index-1].trim() === lines[index-1].toUpperCase() && lines[index-1].trim() !== '') || 
         (index > 1 && lines[index-2].trim() === lines[index-2].toUpperCase() && 
          lines[index-1].startsWith('(') && lines[index-1].endsWith(')'))) {
-      return <p key={index} className="ml-8 mr-8 text-center mb-2">{line}</p>;
+      return React.createElement("p", { key: index, className: "ml-8 mr-8 text-center mb-2" }, line);
     }
     
     // Transitions
     if (line.endsWith('TO:') || line === 'FADE OUT.' || line === 'CUT TO BLACK.') {
-      return <p key={index} className="font-bold text-right mt-2 mb-2 uppercase">{line}</p>;
+      return React.createElement("p", { key: index, className: "font-bold text-right mt-2 mb-2 uppercase" }, line);
     }
     
     // Section headings
     if (line.startsWith('#')) {
-      const level = line.match(/^#+/)[0].length;
-      return <p key={index} className={`font-bold mt-3 mb-2 text-${level === 1 ? 'xl' : 'lg'} text-blue-600`}>{line}</p>;
+      const level = line.match(/^#+/)?.[0].length || 1;
+      return React.createElement("p", { 
+        key: index, 
+        className: `font-bold mt-3 mb-2 text-${level === 1 ? 'xl' : 'lg'} text-blue-600` 
+      }, line);
     }
     
     // Notes
     if (line.startsWith('[[') && line.endsWith(']]')) {
-      return <p key={index} className="italic text-gray-500 bg-yellow-50 p-1">{line}</p>;
+      return React.createElement("p", { key: index, className: "italic text-gray-500 bg-yellow-50 p-1" }, line);
     }
     
     // Default (action)
-    return <p key={index} className="mb-2">{line}</p>;
+    return React.createElement("p", { key: index, className: "mb-2" }, line);
   });
 };
 
 /**
  * Basic Markdown renderer for preview
  */
-export const renderMarkdownPreview = (content: string): JSX.Element[] => {
+export const renderMarkdownPreview = (content: string): React.ReactNode[] => {
   if (!content) return [];
   
   const lines = content.split('\n');
   let inList = false;
-  let listItems: JSX.Element[] = [];
-  let result: JSX.Element[] = [];
+  let listItems: React.ReactNode[] = [];
+  let result: React.ReactNode[] = [];
   let key = 0;
   
   for (let i = 0; i < lines.length; i++) {
@@ -86,15 +92,18 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
       // Process inline formatting
       const formattedContent = processInlineMarkdown(content);
       
-      listItems.push(<li key={`list-item-${key}`} dangerouslySetInnerHTML={{ __html: formattedContent }}></li>);
+      listItems.push(React.createElement("li", { 
+        key: `list-item-${key}`, 
+        dangerouslySetInnerHTML: { __html: formattedContent } 
+      }));
       
       // If next line is not a list item, close the list
       if (i === lines.length - 1 || !(lines[i+1].match(/^[\*\-\+]\s/) || lines[i+1].match(/^\d+\.\s/))) {
         inList = false;
         result.push(
           isOrdered 
-            ? <ol key={`list-${key}`} className="list-decimal ml-6 mb-4">{listItems}</ol>
-            : <ul key={`list-${key}`} className="list-disc ml-6 mb-4">{listItems}</ul>
+            ? React.createElement("ol", { key: `list-${key}`, className: "list-decimal ml-6 mb-4" }, listItems)
+            : React.createElement("ul", { key: `list-${key}`, className: "list-disc ml-6 mb-4" }, listItems)
         );
       }
       
@@ -106,40 +115,59 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
       inList = false;
       result.push(
         lines[i-1].match(/^\d+\.\s/)
-          ? <ol key={`list-${key}`} className="list-decimal ml-6 mb-4">{listItems}</ol>
-          : <ul key={`list-${key}`} className="list-disc ml-6 mb-4">{listItems}</ul>
+          ? React.createElement("ol", { key: `list-${key}`, className: "list-decimal ml-6 mb-4" }, listItems)
+          : React.createElement("ul", { key: `list-${key}`, className: "list-disc ml-6 mb-4" }, listItems)
       );
     }
     
     // Headings
     if (line.startsWith('# ')) {
-      result.push(<h1 key={key} className="text-3xl font-bold mt-6 mb-3" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(2)) }}></h1>);
+      result.push(React.createElement("h1", { 
+        key: key, 
+        className: "text-3xl font-bold mt-6 mb-3", 
+        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(2)) } 
+      }));
       continue;
     }
     if (line.startsWith('## ')) {
-      result.push(<h2 key={key} className="text-2xl font-bold mt-5 mb-3" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(3)) }}></h2>);
+      result.push(React.createElement("h2", { 
+        key: key, 
+        className: "text-2xl font-bold mt-5 mb-3", 
+        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(3)) } 
+      }));
       continue;
     }
     if (line.startsWith('### ')) {
-      result.push(<h3 key={key} className="text-xl font-bold mt-4 mb-2" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(4)) }}></h3>);
+      result.push(React.createElement("h3", { 
+        key: key, 
+        className: "text-xl font-bold mt-4 mb-2", 
+        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(4)) } 
+      }));
       continue;
     }
     if (line.startsWith('#### ')) {
-      result.push(<h4 key={key} className="text-lg font-bold mt-3 mb-2" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(5)) }}></h4>);
+      result.push(React.createElement("h4", { 
+        key: key, 
+        className: "text-lg font-bold mt-3 mb-2", 
+        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(5)) } 
+      }));
       continue;
     }
     
     // Horizontal rule
     if (line.match(/^(\*\*\*|\-\-\-|\_\_\_)$/)) {
-      result.push(<hr key={key} className="my-4 border-t-2" />);
+      result.push(React.createElement("hr", { key: key, className: "my-4 border-t-2" }));
       continue;
     }
     
     // Blockquotes
     if (line.startsWith('> ')) {
       result.push(
-        <blockquote key={key} className="border-l-4 border-gray-300 pl-4 py-1 italic text-gray-700" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(2)) }}>
-        </blockquote>
+        React.createElement("blockquote", { 
+          key: key, 
+          className: "border-l-4 border-gray-300 pl-4 py-1 italic text-gray-700", 
+          dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(2)) }
+        })
       );
       continue;
     }
@@ -157,9 +185,9 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
       }
       
       result.push(
-        <pre key={key} className="bg-gray-100 rounded p-3 my-4 overflow-auto font-mono text-sm">
-          <code>{codeContent}</code>
-        </pre>
+        React.createElement("pre", { key: key, className: "bg-gray-100 rounded p-3 my-4 overflow-auto font-mono text-sm" },
+          React.createElement("code", {}, codeContent)
+        )
       );
       
       // Skip to after the closing code block
@@ -169,13 +197,17 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
     
     // Empty line becomes a paragraph break
     if (line.trim() === '') {
-      result.push(<br key={key} />);
+      result.push(React.createElement("br", { key: key }));
       continue;
     }
     
     // Default paragraph
     result.push(
-      <p key={key} className="mb-4" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line) }}></p>
+      React.createElement("p", { 
+        key: key, 
+        className: "mb-4", 
+        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line) }
+      })
     );
   }
   
@@ -217,7 +249,7 @@ export const convertToFountain = (text: string, title: string): string => {
   fountain += `Title: ${title || 'Untitled'}\n\n`;
   
   // Add scene heading if there isn't one already
-  if (!paragraphs[0].match(/^(INT|EXT|I\/E)[\.\s]/i)) {
+  if (!paragraphs[0].match(/^(INT|EXT|I\/E)[\.\\s]/i)) {
     fountain += `INT. LOCATION - DAY\n\n`;
   }
   
@@ -256,7 +288,7 @@ export const detectFormat = (text: string): 'plain' | 'fountain' | 'markdown' =>
   const mdElements = (text.match(/(\#{1,6}\s|\*\*.*?\*\*|__.*?__|_.*?_|\[.*?\]\(.*?\)|\`.*?\`)/g) || []).length;
   
   // Count Fountain elements
-  const fountainElements = (text.match(/^(INT|EXT|I\/E)[\.\s]|^[A-Z\s]+$|^\(.*?\)$|^CUT TO:|^FADE (IN|OUT):|^DISSOLVE TO:/gm) || []).length;
+  const fountainElements = (text.match(/^(INT|EXT|I\/E)[\.\\s]|^[A-Z\\s]+$|^\\(.*?\\)$|^CUT TO:|^FADE (IN|OUT):|^DISSOLVE TO:/gm) || []).length;
   
   if (fountainElements > mdElements && fountainElements > 3) {
     return 'fountain';
