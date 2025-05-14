@@ -11,6 +11,20 @@ interface FactionMember extends Character {
   faction_character_id: string;
 }
 
+interface CharacterData {
+  id: string;
+  name: string;
+  description: string;
+  role: string;
+  attributes: any;
+  relationships: any;
+  story_world_id: string;
+  storyworld_id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+}
+
 const FactionDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -175,9 +189,21 @@ const FactionDetailPage: React.FC = () => {
               return null;
             }
             
-            // Extract the character data from the joined result
-            // The issue is here - item.characters is properly an object, not an array
-            const characterData = item.characters;
+            // Handle the case where item.characters might be an array or an object
+            // We need to extract the character data appropriately
+            let characterData: CharacterData;
+            
+            if (Array.isArray(item.characters)) {
+              // If it's an array, take the first element
+              if (item.characters.length === 0) {
+                console.error('Character data array is empty for faction member:', item);
+                return null;
+              }
+              characterData = item.characters[0] as unknown as CharacterData;
+            } else {
+              // Otherwise, use it directly as an object
+              characterData = item.characters as unknown as CharacterData;
+            }
             
             // Create a properly typed character object from the data
             const character: Character = {
