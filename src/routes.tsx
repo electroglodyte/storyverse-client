@@ -13,6 +13,10 @@ import StoryWorldsListPage from './pages/StoryWorldsListPage';
 import SetupPage from './pages/SetupPage';
 import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 
+// Characters, Settings, Factions Pages
+import CharactersListPage from './pages/CharactersListPage';
+import CharacterDetailPage from './pages/CharacterDetailPage';
+
 // Writing Samples & Style Profiles Pages
 import WritingSamplesPage from './pages/writing/WritingSamplesPage';
 import SampleDetailPage from './pages/writing/SampleDetailPage';
@@ -122,6 +126,23 @@ const router = createBrowserRouter([
       {
         path: 'stories/new',
         element: <StoryDetailPage />,
+      },
+      // Character routes
+      {
+        path: 'characters',
+        element: <CharactersListPage />,
+      },
+      {
+        path: 'characters/:id',
+        element: <CharacterDetailPage />,
+      },
+      {
+        path: 'characters/edit/:id',
+        element: <CharacterDetailPage />,
+      },
+      {
+        path: 'characters/new',
+        element: <CharacterDetailPage />,
       },
       // Writing Samples routes
       {
