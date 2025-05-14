@@ -37,14 +37,15 @@ interface Profile {
   weight?: number;
 }
 
+// Updated to match the actual data structure from Supabase
 interface ProfileWithStyle {
   profile_id: string;
   weight: number;
-  style_profiles: {
-    id: string;
-    name: string;
-    description: string;
-  };
+  style_profiles: Array<{
+    id: any;
+    name: any;
+    description: any;
+  }>;
 }
 
 const SampleDetailPage: React.FC = () => {
@@ -104,11 +105,11 @@ const SampleDetailPage: React.FC = () => {
         
         if (profilesError) throw profilesError;
         
-        // Transform profiles data
+        // Transform profiles data - note that style_profiles is an array, so we access [0]
         const formattedProfiles = profilesData?.map((item: ProfileWithStyle) => ({
-          id: item.style_profiles.id,
-          name: item.style_profiles.name,
-          description: item.style_profiles.description,
+          id: item.style_profiles[0].id,
+          name: item.style_profiles[0].name,
+          description: item.style_profiles[0].description,
           weight: item.weight || 1.0
         })) || [];
         
