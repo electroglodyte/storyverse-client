@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
-import { FaSave, FaHistory, FaComments, FaEye, FaArrowLeft, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaSave, FaHistory, FaComments, FaEye, FaArrowLeft, FaCheck, FaTimes, FaCode, FaQuestion, FaParagraph } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { Scene } from '../../supabase-tables';
+import { renderFountainPreview, renderMarkdownPreview, convertToFountain, convertToMarkdown, detectFormat } from '../../utils/formatters';
 
 const SceneEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,9 +28,60 @@ const SceneEditorPage: React.FC = () => {
   const [versionNote, setVersionNote] = useState<string>('');
   const [showVersionDialog, setShowVersionDialog] = useState<boolean>(false);
   const [previewMode, setPreviewMode] = useState<boolean>(false);
+  const [availableStories, setAvailableStories] = useState<any[]>([]);
+  const [showFormatHelp, setShowFormatHelp] = useState<boolean>(false);
+  const [autoDetectFormat, setAutoDetectFormat] = useState<boolean>(false);
+  const [splitView, setSplitView] = useState<boolean>(false);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Save - Ctrl+S / Cmd+S
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (isEditing) {
+          setShowVersionDialog(true);
+        } else {
+          handleSave();
+        }
+      }
+      
+      // Toggle preview - Ctrl+P / Cmd+P
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        setPreviewMode(!previewMode);
+      }
+      
+      // Toggle split view - Ctrl+Alt+P / Cmd+Alt+P
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === 'p') {
+        e.preventDefault();
+        setSplitView(!splitView);
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEditing, previewMode, splitView]);
   
   // Fetch scene data if editing
   useEffect(() => {
+    const fetchStories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('stories')
+          .select('id, title')
+          .order('title');
+        
+        if (error) throw error;
+        setAvailableStories(data || []);
+      } catch (error) {
+        console.error('Error fetching stories:', error);
+      }
+    };
+    
+    fetchStories();
+    
     if (isEditing) {
       const fetchScene = async () => {
         try {
@@ -56,16 +108,74 @@ const SceneEditorPage: React.FC = () => {
     }
   }, [id, isEditing]);
   
+  // Handle format auto-detection
+  useEffect(() => {
+    if (autoDetectFormat && scene.content) {
+      const detectedFormat = detectFormat(scene.content);
+      if (detectedFormat !== scene.format) {
+        setScene(prev => ({ ...prev, format: detectedFormat }));
+        toast.success(`Format detected as ${detectedFormat}`);
+      }
+    }
+  }, [autoDetectFormat, scene.content]);
+  
   // Handle form input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setScene(prev => ({ ...prev, [name]: value }));
   };
   
+  // Handle format change with potential conversion
+  const handleFormatChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newFormat = e.target.value as 'plain' | 'fountain' | 'markdown';
+    
+    // If content exists, ask if the user wants to convert the format
+    if (scene.content.trim() && scene.format !== newFormat) {
+      if (window.confirm(`Would you like to convert the content to ${newFormat} format? This might lose some formatting.`)) {
+        let convertedContent = scene.content;
+        
+        // Perform the conversion
+        if (newFormat === 'fountain') {
+          convertedContent = convertToFountain(scene.content, scene.title);
+        } else if (newFormat === 'markdown') {
+          convertedContent = convertToMarkdown(scene.content, scene.title);
+        }
+        
+        setScene(prev => ({ ...prev, format: newFormat, content: convertedContent }));
+      } else {
+        // Just change the format without conversion
+        setScene(prev => ({ ...prev, format: newFormat }));
+      }
+    } else {
+      // No content or same format, just update
+      setScene(prev => ({ ...prev, format: newFormat }));
+    }
+  };
+  
   // Handle checkbox changes
   const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;
     setScene(prev => ({ ...prev, [name]: checked }));
+  };
+  
+  // Insert format-specific template text at cursor
+  const insertTemplate = (template: string) => {
+    if (!editorRef.current) return;
+    
+    const start = editorRef.current.selectionStart;
+    const end = editorRef.current.selectionEnd;
+    const content = scene.content;
+    
+    const newContent = content.substring(0, start) + template + content.substring(end);
+    setScene(prev => ({ ...prev, content: newContent }));
+    
+    // Set cursor position after insertion
+    setTimeout(() => {
+      if (editorRef.current) {
+        editorRef.current.focus();
+        editorRef.current.setSelectionRange(start + template.length, start + template.length);
+      }
+    }, 0);
   };
   
   // Save scene
@@ -179,85 +289,130 @@ const SceneEditorPage: React.FC = () => {
     }
   };
   
-  // Render Fountain preview
-  const renderFountainPreview = useCallback(() => {
-    // Basic Fountain rendering - in a real app, you'd use a proper Fountain parser
-    if (!scene.content) return null;
-    
-    const lines = scene.content.split('\n');
-    return (
-      <div className="fountain-preview font-mono">
-        {lines.map((line, index) => {
-          // Scene headings
-          if (line.startsWith('INT.') || line.startsWith('EXT.') || line.startsWith('I/E.')) {
-            return <p key={index} className="font-bold mt-4 mb-2">{line}</p>;
-          }
-          
-          // Character names
-          if (line.trim() === line.toUpperCase() && line.trim() !== '' && !line.startsWith('(')) {
-            return <p key={index} className="font-bold text-center mt-4">{line}</p>;
-          }
-          
-          // Parentheticals
-          if (line.startsWith('(') && line.endsWith(')')) {
-            return <p key={index} className="italic text-center ml-8 mr-8">{line}</p>;
-          }
-          
-          // Dialogue - following character names
-          if (index > 0 && lines[index-1].trim() === lines[index-1].toUpperCase() || 
-              (index > 1 && lines[index-2].trim() === lines[index-2].toUpperCase() && 
-               lines[index-1].startsWith('(') && lines[index-1].endsWith(')'))) {
-            return <p key={index} className="ml-8 mr-8 text-center mb-4">{line}</p>;
-          }
-          
-          // Transitions
-          if (line.endsWith('TO:') || line === 'FADE OUT.' || line === 'CUT TO BLACK.') {
-            return <p key={index} className="font-bold text-right mt-2 mb-2">{line}</p>;
-          }
-          
-          // Default (action)
-          return <p key={index} className="mb-2">{line}</p>;
-        })}
-      </div>
-    );
-  }, [scene.content]);
-  
-  // Render Markdown preview
-  const renderMarkdownPreview = useCallback(() => {
-    // Simple markdown rendering - in a real app, you'd use a proper Markdown parser
-    if (!scene.content) return null;
-    
-    const lines = scene.content.split('\n');
-    return (
-      <div className="markdown-preview">
-        {lines.map((line, index) => {
-          // Headings
-          if (line.startsWith('# ')) {
-            return <h1 key={index} className="text-2xl font-bold mt-4 mb-2">{line.substring(2)}</h1>;
-          }
-          if (line.startsWith('## ')) {
-            return <h2 key={index} className="text-xl font-bold mt-3 mb-2">{line.substring(3)}</h2>;
-          }
-          if (line.startsWith('### ')) {
-            return <h3 key={index} className="text-lg font-bold mt-3 mb-2">{line.substring(4)}</h3>;
-          }
-          
-          // Bold and Italic
-          let content = line;
-          content = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-          content = content.replace(/\*(.*?)\*/g, '<em>$1</em>');
-          
-          // Lists
-          if (line.startsWith('- ')) {
-            return <li key={index} className="ml-4">{content.substring(2)}</li>;
-          }
-          
-          // Default
-          return <p key={index} className="mb-2" dangerouslySetInnerHTML={{ __html: content }}></p>;
-        })}
-      </div>
-    );
-  }, [scene.content]);
+  // Format help panel based on selected format
+  const renderFormatHelp = useCallback(() => {
+    switch (scene.format) {
+      case 'fountain':
+        return (
+          <div className="p-4 bg-blue-50 border rounded">
+            <h3 className="font-bold mb-2">Fountain Format Help</h3>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("INT. LOCATION - DAY\n\n")}
+              >
+                Scene Heading
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("\nCHARACTER NAME\n")}
+              >
+                Character
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("(parenthetical)\n")}
+              >
+                Parenthetical
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("\nCUT TO:\n\n")}
+              >
+                Transition
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("[[Note: this is a note]]\n")}
+              >
+                Note
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("\n")}
+              >
+                Dialogue
+              </button>
+            </div>
+            <p className="text-xs text-gray-600">
+              <strong>Tips:</strong> Scene headings start with INT./EXT., character names are in ALL CAPS, 
+              and parentheticals go between character name and dialogue.
+            </p>
+          </div>
+        );
+      case 'markdown':
+        return (
+          <div className="p-4 bg-green-50 border rounded">
+            <h3 className="font-bold mb-2">Markdown Format Help</h3>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("# Heading 1\n")}
+              >
+                Heading 1
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("## Heading 2\n")}
+              >
+                Heading 2
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("**bold**")}
+              >
+                Bold
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("*italic*")}
+              >
+                Italic
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("- List item\n")}
+              >
+                List
+              </button>
+              <button 
+                className="btn btn-sm btn-outline" 
+                onClick={() => insertTemplate("> Blockquote\n")}
+              >
+                Quote
+              </button>
+            </div>
+            <p className="text-xs text-gray-600">
+              <strong>Tips:</strong> Use # for headings, ** for bold, * for italic, 
+              - for lists, and > for blockquotes.
+            </p>
+          </div>
+        );
+      default:
+        return (
+          <div className="p-4 bg-gray-50 border rounded">
+            <h3 className="font-bold mb-2">Plain Text Format</h3>
+            <p className="text-sm">
+              Plain text doesn't require special formatting. Just type normally and use paragraph breaks to separate sections.
+            </p>
+            <div className="mt-2">
+              <button 
+                className="btn btn-sm btn-outline w-full justify-between"
+                onClick={() => {
+                  if (window.confirm("Would you like to convert to a structured format? Choose OK for Fountain (screenplay) or Cancel for Markdown.")) {
+                    handleFormatChange({ target: { value: 'fountain', name: 'format' } } as React.ChangeEvent<HTMLSelectElement>);
+                  } else {
+                    handleFormatChange({ target: { value: 'markdown', name: 'format' } } as React.ChangeEvent<HTMLSelectElement>);
+                  }
+                }}
+              >
+                <span>Convert to Structured Format</span> <FaArrowLeft />
+              </button>
+            </div>
+          </div>
+        );
+    }
+  }, [scene.format]);
   
   if (loading) {
     return (
@@ -269,7 +424,7 @@ const SceneEditorPage: React.FC = () => {
   
   return (
     <div className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <Link to="/scenes" className="btn btn-ghost mr-4">
             <FaArrowLeft />
@@ -278,96 +433,165 @@ const SceneEditorPage: React.FC = () => {
             {isEditing ? `Edit Scene: ${scene.title}` : 'Create New Scene'}
           </h1>
         </div>
-        <div className="flex space-x-2">
+        <div className="flex flex-wrap gap-2">
           {isEditing && (
             <>
+              {!previewMode && (
+                <button 
+                  className={`btn btn-sm btn-outline ${showFormatHelp ? 'btn-primary' : ''}`}
+                  onClick={() => setShowFormatHelp(!showFormatHelp)}
+                >
+                  <FaQuestion className="mr-1" /> Format Help
+                </button>
+              )}
+              
               <button 
-                className="btn btn-outline btn-info flex items-center"
+                className={`btn btn-sm btn-outline ${splitView ? 'btn-info' : ''}`}
+                onClick={() => setSplitView(!splitView)}
+                disabled={previewMode}
+              >
+                <FaCode className="mr-1" /> Split View
+              </button>
+              
+              <button 
+                className={`btn btn-sm ${previewMode ? 'btn-primary' : 'btn-outline btn-info'}`}
                 onClick={() => setPreviewMode(!previewMode)}
               >
-                <FaEye className="mr-2" /> {previewMode ? 'Edit' : 'Preview'}
+                <FaEye className="mr-1" /> {previewMode ? 'Edit' : 'Preview'}
               </button>
-              <Link to={`/scenes/${id}/versions`} className="btn btn-outline btn-secondary flex items-center">
-                <FaHistory className="mr-2" /> Versions
+              
+              <Link to={`/scenes/${id}/versions`} className="btn btn-sm btn-outline btn-secondary">
+                <FaHistory className="mr-1" /> Versions
               </Link>
-              <Link to={`/scenes/${id}/comments`} className="btn btn-outline btn-warning flex items-center">
-                <FaComments className="mr-2" /> Comments
+              
+              <Link to={`/scenes/${id}/comments`} className="btn btn-sm btn-outline btn-warning">
+                <FaComments className="mr-1" /> Comments
               </Link>
             </>
           )}
+          
           <button 
-            className="btn btn-primary flex items-center"
+            className="btn btn-sm btn-primary"
             onClick={() => isEditing ? setShowVersionDialog(true) : handleSave()}
             disabled={saving}
           >
-            <FaSave className="mr-2" /> {saving ? 'Saving...' : 'Save'}
+            <FaSave className="mr-1" /> {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
 
       {previewMode ? (
+        // Preview Mode
         <div className="bg-white p-6 rounded-lg shadow min-h-[70vh]">
           <h2 className="text-2xl font-bold mb-4">{scene.title}</h2>
           {scene.description && (
             <p className="text-gray-600 italic mb-6">{scene.description}</p>
           )}
           <div className="border-t pt-4">
-            {scene.format === 'fountain' ? renderFountainPreview() : 
-             scene.format === 'markdown' ? renderMarkdownPreview() : 
-             <div className="whitespace-pre-wrap">{scene.content}</div>}
+            {scene.format === 'fountain' ? (
+              <div className="fountain-preview font-mono">{renderFountainPreview(scene.content)}</div>
+            ) : scene.format === 'markdown' ? (
+              <div className="markdown-preview">{renderMarkdownPreview(scene.content)}</div>
+            ) : (
+              <div className="whitespace-pre-wrap">{scene.content}</div>
+            )}
           </div>
         </div>
       ) : (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2">
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text font-semibold">Title</span>
-                </label>
-                <input
-                  type="text"
-                  name="title"
-                  value={scene.title}
-                  onChange={handleChange}
-                  className="input input-bordered w-full"
-                  placeholder="Scene title"
-                  required
-                />
-              </div>
-              
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text font-semibold">Description</span>
-                </label>
-                <textarea
-                  name="description"
-                  value={scene.description || ''}
-                  onChange={handleChange}
-                  className="textarea textarea-bordered w-full"
-                  placeholder="Brief description of this scene"
-                  rows={2}
-                />
-              </div>
-              
-              <div className="form-control mb-4">
-                <label className="label">
-                  <span className="label-text font-semibold">Content</span>
-                </label>
-                <textarea
-                  name="content"
-                  value={scene.content || ''}
-                  onChange={handleChange}
-                  className="textarea textarea-bordered w-full font-mono"
-                  placeholder={scene.format === 'fountain' ? 
-                    'INT. LOCATION - DAY\n\nAction description...\n\nCHARACTER\nDialogue...' : 
-                    'Enter scene content here...'}
-                  rows={20}
-                />
+        // Edit Mode
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className={splitView ? "md:col-span-2" : "md:col-span-3"}>
+            <div className="bg-white p-6 rounded-lg shadow">
+              {/* Main content area */}
+              <div className={splitView ? "grid grid-cols-2 gap-4" : ""}>
+                <div>
+                  <div className="form-control mb-4">
+                    <label className="label">
+                      <span className="label-text font-semibold">Title</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="title"
+                      value={scene.title}
+                      onChange={handleChange}
+                      className="input input-bordered w-full"
+                      placeholder="Scene title"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="form-control mb-4">
+                    <label className="label">
+                      <span className="label-text font-semibold">Description</span>
+                    </label>
+                    <textarea
+                      name="description"
+                      value={scene.description || ''}
+                      onChange={handleChange}
+                      className="textarea textarea-bordered w-full"
+                      placeholder="Brief description of this scene"
+                      rows={2}
+                    />
+                  </div>
+                  
+                  {showFormatHelp && (
+                    <div className="mb-4">
+                      {renderFormatHelp()}
+                    </div>
+                  )}
+                  
+                  <div className="form-control mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="label">
+                        <span className="label-text font-semibold">Content</span>
+                      </label>
+                      <div className="flex items-center">
+                        <label className="label cursor-pointer">
+                          <span className="label-text mr-2 text-xs">Auto-detect format</span>
+                          <input
+                            type="checkbox"
+                            className="toggle toggle-sm"
+                            checked={autoDetectFormat}
+                            onChange={(e) => setAutoDetectFormat(e.target.checked)}
+                          />
+                        </label>
+                      </div>
+                    </div>
+                    <textarea
+                      ref={editorRef}
+                      name="content"
+                      value={scene.content || ''}
+                      onChange={handleChange}
+                      className="textarea textarea-bordered w-full font-mono"
+                      placeholder={scene.format === 'fountain' ? 
+                        'INT. LOCATION - DAY\n\nAction description...\n\nCHARACTER\nDialogue...' : 
+                        'Enter scene content here...'}
+                      rows={20}
+                    />
+                  </div>
+                </div>
+                
+                {splitView && (
+                  <div className="border-l pl-4">
+                    <h3 className="font-bold mb-2">Live Preview</h3>
+                    <div className="border p-4 rounded-lg bg-gray-50 min-h-[500px] overflow-auto">
+                      {scene.format === 'fountain' ? (
+                        <div className="fountain-preview font-mono">{renderFountainPreview(scene.content)}</div>
+                      ) : scene.format === 'markdown' ? (
+                        <div className="markdown-preview">{renderMarkdownPreview(scene.content)}</div>
+                      ) : (
+                        <div className="whitespace-pre-wrap">{scene.content}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            
-            <div>
+          </div>
+          
+          {/* Right sidebar - scene metadata */}
+          {!splitView && (
+            <div className="bg-white p-6 rounded-lg shadow">
               <div className="form-control mb-4">
                 <label className="label">
                   <span className="label-text font-semibold">Scene Type</span>
@@ -392,13 +616,20 @@ const SceneEditorPage: React.FC = () => {
                 <select
                   name="format"
                   value={scene.format}
-                  onChange={handleChange}
+                  onChange={handleFormatChange}
                   className="select select-bordered w-full"
                 >
                   <option value="plain">Plain Text</option>
                   <option value="fountain">Fountain</option>
                   <option value="markdown">Markdown</option>
                 </select>
+                <label className="label">
+                  <span className="label-text-alt">
+                    {scene.format === 'fountain' ? 'Screenplay format with scene headings, characters, dialogue' : 
+                     scene.format === 'markdown' ? 'Rich text with headings, lists, formatting' : 
+                     'Simple text without special formatting'}
+                  </span>
+                </label>
               </div>
               
               <div className="form-control mb-4">
@@ -439,12 +670,17 @@ const SceneEditorPage: React.FC = () => {
                   className="select select-bordered w-full"
                 >
                   <option value="">None</option>
-                  {/* This would be populated with actual stories */}
-                  <option value="placeholder">Sample Story</option>
+                  {availableStories.map(story => (
+                    <option key={story.id} value={story.id}>
+                      {story.title}
+                    </option>
+                  ))}
                 </select>
               </div>
+              
+              {showFormatHelp && renderFormatHelp()}
             </div>
-          </div>
+          )}
         </div>
       )}
       
