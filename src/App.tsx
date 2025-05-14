@@ -38,9 +38,10 @@ function App() {
     if (location.pathname.startsWith('/series')) return 'Series';
     if (location.pathname.startsWith('/stories')) return 'Stories';
     if (location.pathname.startsWith('/characters')) return 'Characters';
-    if (location.pathname.startsWith('/settings')) return 'Settings';
+    if (location.pathname.startsWith('/settings')) return 'Settings & Locations';
     if (location.pathname.startsWith('/factions')) return 'Factions';
     if (location.pathname.startsWith('/timeline')) return 'Timeline';
+    if (location.pathname.startsWith('/app-settings')) return 'Application Settings';
     return 'StoryVerse';
   };
 
@@ -80,7 +81,7 @@ function App() {
           </Link>
           <Link to="/settings" className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaMapMarkerAlt /></span>
-            Settings
+            Locations
           </Link>
           <Link to="/factions" className={`sidebar-link ${isActive('/factions') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaUserFriends /></span>
@@ -123,7 +124,7 @@ function App() {
         <div className="mt-auto">
           <Link to="/app-settings" className={`sidebar-link ${isActive('/app-settings') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaCog /></span>
-            Settings
+            App Settings
           </Link>
         </div>
       </div>
