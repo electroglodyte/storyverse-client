@@ -131,7 +131,7 @@ const CreateProfilePage: React.FC = () => {
           if (profileSamplesError) throw profileSamplesError;
           
           // Set selected samples and weights
-          const selectedIds = new Set();
+          const selectedIds = new Set<string>();
           const weights: Record<string, number> = {};
           
           profileSamplesData?.forEach(item => {
@@ -179,7 +179,7 @@ const CreateProfilePage: React.FC = () => {
 
   // Handle sample selection
   const handleSampleSelection = (sampleId: string, selected: boolean) => {
-    const newSelectedIds = new Set(selectedSampleIds);
+    const newSelectedIds = new Set<string>(selectedSampleIds);
     
     if (selected) {
       newSelectedIds.add(sampleId);
