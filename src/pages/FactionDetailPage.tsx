@@ -5,7 +5,6 @@ import { Faction, StoryWorld, Character, FactionCharacter } from '../supabase-ta
 import { FaArrowLeft, FaSave, FaUserPlus, FaUserMinus, FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
-import { v4 as uuidv4 } from 'uuid';
 
 interface FactionMember extends Character {
   role: string;
@@ -18,7 +17,7 @@ const FactionDetailPage: React.FC = () => {
   const isNewFaction = id === 'new';
 
   const [faction, setFaction] = useState<Faction>({
-    id: isNewFaction ? uuidv4() : id || '',
+    id: isNewFaction ? crypto.randomUUID() : id || '',
     name: '',
     description: '',
     type: 'other',
@@ -152,7 +151,13 @@ const FactionDetailPage: React.FC = () => {
               name,
               description,
               role,
-              attributes
+              attributes,
+              relationships,
+              story_world_id,
+              storyworld_id,
+              created_at,
+              updated_at,
+              user_id
             )
           `)
           .eq('faction_id', faction.id);
@@ -277,7 +282,7 @@ const FactionDetailPage: React.FC = () => {
     
     try {
       const newMemberRelation = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         faction_id: faction.id,
         character_id: newMemberId,
         role: newMemberRole,
