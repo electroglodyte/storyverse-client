@@ -13,10 +13,10 @@ import StoryWorldsListPage from './pages/StoryWorldsListPage';
 import SetupPage from './pages/SetupPage';
 import DirectDatabaseSetupPage from './pages/DirectDatabaseSetupPage';
 
-// Characters, Settings, Factions Pages
+// Characters, Locations, Factions Pages
 import CharactersListPage from './pages/CharactersListPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
-import LocationsListPage from './pages/SettingsListPage';
+import LocationsListPage from './pages/LocationsListPage';
 import LocationDetailPage from './pages/SettingDetailPage';
 
 // Writing Samples & Style Profiles Pages
