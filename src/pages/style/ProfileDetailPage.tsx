@@ -38,17 +38,18 @@ interface RepresentativeSample {
   created_at: string;
 }
 
+// Updated to match the actual data structure from Supabase
 interface ProfileSample {
   weight: number;
-  writing_samples: {
-    id: string;
-    title: string;
-    author?: string;
-    sample_type?: string;
-    word_count: number;
-    content: string;
-    excerpt?: string;
-  };
+  writing_samples: Array<{
+    id: any;
+    title: any;
+    author: any;
+    sample_type: any;
+    word_count: any;
+    content: any;
+    excerpt: any;
+  }>;
 }
 
 const ProfileDetailPage: React.FC = () => {
@@ -126,15 +127,15 @@ const ProfileDetailPage: React.FC = () => {
         
         if (samplesError) throw samplesError;
         
-        // Transform the data structure
+        // Transform the data structure - note that writing_samples is an array, so we need to access [0]
         const formattedSamples: WritingSample[] = profileSamplesData?.map((item: ProfileSample) => ({
-          id: item.writing_samples.id,
-          title: item.writing_samples.title,
-          author: item.writing_samples.author,
-          sample_type: item.writing_samples.sample_type,
-          word_count: item.writing_samples.word_count,
-          content: item.writing_samples.content,
-          excerpt: item.writing_samples.excerpt,
+          id: item.writing_samples[0].id,
+          title: item.writing_samples[0].title,
+          author: item.writing_samples[0].author,
+          sample_type: item.writing_samples[0].sample_type,
+          word_count: item.writing_samples[0].word_count,
+          content: item.writing_samples[0].content,
+          excerpt: item.writing_samples[0].excerpt,
           weight: item.weight || 1.0
         })) || [];
         
