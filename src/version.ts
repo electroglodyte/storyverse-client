@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
-  minor: 4,
+  minor: 5,
   patch: 0,
-  date: '2025-05-13',
-  notes: 'Added Writing Samples and Style Profiles system: Implemented UI for viewing, creating, and editing writing samples and style profiles. Added functionality to analyze samples and create style profiles based on multiple samples with weighted influence.'
+  date: '2025-05-14',
+  notes: 'Added timeline and story structure system: Created database tables for characters, settings, scenes, events, storylines, and structural elements. Implemented unified timeline capability with support for both chronological and narrative ordering.'
 };
