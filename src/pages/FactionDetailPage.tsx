@@ -169,24 +169,30 @@ const FactionDetailPage: React.FC = () => {
         // Create properly typed member objects
         if (data && data.length > 0) {
           const membersList: FactionMember[] = data.map(item => {
+            // Check if item.characters exists and is not null/undefined
             if (!item.characters) {
               console.error('Character data missing for faction member:', item);
               return null;
             }
             
+            // Extract the character object from the data
+            // TypeScript thinks this is an array, but it's actually an object
+            // Use type assertion to tell TypeScript this is a Character
+            const characterData = item.characters as any;
+            
             // Explicitly type the character from the joined data
             const character: Character = {
-              id: item.characters.id,
-              name: item.characters.name,
-              role: item.characters.role,
-              description: item.characters.description,
-              attributes: item.characters.attributes,
-              relationships: item.characters.relationships || {},
-              story_world_id: item.characters.story_world_id,
-              storyworld_id: item.characters.storyworld_id,
-              created_at: item.characters.created_at,
-              updated_at: item.characters.updated_at,
-              user_id: item.characters.user_id || ''
+              id: characterData.id,
+              name: characterData.name,
+              role: characterData.role,
+              description: characterData.description,
+              attributes: characterData.attributes,
+              relationships: characterData.relationships || {},
+              story_world_id: characterData.story_world_id,
+              storyworld_id: characterData.storyworld_id,
+              created_at: characterData.created_at,
+              updated_at: characterData.updated_at,
+              user_id: characterData.user_id || ''
             };
             
             // Create a proper FactionMember by extending the character
