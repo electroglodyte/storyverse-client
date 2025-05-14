@@ -16,7 +16,9 @@ import {
   FaCalendarAlt,
   FaUser,
   FaMapMarkerAlt,
-  FaUserFriends
+  FaUserFriends,
+  FaFileAlt,
+  FaFileCode
 } from 'react-icons/fa';
 
 function App() {
@@ -41,6 +43,7 @@ function App() {
     if (location.pathname.startsWith('/locations')) return 'Locations';
     if (location.pathname.startsWith('/settings')) return 'Locations';
     if (location.pathname.startsWith('/factions')) return 'Factions';
+    if (location.pathname.startsWith('/scenes')) return 'Scenes';
     if (location.pathname.startsWith('/timeline')) return 'Timeline';
     if (location.pathname.startsWith('/app-settings')) return 'Application Settings';
     return 'StoryVerse';
@@ -87,6 +90,10 @@ function App() {
           <Link to="/factions" className={`sidebar-link ${isActive('/factions') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaUserFriends /></span>
             Factions
+          </Link>
+          <Link to="/scenes" className={`sidebar-link ${isActive('/scenes') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaFileAlt /></span>
+            Scenes
           </Link>
           <Link to="/writing-samples" className={`sidebar-link ${isActive('/writing-samples') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaEdit /></span>
