@@ -175,12 +175,11 @@ const FactionDetailPage: React.FC = () => {
               return null;
             }
             
-            // Extract the character object from the data
-            // TypeScript thinks this is an array, but it's actually an object
-            // Use type assertion to tell TypeScript this is a Character
-            const characterData = item.characters as any;
+            // Extract the character data from the joined result
+            // The issue is here - item.characters is properly an object, not an array
+            const characterData = item.characters;
             
-            // Explicitly type the character from the joined data
+            // Create a properly typed character object from the data
             const character: Character = {
               id: characterData.id,
               name: characterData.name,
