@@ -13,7 +13,10 @@ import {
   FaBalanceScale,
   FaCommentDots,
   FaCog,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaUser,
+  FaMapMarkerAlt,
+  FaUserFriends
 } from 'react-icons/fa';
 
 function App() {
@@ -34,6 +37,9 @@ function App() {
     if (location.pathname.startsWith('/story-worlds')) return 'Story Worlds';
     if (location.pathname.startsWith('/series')) return 'Series';
     if (location.pathname.startsWith('/stories')) return 'Stories';
+    if (location.pathname.startsWith('/characters')) return 'Characters';
+    if (location.pathname.startsWith('/settings')) return 'Settings';
+    if (location.pathname.startsWith('/factions')) return 'Factions';
     if (location.pathname.startsWith('/timeline')) return 'Timeline';
     return 'StoryVerse';
   };
@@ -67,6 +73,18 @@ function App() {
           <Link to="/stories" className={`sidebar-link ${isActive('/stories') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaListUl /></span>
             Stories
+          </Link>
+          <Link to="/characters" className={`sidebar-link ${isActive('/characters') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaUser /></span>
+            Characters
+          </Link>
+          <Link to="/settings" className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaMapMarkerAlt /></span>
+            Settings
+          </Link>
+          <Link to="/factions" className={`sidebar-link ${isActive('/factions') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaUserFriends /></span>
+            Factions
           </Link>
           <Link to="/writing-samples" className={`sidebar-link ${isActive('/writing-samples') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaEdit /></span>
@@ -103,7 +121,7 @@ function App() {
         </div>
         
         <div className="mt-auto">
-          <Link to="/settings" className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}>
+          <Link to="/app-settings" className={`sidebar-link ${isActive('/app-settings') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaCog /></span>
             Settings
           </Link>
