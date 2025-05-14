@@ -4,6 +4,7 @@ import { supabase } from '../../supabaseClient';
 import { FaEdit, FaTrash, FaHistory, FaComments, FaEye, FaPlus, FaFilter, FaSort, FaFileImport, FaFileExport } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { Scene } from '../../supabase-tables';
+import SceneNav from '../../components/scenes/SceneNav';
 
 const ScenesExplorerPage: React.FC = () => {
   const [scenes, setScenes] = useState<(Scene & { commentCount?: number })[]>([]);
@@ -95,6 +96,9 @@ const ScenesExplorerPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-4">
+      {/* Add SceneNav component */}
+      <SceneNav />
+      
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Scene Explorer</h1>
         <div className="flex space-x-2">
