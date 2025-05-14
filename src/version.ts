@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 6,
-  patch: 7,
+  patch: 8,
   date: '2025-05-14',
-  notes: 'Fixed all TypeScript build errors in Factions UI by properly casting member objects to the correct interface type.'
+  notes: 'Fixed TypeScript errors in FactionDetailPage by properly handling character object in join query results with type assertion.'
 };
