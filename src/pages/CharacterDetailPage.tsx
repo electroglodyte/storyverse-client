@@ -321,7 +321,7 @@ const CharacterDetailPage: React.FC = () => {
           >
             {saving ? (
               <>
-                <LoadingSpinner size="sm" /> Saving...
+                <LoadingSpinner size="small" /> <span className="ml-2">Saving...</span>
               </>
             ) : (
               <>
