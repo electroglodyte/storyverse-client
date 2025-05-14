@@ -27,7 +27,7 @@ const CharacterDetailPage: React.FC = () => {
   // Character form state
   const [character, setCharacter] = useState<Partial<Character>>({
     name: '',
-    role: '',
+    role: 'other', // Changed from empty string to 'other' to match enum type
     description: '',
     story_world_id: '',
     attributes: {},
@@ -229,14 +229,18 @@ const CharacterDetailPage: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Role
           </label>
-          <input
-            type="text"
+          <select
             name="role"
-            value={character.role || ''}
+            value={character.role || 'other'}
             onChange={handleChange}
             className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            placeholder="e.g., Protagonist, Antagonist, Supporting"
-          />
+          >
+            <option value="protagonist">Protagonist</option>
+            <option value="antagonist">Antagonist</option>
+            <option value="supporting">Supporting</option>
+            <option value="background">Background</option>
+            <option value="other">Other</option>
+          </select>
         </div>
 
         <div className="mb-6">
