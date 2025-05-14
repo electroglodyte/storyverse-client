@@ -38,6 +38,11 @@ interface RepresentativeSample {
   created_at: string;
 }
 
+interface ProfileSample {
+  writing_samples: WritingSample;
+  weight: number;
+}
+
 const ProfileDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -114,7 +119,7 @@ const ProfileDetailPage: React.FC = () => {
         if (samplesError) throw samplesError;
         
         // Transform the data structure
-        const formattedSamples = profileSamplesData?.map(item => ({
+        const formattedSamples: WritingSample[] = profileSamplesData?.map((item: ProfileSample) => ({
           ...item.writing_samples,
           weight: item.weight || 1.0
         })) || [];
