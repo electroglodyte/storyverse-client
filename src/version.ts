@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
-  minor: 6,
-  patch: 11,
+  minor: 7,
+  patch: 0,
   date: '2025-05-14',
-  notes: 'Enhanced event relationships system with proper dependencies and character journeys. Updated TypeScript interfaces to match database schema.'
+  notes: 'Added entity creation tools: story world, series, story, character, location, faction, relationship, item, character arc, and plotline. Updated database schema and TypeScript interfaces.'
 };
