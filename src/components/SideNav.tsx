@@ -35,6 +35,17 @@ export const SideNav: React.FC = () => {
     fontWeight: '500'
   };
 
+  // Styling for section headers
+  const sectionHeaderStyle = {
+    padding: '0 1.5rem',
+    fontSize: '0.75rem',
+    textTransform: 'uppercase' as const,
+    color: 'rgba(252, 211, 77, 0.7)',
+    fontWeight: '500',
+    marginBottom: '0.5rem',
+    marginTop: '1rem'
+  };
+
   return (
     <nav style={{ width: '100%', height: '100%', padding: '1rem 0', overflow: 'auto' }}>
       {/* Logo and Subtitle */}
@@ -45,7 +56,7 @@ export const SideNav: React.FC = () => {
       
       {/* Active Project */}
       <div style={{ padding: '0 1.5rem', marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>ACTIVE PROJECT</h3>
+        <h3 style={sectionHeaderStyle}>ACTIVE PROJECT</h3>
         <div>
           <button 
             style={{ 
@@ -62,7 +73,7 @@ export const SideNav: React.FC = () => {
             }}
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeProject?.name || 'The Irish Mystery'}
+              {activeProject?.name || 'One Silly Story'}
             </span>
             <span>▼</span>
           </button>
@@ -71,14 +82,14 @@ export const SideNav: React.FC = () => {
       
       {/* Main Navigation */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>MAIN</h3>
+        <h3 style={sectionHeaderStyle}>MAIN</h3>
         <ul>
           <li>
             <Link
               to="/"
-              style={isActive('/') && !isActive('/projects') && !isActive('/samples') && !isActive('/search') ? activeStyle : navItemStyle}
+              style={isActive('/') && !isActive('/story-worlds') && !isActive('/series') && !isActive('/stories') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/') || isActive('/projects') || isActive('/samples') || isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
+              onMouseOut={(e) => {if (!isActive('/') || isActive('/story-worlds') || isActive('/series') || isActive('/stories')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaHome style={{ marginRight: '0.5rem' }} />
               <span>Dashboard</span>
@@ -86,13 +97,68 @@ export const SideNav: React.FC = () => {
           </li>
           <li>
             <Link
-              to="/projects"
-              style={isActive('/projects') ? activeStyle : navItemStyle}
+              to="/story-worlds"
+              style={isActive('/story-worlds') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/projects')) e.currentTarget.style.backgroundColor = 'transparent'}}
+              onMouseOut={(e) => {if (!isActive('/story-worlds')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaBook style={{ marginRight: '0.5rem' }} />
-              <span>Projects</span>
+              <span>Story Worlds</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/series"
+              style={isActive('/series') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/series')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Series</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/stories"
+              style={isActive('/stories') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/stories')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Stories</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/characters"
+              style={isActive('/characters') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/characters')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Characters</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/locations"
+              style={isActive('/locations') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/locations')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Locations</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/factions"
+              style={isActive('/factions') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/factions')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Factions</span>
             </Link>
           </li>
           <li>
@@ -104,6 +170,17 @@ export const SideNav: React.FC = () => {
             >
               <FaFileAlt style={{ marginRight: '0.5rem' }} />
               <span>Writing Samples</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/timeline"
+              style={isActive('/timeline') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/timeline')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileAlt style={{ marginRight: '0.5rem' }} />
+              <span>Timeline</span>
             </Link>
           </li>
           <li>
@@ -122,7 +199,7 @@ export const SideNav: React.FC = () => {
       
       {/* Scene Management */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>SCENES</h3>
+        <h3 style={sectionHeaderStyle}>SCENES</h3>
         <ul>
           <li>
             <Link
@@ -133,17 +210,6 @@ export const SideNav: React.FC = () => {
             >
               <FaTheaterMasks style={{ marginRight: '0.5rem' }} />
               <span>Scene Explorer</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              to="/scenes/new"
-              style={location.pathname === '/scenes/new' ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (location.pathname !== '/scenes/new') e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
-              <FaPen style={{ marginRight: '0.5rem' }} />
-              <span>New Scene</span>
             </Link>
           </li>
           <li>
@@ -198,7 +264,7 @@ export const SideNav: React.FC = () => {
               onMouseOut={(e) => {if (location.pathname !== '/scenes/import') e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaFileImport style={{ marginRight: '0.5rem' }} />
-              <span>Import Scenes</span>
+              <span>Import</span>
             </Link>
           </li>
           <li>
@@ -209,7 +275,7 @@ export const SideNav: React.FC = () => {
               onMouseOut={(e) => {if (location.pathname !== '/scenes/export') e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaFileExport style={{ marginRight: '0.5rem' }} />
-              <span>Export Scenes</span>
+              <span>Export</span>
             </Link>
           </li>
         </ul>
@@ -217,7 +283,7 @@ export const SideNav: React.FC = () => {
       
       {/* Tools */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>TOOLS</h3>
+        <h3 style={sectionHeaderStyle}>TOOLS</h3>
         <ul>
           <li>
             <Link
