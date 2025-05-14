@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 6,
-  patch: 2,
+  patch: 3,
   date: '2025-05-14',
-  notes: 'Added settings management UI screens with list and detail/edit views. Settings can be organized hierarchically with parent-child relationships and include custom attributes.'
+  notes: 'Renamed "Settings" to "Locations" throughout the application to avoid confusion with application settings. Fixed 404 error when accessing Locations from sidebar.'
 };
