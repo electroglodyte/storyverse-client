@@ -1,6 +1,6 @@
 /**
  * StoryVerse Database Schema
- * Version: 0.3.0
+ * Version: 0.4.0
  * 
  * This file contains TypeScript types for all tables in the Supabase database.
  */
@@ -273,10 +273,38 @@ export interface Scene {
   title: string;
   description?: string;
   content?: string;
-  event_id: string;
-  story_id: string;
+  event_id?: string;
+  story_id?: string;
+  sequence_number?: number;
+  is_visible?: boolean;
+  type?: 'scene' | 'chapter' | 'outline_element' | 'summary';
+  format?: 'plain' | 'fountain' | 'markdown';
+  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+// Scene Version - tracked history of scene changes
+export interface SceneVersion {
+  id: string;
+  scene_id: string;
+  content: string;
+  version_number: number;
+  created_at: string;
+  created_by?: string;
+  notes?: string;
+}
+
+// Scene Comment - feedback/annotations on scenes
+export interface SceneComment {
+  id: string;
+  scene_id: string;
+  content: string;
+  created_at: string;
+  created_by?: string;
+  resolved?: boolean;
+  position?: Record<string, any>; // JSONB for position in text
+  type?: 'revision' | 'suggestion' | 'question' | 'comment';
 }
 
 // Scene Character - links a character to a scene
