@@ -18,6 +18,8 @@ import CharactersListPage from './pages/CharactersListPage';
 import CharacterDetailPage from './pages/CharacterDetailPage';
 import LocationsListPage from './pages/LocationsListPage';
 import LocationDetailPage from './pages/SettingDetailPage';
+import FactionsListPage from './pages/FactionsListPage';
+import FactionDetailPage from './pages/FactionDetailPage';
 
 // Writing Samples & Style Profiles Pages
 import WritingSamplesPage from './pages/writing/WritingSamplesPage';
@@ -179,6 +181,23 @@ const router = createBrowserRouter([
       {
         path: 'settings/new',
         element: <LocationDetailPage />,
+      },
+      // Faction routes
+      {
+        path: 'factions',
+        element: <FactionsListPage />,
+      },
+      {
+        path: 'factions/:id',
+        element: <FactionDetailPage />,
+      },
+      {
+        path: 'factions/edit/:id',
+        element: <FactionDetailPage />,
+      },
+      {
+        path: 'factions/new',
+        element: <FactionDetailPage />,
       },
       // Writing Samples routes
       {
