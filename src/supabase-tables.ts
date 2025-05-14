@@ -169,7 +169,7 @@ export interface User {
 /**
  * characters table
  * 
- * Characters in stories.
+ * Characters in story worlds.
  */
 export interface Character {
   id: string;               // UUID primary key
@@ -178,15 +178,18 @@ export interface Character {
   description: string;      // Character description
   attributes: any;          // JSON with flexible character traits
   relationships: any;       // JSON array of relationships to other characters
-  story_id: string;         // Foreign key to stories
+  story_id?: string;        // Legacy field - being replaced by story_world_id
+  storyworld_id: string;    // Alias for story_world_id
+  story_world_id: string;   // Foreign key to story_worlds
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
+  user_id?: string;         // Owner of the character
 }
 
 /**
  * settings table
  * 
- * Locations/settings in stories.
+ * Locations/settings in story worlds.
  */
 export interface Setting {
   id: string;               // UUID primary key
@@ -196,9 +199,43 @@ export interface Setting {
   description: string;      // Setting description
   attributes: any;          // JSON with flexible setting properties
   parent_setting_id: string; // Foreign key for nested locations
-  story_id: string;         // Foreign key to stories
+  story_id?: string;        // Legacy field - being replaced by story_world_id
+  storyworld_id: string;    // Alias for story_world_id
+  story_world_id: string;   // Foreign key to story_worlds
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
+  user_id?: string;         // Owner of the setting
+}
+
+/**
+ * factions table
+ * 
+ * Groups of characters with shared allegiances, goals, or connections.
+ */
+export interface Faction {
+  id: string;               // UUID primary key
+  name: string;             // Faction name
+  description: string;      // Faction description
+  type: string;             // Type of faction (political, social, familial, etc.)
+  attributes: any;          // JSON with flexible faction properties
+  storyworld_id: string;    // Alias for story_world_id
+  story_world_id: string;   // Foreign key to story_worlds
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+  user_id: string;          // Owner of the faction
+}
+
+/**
+ * faction_characters table
+ * 
+ * Junction table linking factions to characters.
+ */
+export interface FactionCharacter {
+  id: string;               // UUID primary key
+  faction_id: string;       // Foreign key to factions
+  character_id: string;     // Foreign key to characters
+  role: string;             // Character's role in the faction (leader, member, etc.)
+  created_at: string;       // Timestamp of creation
 }
 
 /**
