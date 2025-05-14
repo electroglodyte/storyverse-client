@@ -5,7 +5,7 @@ import {
   FaHome, FaBook, FaFileAlt, FaSearch, 
   FaChartBar, FaProjectDiagram, FaBolt, FaRobot, 
   FaCog, FaTheaterMasks, FaPen, FaFileImport, FaFileExport,
-  FaHistory, FaComments, FaExchangeAlt
+  FaHistory, FaComments, FaExchangeAlt, FaEdit
 } from 'react-icons/fa';
 
 export const SideNav: React.FC = () => {
@@ -144,6 +144,50 @@ export const SideNav: React.FC = () => {
             >
               <FaPen style={{ marginRight: '0.5rem' }} />
               <span>New Scene</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/edit"
+              style={location.pathname.includes('/scenes/edit') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/scenes/edit')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaEdit style={{ marginRight: '0.5rem' }} />
+              <span>Scene Editor</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/versions"
+              style={location.pathname.includes('/versions') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/versions')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaHistory style={{ marginRight: '0.5rem' }} />
+              <span>Version History</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/compare"
+              style={location.pathname.includes('/compare') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/compare')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaExchangeAlt style={{ marginRight: '0.5rem' }} />
+              <span>Compare Versions</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/comments"
+              style={location.pathname.includes('/comments') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/comments')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaComments style={{ marginRight: '0.5rem' }} />
+              <span>Comments</span>
             </Link>
           </li>
           <li>
