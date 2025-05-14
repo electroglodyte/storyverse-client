@@ -22,6 +22,9 @@ import ProfileDetailPage from './pages/style/ProfileDetailPage';
 import CreateProfilePage from './pages/style/CreateProfilePage';
 import StyleWritingToolPage from './pages/writing/StyleWritingToolPage';
 
+// Timeline Page
+import TimelinePage from './pages/timeline/TimelinePage';
+
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
   return <App />;
@@ -162,6 +165,15 @@ const router = createBrowserRouter([
       {
         path: 'writing-tool/:profileId',
         element: <StyleWritingToolPage />,
+      },
+      // Timeline routes
+      {
+        path: 'timeline',
+        element: <TimelinePage />,
+      },
+      {
+        path: 'timeline/:storyId',
+        element: <TimelinePage />,
       },
     ],
   },
