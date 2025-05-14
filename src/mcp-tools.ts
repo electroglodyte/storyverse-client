@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.3.0
+ * Version: 0.4.0
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -153,6 +153,70 @@ interface CreatePlotlineTool {
   description: "Create a plotline for a story";
 }
 
+/**
+ * SCENE MANAGEMENT TOOLS
+ */
+
+interface ImportSceneTool {
+  name: "import_scene";
+  description: "Imports a new scene into the StoryVerse system";
+}
+
+interface ImportTextTool {
+  name: "import_text";
+  description: "Imports and optionally parses a full text into multiple scenes";
+}
+
+interface CreateSceneVersionTool {
+  name: "create_scene_version";
+  description: "Creates a new version of an existing scene";
+}
+
+interface GetSceneVersionsTool {
+  name: "get_scene_versions";
+  description: "Retrieves version history for a scene";
+}
+
+interface RestoreSceneVersionTool {
+  name: "restore_scene_version";
+  description: "Restores a scene to a previous version";
+}
+
+interface CompareSceneVersionsTool {
+  name: "compare_scene_versions";
+  description: "Creates a detailed comparison between two scene versions";
+}
+
+interface AddSceneCommentTool {
+  name: "add_scene_comment";
+  description: "Adds a comment to a scene";
+}
+
+interface ResolveSceneCommentTool {
+  name: "resolve_scene_comment";
+  description: "Marks a comment as resolved or unresolved";
+}
+
+interface ProcessSceneTool {
+  name: "process_scene";
+  description: "Processes a scene according to instructions, creating a new version";
+}
+
+interface AddressSceneCommentsTool {
+  name: "address_scene_comments";
+  description: "Creates a new scene version that addresses specified comments";
+}
+
+interface ExportProjectTool {
+  name: "export_project";
+  description: "Exports a complete project as a single document";
+}
+
+interface ExportFountainTool {
+  name: "export_fountain";
+  description: "Exports scenes in Fountain format, with proper screenplay formatting";
+}
+
 // Combined type representing all available tools
 type McpTool = 
   | AnalyzeWritingSampleTool
@@ -182,7 +246,19 @@ type McpTool =
   | CreateRelationshipTool
   | CreateItemTool
   | CreateCharacterArcTool
-  | CreatePlotlineTool;
+  | CreatePlotlineTool
+  | ImportSceneTool
+  | ImportTextTool
+  | CreateSceneVersionTool
+  | GetSceneVersionsTool
+  | RestoreSceneVersionTool
+  | CompareSceneVersionsTool
+  | AddSceneCommentTool
+  | ResolveSceneCommentTool
+  | ProcessSceneTool
+  | AddressSceneCommentsTool
+  | ExportProjectTool
+  | ExportFountainTool;
 
 // Export as a constant array of all available tools
 export const MCP_TOOLS: McpTool[] = [
@@ -213,5 +289,19 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "create_relationship", description: "Create a relationship between two characters" },
   { name: "create_item", description: "Create a new item/artifact in the story world" },
   { name: "create_character_arc", description: "Create a character development arc for a story" },
-  { name: "create_plotline", description: "Create a plotline for a story" }
+  { name: "create_plotline", description: "Create a plotline for a story" },
+  
+  // Scene Management Tools
+  { name: "import_scene", description: "Imports a new scene into the StoryVerse system" },
+  { name: "import_text", description: "Imports and optionally parses a full text into multiple scenes" },
+  { name: "create_scene_version", description: "Creates a new version of an existing scene" },
+  { name: "get_scene_versions", description: "Retrieves version history for a scene" },
+  { name: "restore_scene_version", description: "Restores a scene to a previous version" },
+  { name: "compare_scene_versions", description: "Creates a detailed comparison between two scene versions" },
+  { name: "add_scene_comment", description: "Adds a comment to a scene" },
+  { name: "resolve_scene_comment", description: "Marks a comment as resolved or unresolved" },
+  { name: "process_scene", description: "Processes a scene according to instructions, creating a new version" },
+  { name: "address_scene_comments", description: "Creates a new scene version that addresses specified comments" },
+  { name: "export_project", description: "Exports a complete project as a single document" },
+  { name: "export_fountain", description: "Exports scenes in Fountain format, with proper screenplay formatting" }
 ];
