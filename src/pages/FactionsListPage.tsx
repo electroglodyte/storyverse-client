@@ -63,11 +63,12 @@ const FactionsListPage: React.FC = () => {
         // Fetch character counts for each faction
         if (data && data.length > 0) {
           await fetchCharacterCounts(data.map(faction => faction.id));
+        } else {
+          setLoading(false);
         }
       } catch (error: any) {
         toast.error(`Error fetching factions: ${error.message}`);
         console.error('Error fetching factions:', error);
-      } finally {
         setLoading(false);
       }
     };
@@ -77,36 +78,39 @@ const FactionsListPage: React.FC = () => {
 
   // Fetch character counts for each faction
   const fetchCharacterCounts = async (factionIds: string[]) => {
+    if (factionIds.length === 0) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('faction_characters')
-        .select('faction_id, count')
-        .in('faction_id', factionIds)
-        .select('*', { count: 'exact', head: false })
-        .eq('faction_id', '.');
-
-      if (error) {
-        throw error;
-      }
-
-      // Process the results to get a count for each faction
+      // Create a new object to store the counts
       const countMap: Record<string, number> = {};
+      
+      // Initialize counts to 0
       factionIds.forEach(id => {
         countMap[id] = 0;
       });
-
-      // Group by faction_id and count
-      if (data) {
-        data.forEach(row => {
-          if (row.faction_id in countMap) {
-            countMap[row.faction_id]++;
-          }
-        });
+      
+      // Fetch counts one by one to avoid SQL errors
+      for (const factionId of factionIds) {
+        const { data, count, error } = await supabase
+          .from('faction_characters')
+          .select('*', { count: 'exact' })
+          .eq('faction_id', factionId);
+          
+        if (error) {
+          console.error(`Error fetching count for faction ${factionId}:`, error);
+          continue;
+        }
+        
+        if (count !== null) {
+          countMap[factionId] = count;
+        }
       }
-
+      
       setFactionCharacterCounts(countMap);
     } catch (error: any) {
       console.error('Error fetching character counts:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
