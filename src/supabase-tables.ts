@@ -187,24 +187,24 @@ export interface Character {
 }
 
 /**
- * settings table
+ * locations table (formerly settings)
  * 
- * Locations/settings in story worlds.
+ * Locations/places in story worlds.
  */
-export interface Setting {
+export interface Location {
   id: string;               // UUID primary key
-  name: string;             // Setting name
+  name: string;             // Location name
   location_type: string;    // interior, exterior, virtual, etc.
   time_period: string;      // Optional time period descriptor
-  description: string;      // Setting description
-  attributes: any;          // JSON with flexible setting properties
-  parent_setting_id: string; // Foreign key for nested locations
+  description: string;      // Location description
+  attributes: any;          // JSON with flexible location properties
+  parent_location_id: string; // Foreign key for nested locations
   story_id?: string;        // Legacy field - being replaced by story_world_id
   storyworld_id: string;    // Alias for story_world_id
   story_world_id: string;   // Foreign key to story_worlds
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
-  user_id?: string;         // Owner of the setting
+  user_id?: string;         // Owner of the location
 }
 
 /**
@@ -286,14 +286,14 @@ export interface SceneCharacter {
 }
 
 /**
- * scene_settings table
+ * scene_locations table (formerly scene_settings)
  * 
- * Junction table linking scenes to settings.
+ * Junction table linking scenes to locations.
  */
-export interface SceneSetting {
+export interface SceneLocation {
   id: string;               // UUID primary key
   scene_id: string;         // Foreign key to scenes
-  setting_id: string;       // Foreign key to settings
+  location_id: string;      // Foreign key to locations
   created_at: string;       // Timestamp of creation
 }
 
