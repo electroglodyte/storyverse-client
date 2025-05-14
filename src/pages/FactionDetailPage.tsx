@@ -166,14 +166,25 @@ const FactionDetailPage: React.FC = () => {
           throw error;
         }
 
-        if (data) {
-          // Transform the joined data into a flat list of members
-          const membersList: FactionMember[] = data.map(item => ({
-            ...item.characters,
-            role: item.role || 'member',
-            faction_character_id: item.id
-          }));
+        // Create properly typed member objects
+        if (data && data.length > 0) {
+          const membersList: FactionMember[] = data.map(item => {
+            // Create a proper character object
+            const character = item.characters as Character;
+            
+            // Create a proper FactionMember by extending the character
+            const member: FactionMember = {
+              ...character,
+              role: item.role || 'member',
+              faction_character_id: item.id
+            };
+            
+            return member;
+          });
+          
           setMembers(membersList);
+        } else {
+          setMembers([]);
         }
       } catch (error: any) {
         toast.error(`Error fetching faction members: ${error.message}`);
