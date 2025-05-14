@@ -12,7 +12,7 @@ export const renderFountainPreview = (content: string): JSX.Element[] => {
   const lines = content.split('\n');
   return lines.map((line, index) => {
     // Scene headings
-    if (line.match(/^(INT|EXT|I\/E)[\.\s]/i) || line.startsWith('.')) {
+    if (line.match(/^(INT|EXT|I\/E)[\.\\s]/i) || line.startsWith('.')) {
       return <p key={index} className="font-bold mt-4 mb-2 uppercase">{line.startsWith('.') ? line.substring(1) : line}</p>;
     }
     
@@ -113,19 +113,19 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
     
     // Headings
     if (line.startsWith('# ')) {
-      result.push(<h1 key={key} className="text-3xl font-bold mt-6 mb-3">{processInlineMarkdown(line.substring(2))}</h1>);
+      result.push(<h1 key={key} className="text-3xl font-bold mt-6 mb-3" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(2)) }}></h1>);
       continue;
     }
     if (line.startsWith('## ')) {
-      result.push(<h2 key={key} className="text-2xl font-bold mt-5 mb-3">{processInlineMarkdown(line.substring(3))}</h2>);
+      result.push(<h2 key={key} className="text-2xl font-bold mt-5 mb-3" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(3)) }}></h2>);
       continue;
     }
     if (line.startsWith('### ')) {
-      result.push(<h3 key={key} className="text-xl font-bold mt-4 mb-2">{processInlineMarkdown(line.substring(4))}</h3>);
+      result.push(<h3 key={key} className="text-xl font-bold mt-4 mb-2" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(4)) }}></h3>);
       continue;
     }
     if (line.startsWith('#### ')) {
-      result.push(<h4 key={key} className="text-lg font-bold mt-3 mb-2">{processInlineMarkdown(line.substring(5))}</h4>);
+      result.push(<h4 key={key} className="text-lg font-bold mt-3 mb-2" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(5)) }}></h4>);
       continue;
     }
     
@@ -138,8 +138,7 @@ export const renderMarkdownPreview = (content: string): JSX.Element[] => {
     // Blockquotes
     if (line.startsWith('> ')) {
       result.push(
-        <blockquote key={key} className="border-l-4 border-gray-300 pl-4 py-1 italic text-gray-700">
-          {processInlineMarkdown(line.substring(2))}
+        <blockquote key={key} className="border-l-4 border-gray-300 pl-4 py-1 italic text-gray-700" dangerouslySetInnerHTML={{ __html: processInlineMarkdown(line.substring(2)) }}>
         </blockquote>
       );
       continue;
