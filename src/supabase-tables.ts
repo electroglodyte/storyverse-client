@@ -160,3 +160,163 @@ export interface User {
   display_name: string;     // User's display name
   created_at: string;       // Timestamp of creation
 }
+
+/**
+ * TIMELINE AND STORY STRUCTURE TABLES
+ * These tables are used for managing storylines, scenes, events, and the timeline
+ */
+
+/**
+ * characters table
+ * 
+ * Characters in stories.
+ */
+export interface Character {
+  id: string;               // UUID primary key
+  name: string;             // Character name
+  role: string;             // protagonist, antagonist, supporting, etc.
+  description: string;      // Character description
+  attributes: any;          // JSON with flexible character traits
+  relationships: any;       // JSON array of relationships to other characters
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * settings table
+ * 
+ * Locations/settings in stories.
+ */
+export interface Setting {
+  id: string;               // UUID primary key
+  name: string;             // Setting name
+  location_type: string;    // interior, exterior, virtual, etc.
+  time_period: string;      // Optional time period descriptor
+  description: string;      // Setting description
+  attributes: any;          // JSON with flexible setting properties
+  parent_setting_id: string; // Foreign key for nested locations
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * events table
+ * 
+ * Events that occur in the story world's chronology.
+ */
+export interface Event {
+  id: string;               // UUID primary key
+  title: string;            // Event title
+  description: string;      // Event description
+  chronological_time: string; // When the event happens in story world time
+  relative_time_offset: string; // For stories without absolute dates
+  time_reference_point: string; // Reference point for relative time
+  visible: boolean;         // Whether it's directly shown or just backstory
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * scenes table
+ * 
+ * Scenes that are shown in the story.
+ */
+export interface Scene {
+  id: string;               // UUID primary key
+  title: string;            // Scene title
+  description: string;      // Scene description
+  content: string;          // Scene content/text
+  event_id: string;         // Foreign key to events
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * scene_characters table
+ * 
+ * Junction table linking scenes to characters.
+ */
+export interface SceneCharacter {
+  id: string;               // UUID primary key
+  scene_id: string;         // Foreign key to scenes
+  character_id: string;     // Foreign key to characters
+  importance: string;       // Character importance in scene (primary, secondary, etc.)
+  created_at: string;       // Timestamp of creation
+}
+
+/**
+ * scene_settings table
+ * 
+ * Junction table linking scenes to settings.
+ */
+export interface SceneSetting {
+  id: string;               // UUID primary key
+  scene_id: string;         // Foreign key to scenes
+  setting_id: string;       // Foreign key to settings
+  created_at: string;       // Timestamp of creation
+}
+
+/**
+ * storylines table
+ * 
+ * Storylines that track narrative threads throughout a story.
+ */
+export interface Storyline {
+  id: string;               // UUID primary key
+  title: string;            // Storyline title
+  description: string;      // Storyline description
+  color: string;            // Color for visual distinction in timeline
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * storyline_elements table
+ * 
+ * Junction table linking storylines to various elements.
+ */
+export interface StorylineElement {
+  id: string;               // UUID primary key
+  storyline_id: string;     // Foreign key to storylines
+  element_type: string;     // Type of element (scene, event, etc.)
+  element_id: string;       // ID of element (foreign key to different tables)
+  created_at: string;       // Timestamp of creation
+}
+
+/**
+ * structural_elements table
+ * 
+ * Structural elements like acts, beats, etc.
+ */
+export interface StructuralElement {
+  id: string;               // UUID primary key
+  title: string;            // Element title (Act 1, Midpoint, etc.)
+  description: string;      // Element description
+  type: string;             // Element type (act, beat, sequence, etc.)
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * timeline_elements table
+ * 
+ * Integrated timeline combining all element types.
+ */
+export interface TimelineElement {
+  id: string;               // UUID primary key
+  element_type: string;     // Type of element (scene, event, structural_element, etc.)
+  element_id: string;       // ID of element (foreign key to different tables)
+  chronological_time: string; // When the element occurs in chronological time
+  relative_time_offset: string; // Time relative to a reference point
+  time_reference_point: string; // Reference point for relative time
+  story_order: number;      // Order in the narrative (may differ from chronological)
+  story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
