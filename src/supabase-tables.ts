@@ -250,8 +250,42 @@ export interface Event {
   chronological_time: string; // When the event happens in story world time
   relative_time_offset: string; // For stories without absolute dates
   time_reference_point: string; // Reference point for relative time
+  sequence_number: number;  // For ordering events (adjustable)
   visible: boolean;         // Whether it's directly shown or just backstory
   story_id: string;         // Foreign key to stories
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * event_dependencies table
+ * 
+ * Tracks causal relationships and sequential dependencies between events.
+ */
+export interface EventDependency {
+  id: string;               // UUID primary key
+  predecessor_event_id: string; // Foreign key to events (the "before" event)
+  successor_event_id: string;   // Foreign key to events (the "after" event)
+  dependency_type: string;  // "causal", "prerequisite", "thematic", etc.
+  strength: number;         // How rigid this relationship is (1-10)
+  notes: string;            // Optional description of the relationship
+  created_at: string;       // Timestamp of creation
+  updated_at: string;       // Timestamp of last update
+}
+
+/**
+ * character_events table
+ * 
+ * Junction table linking characters to events, forming their journey.
+ */
+export interface CharacterEvent {
+  id: string;               // UUID primary key
+  character_id: string;     // Foreign key to characters
+  event_id: string;         // Foreign key to events
+  importance: number;       // Significance of this event for this character (1-10)
+  character_sequence_number: number; // Position in character's journey
+  experience_type: string;  // How the character experiences this event (active, passive, off-screen)
+  notes: string;            // Optional description of character's involvement
   created_at: string;       // Timestamp of creation
   updated_at: string;       // Timestamp of last update
 }
