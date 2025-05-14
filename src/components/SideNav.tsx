@@ -35,6 +35,17 @@ export const SideNav: React.FC = () => {
     fontWeight: '500'
   };
 
+  // Styling for submenu items (indented)
+  const submenuStyle = {
+    ...navItemStyle,
+    paddingLeft: '2.5rem'
+  };
+  
+  const submenuActiveStyle = {
+    ...activeStyle,
+    paddingLeft: '2.5rem'
+  };
+
   return (
     <nav style={{ width: '100%', height: '100%', padding: '1rem 0', overflow: 'auto' }}>
       {/* Logo and Subtitle */}
@@ -150,6 +161,8 @@ export const SideNav: React.FC = () => {
               <span>Factions</span>
             </Link>
           </li>
+          
+          {/* Main Scenes Link */}
           <li>
             <Link
               to="/scenes"
@@ -161,6 +174,86 @@ export const SideNav: React.FC = () => {
               <span>Scenes</span>
             </Link>
           </li>
+          
+          {/* Scene subpages - these are visible even if they don't work perfectly yet */}
+          <li>
+            <Link
+              to="/scenes/new"
+              style={location.pathname === '/scenes/new' ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (location.pathname !== '/scenes/new') e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaPen style={{ marginRight: '0.5rem' }} />
+              <span>New Scene</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/edit"
+              style={location.pathname.includes('/scenes/edit') ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/scenes/edit')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaEdit style={{ marginRight: '0.5rem' }} />
+              <span>Scene Editor</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/versions"
+              style={location.pathname.includes('/versions') ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/versions')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaHistory style={{ marginRight: '0.5rem' }} />
+              <span>Version History</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/compare"
+              style={location.pathname.includes('/compare') ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/compare')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaExchangeAlt style={{ marginRight: '0.5rem' }} />
+              <span>Compare Versions</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/comments"
+              style={location.pathname.includes('/comments') ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!location.pathname.includes('/comments')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaComments style={{ marginRight: '0.5rem' }} />
+              <span>Comments</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/import"
+              style={location.pathname === '/scenes/import' ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (location.pathname !== '/scenes/import') e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileImport style={{ marginRight: '0.5rem' }} />
+              <span>Import</span>
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/scenes/export"
+              style={location.pathname === '/scenes/export' ? submenuActiveStyle : submenuStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (location.pathname !== '/scenes/export') e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileExport style={{ marginRight: '0.5rem' }} />
+              <span>Export</span>
+            </Link>
+          </li>
+          
           <li>
             <Link
               to="/samples"
