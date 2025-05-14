@@ -266,11 +266,11 @@ export interface EventDependency {
   id: string;               // UUID primary key
   predecessor_event_id: string; // Foreign key to events (the "before" event)
   successor_event_id: string;   // Foreign key to events (the "after" event)
-  dependency_type: string;  // "causal", "prerequisite", "thematic", etc.
+  dependency_type: string;  // "causal", "prerequisite", "thematic", "chronological", etc.
   strength: number;         // How rigid this relationship is (1-10)
-  notes: string;            // Optional description of the relationship
+  notes?: string;           // Optional description of the relationship
   created_at: string;       // Timestamp of creation
-  updated_at: string;       // Timestamp of last update
+  updated_at?: string;      // Timestamp of last update
 }
 
 /**
@@ -284,10 +284,10 @@ export interface CharacterEvent {
   event_id: string;         // Foreign key to events
   importance: number;       // Significance of this event for this character (1-10)
   character_sequence_number: number; // Position in character's journey
-  experience_type: string;  // How the character experiences this event (active, passive, off-screen)
-  notes: string;            // Optional description of character's involvement
+  experience_type?: string; // How the character experiences this event (active, passive, off-screen)
+  notes?: string;           // Optional description of character's involvement
   created_at: string;       // Timestamp of creation
-  updated_at: string;       // Timestamp of last update
+  updated_at?: string;      // Timestamp of last update
 }
 
 /**
