@@ -38,7 +38,8 @@ function App() {
     if (location.pathname.startsWith('/series')) return 'Series';
     if (location.pathname.startsWith('/stories')) return 'Stories';
     if (location.pathname.startsWith('/characters')) return 'Characters';
-    if (location.pathname.startsWith('/settings')) return 'Settings & Locations';
+    if (location.pathname.startsWith('/locations')) return 'Locations';
+    if (location.pathname.startsWith('/settings')) return 'Locations';
     if (location.pathname.startsWith('/factions')) return 'Factions';
     if (location.pathname.startsWith('/timeline')) return 'Timeline';
     if (location.pathname.startsWith('/app-settings')) return 'Application Settings';
@@ -79,7 +80,7 @@ function App() {
             <span className="sidebar-link-icon"><FaUser /></span>
             Characters
           </Link>
-          <Link to="/settings" className={`sidebar-link ${isActive('/settings') ? 'active' : ''}`}>
+          <Link to="/locations" className={`sidebar-link ${isActive('/locations') || isActive('/settings') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaMapMarkerAlt /></span>
             Locations
           </Link>
