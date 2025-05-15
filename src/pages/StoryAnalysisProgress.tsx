@@ -64,13 +64,30 @@ const StoryAnalysisProgress: React.FC = () => {
 
   // Detect suspicious pattern of default values
   const detectDefaultValues = (elements: any) => {
-    if (elements && 
-        elements.characters?.length === 5 && 
+    if (!elements) return false;
+    
+    // Log the counts to help debugging
+    const counts = [
+      elements.characters?.length || 0,
+      elements.locations?.length || 0,
+      elements.events?.length || 0,
+      elements.scenes?.length || 0,
+      elements.plotlines?.length || 0
+    ];
+    console.log("Element counts:", counts.join(','));
+    
+    // Check for both old and new suspicious patterns
+    if ((elements.characters?.length === 5 && 
         elements.locations?.length === 2 && 
         (elements.events === undefined || elements.events?.length === 0) && 
         elements.scenes?.length === 3 && 
-        elements.plotlines?.length === 2) {
-      console.error("SUSPICIOUS: Detected the 5,2,0,3,2 pattern which may indicate cached/default data");
+        elements.plotlines?.length === 2) ||
+        (elements.characters?.length === 4 &&
+        elements.locations?.length === 3 &&
+        (elements.events === undefined || elements.events?.length === 0) &&
+        elements.scenes?.length === 3 &&
+        elements.plotlines?.length === 2)) {
+      console.error(`SUSPICIOUS: Detected suspicious pattern ${counts.join(',')} which may indicate cached/default data`);
       return true;
     }
     return false;
@@ -143,12 +160,12 @@ const StoryAnalysisProgress: React.FC = () => {
       // Get the actual data
       const data = response.data;
       
+      console.log("Received analysis response:", data);
+
       // Check if we received the suspicious pattern
       if (detectDefaultValues(data)) {
-        throw new Error('Received suspicious default values (5,2,0,3,2). Forcing fresh extraction.');
+        throw new Error(`Received suspicious default values. Forcing fresh extraction.`);
       }
-      
-      console.log("Received analysis response:", data);
       
       // Validate each element type explicitly
       if (!data.characters || !Array.isArray(data.characters)) {
@@ -198,7 +215,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Save a single character to the database and return the result
+  // Rest of the component remains unchanged
   const saveCharacter = async (char: any, storyId: string, storyWorldId: string) => {
     console.log("Saving character:", char.name);
     const charData = {
@@ -611,9 +628,9 @@ const StoryAnalysisProgress: React.FC = () => {
   const validateExtractionResults = (elements: any): boolean => {
     if (!elements) return false;
     
-    // Check if we're getting the suspicious 5,2,0,3,2 pattern
+    // Check if we're getting the suspicious patterns
     if (detectDefaultValues(elements)) {
-      console.error("VALIDATION FAILED: Detected suspicious 5,2,0,3,2 pattern");
+      console.error("VALIDATION FAILED: Detected suspicious pattern");
       return false;
     }
     
