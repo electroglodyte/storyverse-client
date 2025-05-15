@@ -15,8 +15,8 @@ interface AnalysisData {
   }>;
 }
 
-// Updated StoryAnalysisProgress component that uses the analyze-story edge function
-// to properly detect and display real characters from the story
+// Enhanced StoryAnalysisProgress component that uses the improved analyze-story edge function
+// to detect and display comprehensive story elements
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   const [currentFile, setCurrentFile] = useState<string>('');
@@ -24,6 +24,12 @@ const StoryAnalysisProgress: React.FC = () => {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
+  const [scenes, setScenes] = useState<any[]>([]);
+  const [plotlines, setPlotlines] = useState<any[]>([]);
+  const [characterRelationships, setCharacterRelationships] = useState<any[]>([]);
+  const [eventDependencies, setEventDependencies] = useState<any[]>([]);
+  const [characterArcs, setCharacterArcs] = useState<any[]>([]);
+  const [analysisStage, setAnalysisStage] = useState<string>('Preparing text analysis...');
   
   const navigate = useNavigate();
 
@@ -46,18 +52,27 @@ const StoryAnalysisProgress: React.FC = () => {
         setCurrentFile(file.name);
         
         try {
-          // Call the analyze-story edge function
+          // Show stages of analysis
+          setAnalysisStage('Extracting characters and locations...');
+          await addDetectedItem('System', 'Starting narrative analysis');
+          
+          // Call the analyze-story edge function with our improved implementation
           const { data, error } = await supabase.functions.invoke('analyze-story', {
             body: {
               story_text: file.content,
               story_title: file.name.replace(/\.[^/.]+$/, ""),
               story_world_id: analysisData.storyWorldId,
               options: {
-                create_project: false, // We already have a story ID
+                create_project: true, // Save directly to the database
+                story_id: analysisData.storyId,
                 extract_characters: true,
                 extract_locations: true,
                 extract_events: true,
+                extract_scenes: true,
                 extract_relationships: true,
+                extract_dependencies: true, 
+                extract_plotlines: true,
+                extract_arcs: true,
                 interactive_mode: true
               }
             }
@@ -65,18 +80,24 @@ const StoryAnalysisProgress: React.FC = () => {
           
           if (error) {
             console.error("Error analyzing story:", error);
+            await addDetectedItem('Error', `Analysis error: ${error.message}`);
             continue;
           }
           
           // Process detected characters from the edge function
           if (data.characters && data.characters.length > 0) {
+            setAnalysisStage('Processing character information...');
+            
             const chars = data.characters.map((char: any) => ({
-              id: '',
+              id: char.id || '',
               name: char.name,
               role: char.role || 'supporting',
               story_id: analysisData.storyId,
               story_world_id: analysisData.storyWorldId,
               description: char.description || '',
+              appearance: char.appearance,
+              personality: char.personality,
+              background: char.background,
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             }));
@@ -91,8 +112,10 @@ const StoryAnalysisProgress: React.FC = () => {
           
           // Process detected locations
           if (data.locations && data.locations.length > 0) {
+            setAnalysisStage('Mapping locations...');
+            
             const locs = data.locations.map((loc: any) => ({
-              id: '',
+              id: loc.id || '',
               name: loc.name,
               location_type: loc.location_type || 'other',
               story_id: analysisData.storyId,
@@ -110,10 +133,33 @@ const StoryAnalysisProgress: React.FC = () => {
             setLocations(locs);
           }
           
+          // Process detected scenes
+          if (data.scenes && data.scenes.length > 0) {
+            setAnalysisStage('Dividing content into scenes and chapters...');
+            
+            const scns = data.scenes.map((scene: any) => ({
+              id: scene.id || '',
+              title: scene.title,
+              content: scene.content,
+              type: scene.type || 'scene',
+              story_id: analysisData.storyId,
+              sequence_number: scene.sequence_number || 0
+            }));
+            
+            // Show scene divisions in detection log
+            for (const scene of scns) {
+              await addDetectedItem('Scene', scene.title);
+            }
+            
+            setScenes(scns);
+          }
+          
           // Process detected events
           if (data.events && data.events.length > 0) {
+            setAnalysisStage('Identifying key story events...');
+            
             const evts = data.events.map((evt: any) => ({
-              id: '',
+              id: evt.id || '',
               title: evt.title || evt.name,
               story_id: analysisData.storyId,
               description: evt.description || '',
@@ -130,27 +176,89 @@ const StoryAnalysisProgress: React.FC = () => {
             setEvents(evts);
           }
           
-          // Save the extracted entities to the database
-          await SupabaseService.saveAnalysisResults(
-            analysisData.storyId,
-            analysisData.storyWorldId,
-            characters,
-            locations,
-            events
-          );
+          // Process detected plotlines
+          if (data.plotlines && data.plotlines.length > 0) {
+            setAnalysisStage('Identifying narrative plotlines...');
+            
+            const plots = data.plotlines.map((plot: any) => ({
+              id: plot.id || '',
+              title: plot.title,
+              description: plot.description || '',
+              plotline_type: plot.plotline_type || 'main',
+              story_id: analysisData.storyId
+            }));
+            
+            // Show plotlines in detection log
+            for (const plot of plots) {
+              await addDetectedItem('Plotline', plot.title);
+            }
+            
+            setPlotlines(plots);
+          }
+          
+          // Process character relationships
+          if (data.characterRelationships && data.characterRelationships.length > 0) {
+            setAnalysisStage('Mapping character relationships...');
+            
+            const rels = data.characterRelationships;
+            
+            // Show relationships in detection log
+            for (const rel of rels) {
+              await addDetectedItem('Relationship', `${rel.character1_name} - ${rel.character2_name}`);
+            }
+            
+            setCharacterRelationships(rels);
+          }
+          
+          // Process event dependencies
+          if (data.eventDependencies && data.eventDependencies.length > 0) {
+            setAnalysisStage('Identifying causal relationships between events...');
+            
+            const deps = data.eventDependencies;
+            
+            // Show some dependencies in detection log
+            for (const dep of deps.slice(0, 5)) {
+              await addDetectedItem('Dependency', `Event ${dep.predecessor_sequence} → Event ${dep.successor_sequence}`);
+            }
+            
+            setEventDependencies(deps);
+          }
+          
+          // Process character arcs
+          if (data.characterArcs && data.characterArcs.length > 0) {
+            setAnalysisStage('Mapping character development arcs...');
+            
+            const arcs = data.characterArcs;
+            
+            // Show character arcs in detection log
+            for (const arc of arcs) {
+              await addDetectedItem('Character Arc', arc.title || `${arc.character_name}'s Arc`);
+            }
+            
+            setCharacterArcs(arcs);
+          }
+          
+          setAnalysisStage('Finalizing analysis...');
+          await addDetectedItem('System', 'Analysis completed successfully');
           
         } catch (err) {
           console.error("Error in analysis process:", err);
+          await addDetectedItem('Error', `Analysis error: ${err}`);
         }
       }
       
       setIsAnalyzing(false);
       
-      // Store results for the results page
+      // Store comprehensive results for the results page
       sessionStorage.setItem('analysisResults', JSON.stringify({
         characters,
         locations,
         events,
+        scenes,
+        plotlines,
+        characterRelationships,
+        eventDependencies,
+        characterArcs,
         storyId: analysisData.storyId,
         storyWorldId: analysisData.storyWorldId
       }));
@@ -164,7 +272,7 @@ const StoryAnalysisProgress: React.FC = () => {
       setTimeout(() => {
         setDetectedItems(prev => [...prev, { type, name }]);
         resolve();
-      }, Math.random() * 300 + 200); // Shorter random delay for smoother experience
+      }, Math.random() * 300 + 100); // Random delay for visual effect
     });
   };
 
@@ -181,6 +289,7 @@ const StoryAnalysisProgress: React.FC = () => {
           <div className="progress-indicator">
             <div className="spinner"></div>
             <p>Analyzing: {currentFile}</p>
+            <div className="analysis-stage">{analysisStage}</div>
           </div>
           
           <div className="detection-log">
@@ -213,6 +322,14 @@ const StoryAnalysisProgress: React.FC = () => {
             <div className="summary-item">
               <h3>Events</h3>
               <span className="count">{events.length}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Scenes</h3>
+              <span className="count">{scenes.length}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Plotlines</h3>
+              <span className="count">{plotlines.length}</span>
             </div>
           </div>
           
