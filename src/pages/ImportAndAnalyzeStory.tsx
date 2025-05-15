@@ -23,6 +23,7 @@ const ImportAndAnalyzeStory: React.FC = () => {
   
   const navigate = useNavigate();
 
+  // Enhanced version (May 15, 2025)
   useEffect(() => {
     const loadStoryWorlds = async () => {
       const worlds = await SupabaseService.getStoryWorlds();
