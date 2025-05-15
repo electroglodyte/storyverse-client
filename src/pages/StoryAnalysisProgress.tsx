@@ -69,8 +69,10 @@ const StoryAnalysisProgress: React.FC = () => {
     plotlines: 0
   });
   const MAX_SAVE_RETRIES = 3;
-  // New ref to force extraction review screen
+  // Ref to force extraction review screen
   const forceExtractionReviewRef = useRef<boolean>(true);
+  // Track if extraction is complete
+  const extractionCompleteRef = useRef<boolean>(false);
   
   const navigate = useNavigate();
 
@@ -184,8 +186,9 @@ const StoryAnalysisProgress: React.FC = () => {
   // Component initialization and data recovery
   useEffect(() => {
     try {
-      // Reset forceExtractionReview flag on component mount
+      // Reset flags on component mount
       forceExtractionReviewRef.current = true;
+      extractionCompleteRef.current = false;
       
       // Try to get analysis data
       const analysisDataStr = sessionStorage.getItem('analysisData');
@@ -281,7 +284,7 @@ const StoryAnalysisProgress: React.FC = () => {
       
       // Create the actual analysis promise
       logDebug("Invoking analyze-story edge function with:", {
-        story_title: file.name.replace(/\\.[^/.]+$/, ""),
+        story_title: file.name.replace(/\.[^/.]+$/, ""),
         story_world_id: analysisData.storyWorldId,
         story_id: analysisData.storyId,
         content_length: file.content.length
@@ -290,7 +293,7 @@ const StoryAnalysisProgress: React.FC = () => {
       const analysisPromise = supabase.functions.invoke('analyze-story', {
         body: {
           story_text: file.content,
-          story_title: file.name.replace(/\\.[^/.]+$/, ""),
+          story_title: file.name.replace(/\.[^/.]+$/, ""),
           story_world_id: analysisData.storyWorldId,
           options: {
             create_project: false, // We'll handle saving manually
@@ -1478,10 +1481,11 @@ const StoryAnalysisProgress: React.FC = () => {
             extractedElementsRef.current = elements;
             
             // IMPORTANT FIX: Always force showing the extraction review screen 
-            // by explicitly setting these states here
+            logDebug("EXTRACTION COMPLETE: Setting to extracted phase and stopping analysis");
             setAnalysisPhase('extracted');
             setIsAnalyzing(false);
             forceExtractionReviewRef.current = true;
+            extractionCompleteRef.current = true; // Mark extraction as complete
             
             // Display a sample of the extracted elements in the UI
             await addDetectedItem('System', 'Processing extracted elements...');
@@ -1660,6 +1664,26 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   }, [extractionStarted]);
   
+  // Ensure we don't skip the extraction review screen
+  useEffect(() => {
+    // This effect specifically watches for the moment extraction completes
+    if (extractionCompleteRef.current && extractedElements) {
+      logDebug("EXTRACTION REVIEW ENFORCEMENT: Ensuring extraction review screen is shown");
+      // Force the UI to show the review screen with a slight delay to allow state updates to settle
+      setTimeout(() => {
+        setAnalysisPhase('extracted');
+        setIsAnalyzing(false);
+      }, 100);
+    }
+  }, [extractedElements, analysisPhase]);
+  
+  // Add a safeguard to ensure we show the extraction review screen
+  useEffect(() => {
+    if (analysisPhase === 'extracted') {
+      logDebug("EXTRACTION REVIEW SCREEN ACTIVE: User must explicitly continue to saving");
+    }
+  }, [analysisPhase]);
+  
   // Navigation handler with improved data persistence
   const handleViewResults = () => {
     logDebug("Navigating to analysis results page");
@@ -1718,6 +1742,7 @@ const StoryAnalysisProgress: React.FC = () => {
       extractedElementsRef.current = null;
       setExtractionStarted(false);
       setFullErrorDetails(null);
+      extractionCompleteRef.current = false; // Reset extraction complete flag
       
       // Force page reload to clear any browser cache/state
       window.location.reload();
@@ -1762,7 +1787,8 @@ const StoryAnalysisProgress: React.FC = () => {
       return;
     }
     
-    // Allow saving to proceed
+    // Now allow saving to proceed
+    logDebug("PROCEEDING TO SAVE PHASE: User has reviewed extraction and confirmed");
     forceExtractionReviewRef.current = false;
     processSavingDirectly();
   };
@@ -1778,6 +1804,7 @@ const StoryAnalysisProgress: React.FC = () => {
     setAnalysisPhase('extracting');
     setIsAnalyzing(true);
     setFullErrorDetails(null);
+    extractionCompleteRef.current = false; // Reset extraction complete flag
     
     // Force page reload to clear any browser cache/state
     window.location.reload();
