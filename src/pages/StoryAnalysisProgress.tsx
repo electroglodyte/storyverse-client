@@ -18,6 +18,7 @@ interface AnalysisData {
 // Enhanced StoryAnalysisProgress component with better error handling and debugging
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
+  const [analysisPhase, setAnalysisPhase] = useState<'extracting' | 'saving' | 'complete' | 'error'>('extracting');
   const [currentFile, setCurrentFile] = useState<string>('');
   const [detectedItems, setDetectedItems] = useState<Array<{type: string; name: string}>>([]);
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -31,7 +32,7 @@ const StoryAnalysisProgress: React.FC = () => {
   const [analysisStage, setAnalysisStage] = useState<string>('Preparing text analysis...');
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
-  const [analyzeResponse, setAnalyzeResponse] = useState<any | null>(null);
+  const [extractedElements, setExtractedElements] = useState<any | null>(null);
   
   const navigate = useNavigate();
 
@@ -47,10 +48,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       // Call the edge function to analyze the content
       console.log(`Calling analyze-story edge function for ${file.name}`);
+      await addDetectedItem('System', `Analyzing ${file.name} text...`);
+      
       const response = await supabase.functions.invoke('analyze-story', {
         body: {
           story_text: file.content,
-          story_title: file.name.replace(/\\.[^/.]+$/, ""),
+          story_title: file.name.replace(/\.[^/.]+$/, ""),
           story_world_id: analysisData.storyWorldId,
           options: {
             create_project: false, // We'll handle saving manually
@@ -73,6 +76,7 @@ const StoryAnalysisProgress: React.FC = () => {
         throw new Error(`Analysis error: ${response.error.message || 'Unknown error'}`);
       }
       
+      await addDetectedItem('System', 'Text analysis complete');
       return response.data;
     } catch (err: any) {
       console.error("Error analyzing text:", err);
@@ -84,126 +88,160 @@ const StoryAnalysisProgress: React.FC = () => {
   const saveAnalysisResults = async (
     storyId: string, 
     storyWorldId: string, 
-    extractedElements: any
+    elements: any
   ) => {
     try {
       setAnalysisStage('Saving elements to database...');
       
-      // Prepare data for database
-      const charData = extractedElements.characters?.map((char: any) => ({
-        name: char.name,
-        role: char.role || 'supporting',
-        story_id: storyId,
-        story_world_id: storyWorldId,
-        description: char.description || '',
-        appearance: char.appearance,
-        personality: char.personality,
-        background: char.background,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })) || [];
-      
-      // Process each element type in order
-      if (charData.length > 0) {
+      // Save characters
+      if (elements.characters?.length > 0) {
         setAnalysisStage('Saving character information...');
-        await addDetectedItem('System', `Saving ${charData.length} characters`);
+        await addDetectedItem('System', `Saving ${elements.characters.length} characters`);
         
-        const result = await SupabaseService.createCharacters(charData);
+        const charData = elements.characters.map((char: any) => ({
+          name: char.name,
+          role: char.role || 'supporting',
+          story_id: storyId,
+          story_world_id: storyWorldId,
+          description: char.description || '',
+          appearance: char.appearance || '',
+          personality: char.personality || '',
+          background: char.background || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
         
-        for (const char of result) {
-          await addDetectedItem('Character', char.name);
-          setCharacters(prev => [...prev, char]);
+        try {
+          const result = await SupabaseService.createCharacters(charData);
+          
+          for (const char of result) {
+            await addDetectedItem('Character', char.name);
+            setCharacters(prev => [...prev, char]);
+          }
+        } catch (err) {
+          console.error("Error saving characters:", err);
+          await addDetectedItem('Error', `Failed to save some characters`);
+          // Continue with other elements instead of throwing
         }
       }
       
-      const locData = extractedElements.locations?.map((loc: any) => ({
-        name: loc.name,
-        location_type: loc.location_type || 'other',
-        story_id: storyId,
-        story_world_id: storyWorldId,
-        description: loc.description || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })) || [];
-      
-      if (locData.length > 0) {
+      // Save locations
+      if (elements.locations?.length > 0) {
         setAnalysisStage('Saving location information...');
-        await addDetectedItem('System', `Saving ${locData.length} locations`);
+        await addDetectedItem('System', `Saving ${elements.locations.length} locations`);
         
-        const result = await SupabaseService.createLocations(locData);
+        const locData = elements.locations.map((loc: any) => ({
+          name: loc.name,
+          location_type: loc.location_type || 'other',
+          story_id: storyId,
+          story_world_id: storyWorldId,
+          description: loc.description || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
         
-        for (const loc of result) {
-          await addDetectedItem('Location', loc.name);
-          setLocations(prev => [...prev, loc]);
+        try {
+          const result = await SupabaseService.createLocations(locData);
+          
+          for (const loc of result) {
+            await addDetectedItem('Location', loc.name);
+            setLocations(prev => [...prev, loc]);
+          }
+        } catch (err) {
+          console.error("Error saving locations:", err);
+          await addDetectedItem('Error', `Failed to save some locations`);
+          // Continue with other elements
         }
       }
       
-      const sceneData = extractedElements.scenes?.map((scene: any) => ({
-        title: scene.title,
-        content: scene.content,
-        type: scene.type || 'scene',
-        story_id: storyId,
-        sequence_number: scene.sequence_number || 0,
-        description: scene.content ? (scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content) : '',
-        status: 'finished',
-        is_visible: true
-      })) || [];
-      
-      if (sceneData.length > 0) {
+      // Save scenes
+      if (elements.scenes?.length > 0) {
         setAnalysisStage('Saving scene information...');
-        await addDetectedItem('System', `Saving ${sceneData.length} scenes`);
+        await addDetectedItem('System', `Saving ${elements.scenes.length} scenes`);
         
-        const result = await SupabaseService.createScenes(sceneData);
+        const sceneData = elements.scenes.map((scene: any) => ({
+          title: scene.title,
+          content: scene.content,
+          type: scene.type || 'scene',
+          story_id: storyId,
+          sequence_number: scene.sequence_number || 0,
+          description: scene.content ? (scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content) : '',
+          status: 'finished',
+          is_visible: true
+        }));
         
-        for (const scene of result) {
-          await addDetectedItem('Scene', scene.title);
-          setScenes(prev => [...prev, scene]);
+        try {
+          const result = await SupabaseService.createScenes(sceneData);
+          
+          for (const scene of result) {
+            await addDetectedItem('Scene', scene.title);
+            setScenes(prev => [...prev, scene]);
+          }
+        } catch (err) {
+          console.error("Error saving scenes:", err);
+          await addDetectedItem('Error', `Failed to save some scenes`);
+          // Continue with other elements
         }
       }
       
-      const eventData = extractedElements.events?.map((evt: any) => ({
-        title: evt.title || evt.name,
-        story_id: storyId,
-        description: evt.description || '',
-        sequence_number: evt.sequence_number || 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })) || [];
-      
-      if (eventData.length > 0) {
+      // Save events
+      if (elements.events?.length > 0) {
         setAnalysisStage('Saving event information...');
-        await addDetectedItem('System', `Saving ${eventData.length} events`);
+        await addDetectedItem('System', `Saving ${elements.events.length} events`);
         
-        const result = await SupabaseService.createEvents(eventData);
+        const eventData = elements.events.map((evt: any) => ({
+          title: evt.title || evt.name,
+          story_id: storyId,
+          description: evt.description || '',
+          sequence_number: evt.sequence_number || 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }));
         
-        for (const evt of result) {
-          await addDetectedItem('Event', evt.title);
-          setEvents(prev => [...prev, evt]);
+        try {
+          const result = await SupabaseService.createEvents(eventData);
+          
+          for (const evt of result) {
+            await addDetectedItem('Event', evt.title);
+            setEvents(prev => [...prev, evt]);
+          }
+        } catch (err) {
+          console.error("Error saving events:", err);
+          await addDetectedItem('Error', `Failed to save some events`);
+          // Continue with other elements
         }
       }
       
-      const plotlineData = extractedElements.plotlines?.map((plot: any) => ({
-        title: plot.title,
-        description: plot.description || '',
-        plotline_type: plot.plotline_type || 'main',
-        story_id: storyId
-      })) || [];
-      
-      if (plotlineData.length > 0) {
+      // Save plotlines
+      if (elements.plotlines?.length > 0) {
         setAnalysisStage('Saving plotline information...');
-        await addDetectedItem('System', `Saving ${plotlineData.length} plotlines`);
+        await addDetectedItem('System', `Saving ${elements.plotlines.length} plotlines`);
         
-        const result = await SupabaseService.createPlotlines(plotlineData);
+        const plotlineData = elements.plotlines.map((plot: any) => ({
+          title: plot.title,
+          description: plot.description || '',
+          plotline_type: plot.plotline_type || 'main',
+          story_id: storyId
+        }));
         
-        for (const plot of result) {
-          await addDetectedItem('Plotline', plot.title);
-          setPlotlines(prev => [...prev, plot]);
+        try {
+          const result = await SupabaseService.createPlotlines(plotlineData);
+          
+          for (const plot of result) {
+            await addDetectedItem('Plotline', plot.title);
+            setPlotlines(prev => [...prev, plot]);
+          }
+        } catch (err) {
+          console.error("Error saving plotlines:", err);
+          await addDetectedItem('Error', `Failed to save some plotlines`);
+          // Continue with other elements
         }
       }
       
-      // After saving characters, we can save relationships
-      if (extractedElements.characterRelationships?.length > 0 && characters.length > 0) {
+      // Save character relationships (after characters are saved)
+      if (elements.characterRelationships?.length > 0 && characters.length > 0) {
         setAnalysisStage('Saving character relationships...');
+        await addDetectedItem('System', `Processing ${elements.characterRelationships.length} character relationships`);
         
         // Create a map of character names to IDs
         const characterMap: Record<string, string> = {};
@@ -212,7 +250,7 @@ const StoryAnalysisProgress: React.FC = () => {
         });
         
         // Filter relationships where both characters exist
-        const relationshipsToSave = extractedElements.characterRelationships
+        const relationshipsToSave = elements.characterRelationships
           .filter((rel: any) => 
             rel.character1_name && 
             rel.character2_name && 
@@ -231,20 +269,29 @@ const StoryAnalysisProgress: React.FC = () => {
         if (relationshipsToSave.length > 0) {
           await addDetectedItem('System', `Saving ${relationshipsToSave.length} character relationships`);
           
-          const result = await SupabaseService.createCharacterRelationships(relationshipsToSave);
-          
-          for (const rel of result) {
-            const char1 = characters.find(c => c.id === rel.character1_id);
-            const char2 = characters.find(c => c.id === rel.character2_id);
-            if (char1 && char2) {
-              await addDetectedItem('Relationship', `${char1.name} - ${char2.name}`);
+          try {
+            const result = await SupabaseService.createCharacterRelationships(relationshipsToSave);
+            
+            for (const rel of result) {
+              const char1 = characters.find(c => c.id === rel.character1_id);
+              const char2 = characters.find(c => c.id === rel.character2_id);
+              if (char1 && char2) {
+                await addDetectedItem('Relationship', `${char1.name} - ${char2.name}`);
+              }
+              setCharacterRelationships(prev => [...prev, rel]);
             }
-            setCharacterRelationships(prev => [...prev, rel]);
+          } catch (err) {
+            console.error("Error saving relationships:", err);
+            await addDetectedItem('Error', `Failed to save some relationships`);
+            // Continue with other elements
           }
         }
       }
       
-      // After saving all elements, finalize
+      // Process other elements (character arcs, event dependencies, etc.) following the same pattern
+      // ...
+      
+      // Finalize
       setAnalysisStage('Finalizing analysis...');
       await addDetectedItem('System', 'Analysis completed successfully');
       
@@ -262,6 +309,7 @@ const StoryAnalysisProgress: React.FC = () => {
   };
 
   useEffect(() => {
+    // Split the analysis process into two distinct phases
     const processAnalysis = async () => {
       // Get analysis data from session storage
       const analysisDataStr = sessionStorage.getItem('analysisData');
@@ -269,6 +317,7 @@ const StoryAnalysisProgress: React.FC = () => {
       if (!analysisDataStr) {
         setError('No analysis data found. Please return to the import screen.');
         setIsAnalyzing(false);
+        setAnalysisPhase('error');
         return;
       }
       
@@ -284,88 +333,91 @@ const StoryAnalysisProgress: React.FC = () => {
         if (!analysisData.files || analysisData.files.length === 0) {
           setError('No files found for analysis. Please upload a file and try again.');
           setIsAnalyzing(false);
+          setAnalysisPhase('error');
           return;
         }
         
-        // Stage 1: Extract narrative elements
+        // Phase 1: Extract narrative elements
         try {
-          const extractedElements = await analyzeText(analysisData);
-          setAnalyzeResponse(extractedElements);
+          setAnalysisPhase('extracting');
+          const elements = await analyzeText(analysisData);
+          setExtractedElements(elements);
           
-          // Add extracted items to UI
-          if (extractedElements.characters) {
-            for (const char of extractedElements.characters.slice(0, 5)) {
+          // Display a sample of the extracted elements in the UI
+          if (elements.characters?.length > 0) {
+            await addDetectedItem('System', `Found ${elements.characters.length} characters`);
+            for (const char of elements.characters.slice(0, 3)) {
               await addDetectedItem('Character', char.name);
             }
           }
           
-          if (extractedElements.locations) {
-            for (const loc of extractedElements.locations) {
+          if (elements.locations?.length > 0) {
+            await addDetectedItem('System', `Found ${elements.locations.length} locations`);
+            for (const loc of elements.locations.slice(0, 3)) {
               await addDetectedItem('Location', loc.name);
             }
           }
           
-          if (extractedElements.scenes) {
-            for (const scene of extractedElements.scenes.slice(0, 5)) {
+          if (elements.scenes?.length > 0) {
+            await addDetectedItem('System', `Found ${elements.scenes.length} scenes`);
+            for (const scene of elements.scenes.slice(0, 3)) {
               await addDetectedItem('Scene', scene.title);
             }
           }
           
-          if (extractedElements.events) {
-            for (const evt of extractedElements.events.slice(0, 5)) {
-              await addDetectedItem('Event', evt.title);
-            }
-          }
+          // Continue with Phase 2 only if extraction was successful
+          setAnalysisPhase('saving');
           
-          if (extractedElements.plotlines) {
-            for (const plot of extractedElements.plotlines) {
-              await addDetectedItem('Plotline', plot.title);
-            }
-          }
-          
-          // Stage 2: Save extracted elements to database
+          // Phase 2: Save extracted elements to database
           await saveAnalysisResults(
             analysisData.storyId,
             analysisData.storyWorldId,
-            extractedElements
+            elements
           );
+          
+          setAnalysisPhase('complete');
         } catch (err: any) {
           console.error("Error during analysis:", err);
           setError(`Analysis error: ${err.message || 'Unknown error'}`);
           await addDetectedItem('Error', `Analysis error: ${err.message || 'Unknown error'}`);
+          setAnalysisPhase('error');
         }
-        
       } catch (err: any) {
         console.error("Error parsing analysis data:", err);
         setError(`Error preparing analysis: ${err.message || 'Unknown error'}`);
+        setAnalysisPhase('error');
       } finally {
         setIsAnalyzing(false);
         
-        // Store comprehensive results for the results page
-        sessionStorage.setItem('analysisResults', JSON.stringify({
-          characters,
-          locations,
-          events,
-          scenes,
-          plotlines,
-          characterRelationships,
-          eventDependencies,
-          characterArcs,
-          storyId: JSON.parse(analysisDataStr).storyId,
-          storyWorldId: JSON.parse(analysisDataStr).storyWorldId
-        }));
+        // Only store results if we have them
+        if (analysisPhase !== 'error') {
+          // Store comprehensive results for the results page
+          sessionStorage.setItem('analysisResults', JSON.stringify({
+            characters,
+            locations,
+            events,
+            scenes,
+            plotlines,
+            characterRelationships,
+            eventDependencies,
+            characterArcs,
+            storyId: JSON.parse(analysisDataStr).storyId,
+            storyWorldId: JSON.parse(analysisDataStr).storyWorldId
+          }));
+        }
       }
     };
     
     processAnalysis();
   }, []);
 
+  // Add a detected item with a small delay to create visual feedback
   const addDetectedItem = async (type: string, name: string) => {
     return new Promise<void>(resolve => {
       setTimeout(() => {
         setDetectedItems(prev => [...prev, { type, name }]);
         resolve();
-      }, Math.random() * 200 + 50); // Quicker random delay
+      }, Math.random() * 200 + 50); // Random delay between 50-250ms
     });
   };
 
@@ -374,7 +426,53 @@ const StoryAnalysisProgress: React.FC = () => {
   };
 
   const handleRetry = () => {
-    window.location.reload(); // Reload the page to retry the analysis
+    // If we have extracted elements but failed to save, retry only the saving phase
+    if (extractedElements && analysisPhase === 'saving') {
+      // Get analysis data from session storage
+      const analysisDataStr = sessionStorage.getItem('analysisData');
+      if (analysisDataStr) {
+        const analysisData = JSON.parse(analysisDataStr);
+        // Reset only relevant states
+        setError(null);
+        setIsAnalyzing(true);
+        
+        // Start from saving phase
+        (async () => {
+          try {
+            await saveAnalysisResults(
+              analysisData.storyId,
+              analysisData.storyWorldId,
+              extractedElements
+            );
+            setAnalysisPhase('complete');
+          } catch (err: any) {
+            console.error("Error during retry of saving:", err);
+            setError(`Saving error: ${err.message || 'Unknown error'}`);
+            setAnalysisPhase('error');
+          } finally {
+            setIsAnalyzing(false);
+          }
+        })();
+      }
+    } else {
+      // Full retry
+      window.location.reload();
+    }
+  };
+
+  const getAnalysisPhaseDisplay = () => {
+    switch (analysisPhase) {
+      case 'extracting':
+        return 'Phase 1 of 2: Extracting narrative elements';
+      case 'saving':
+        return 'Phase 2 of 2: Saving elements to database';
+      case 'complete':
+        return 'Analysis Complete';
+      case 'error':
+        return 'Analysis Error';
+      default:
+        return 'Analyzing...';
+    }
   };
 
   return (
@@ -386,6 +484,7 @@ const StoryAnalysisProgress: React.FC = () => {
           <div className="progress-indicator">
             <div className="spinner"></div>
             <p>Analyzing: {currentFile}</p>
+            <div className="analysis-phase">{getAnalysisPhaseDisplay()}</div>
             <div className="analysis-stage">{analysisStage}</div>
           </div>
           
@@ -421,7 +520,7 @@ const StoryAnalysisProgress: React.FC = () => {
                 </div>
               )}
               <button className="retry-button" onClick={handleRetry}>
-                Retry Analysis
+                {analysisPhase === 'saving' && extractedElements ? 'Retry Saving' : 'Retry Analysis'}
               </button>
               <button className="secondary-button" onClick={() => navigate('/import')}>
                 Back to Import
