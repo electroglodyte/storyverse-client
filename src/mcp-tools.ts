@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.5.0
+ * Version: 0.5.1
  * 
  * STYLE ANALYSIS TOOLS
  */
