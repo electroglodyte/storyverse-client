@@ -1,16 +1,21 @@
 {
-  "name": "local-mcp",
+  "name": "storyverse-mcp",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "StoryVerse MCP Server",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.2",
     "@supabase/supabase-js": "^2.49.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
