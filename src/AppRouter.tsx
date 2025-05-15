@@ -1,32 +1,21 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import ImportAndAnalyzeStory from './pages/ImportAndAnalyzeStory';
-import StoryAnalysisProgress from './pages/StoryAnalysisProgress';
-import StoryAnalysisResults from './pages/StoryAnalysisResults';
-
-// Import any other necessary components/pages
-
-const router = createBrowserRouter([
-  {
-    path: '/',
-    element: <div>Home Page</div>, // Replace with your actual home page component
-  },
-  {
-    path: '/import',
-    element: <ImportAndAnalyzeStory />,
-  },
-  {
-    path: '/analyze-progress',
-    element: <StoryAnalysisProgress />,
-  },
-  {
-    path: '/analysis-results',
-    element: <StoryAnalysisResults />,
-  },
-  // Add other routes as needed
-]);
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import Navigation from './components/Navigation'; // Import your navigation component if you have one
 
 const AppRouter = () => {
-  return <RouterProvider router={router} />;
+  return (
+    <div className="app-container">
+      {/* Your app header or navigation here */}
+      <Navigation />
+      
+      {/* This renders the matched child route */}
+      <main className="content-container">
+        <Outlet />
+      </main>
+      
+      {/* Optional: Footer component */}
+    </div>
+  );
 };
 
 export default AppRouter;
