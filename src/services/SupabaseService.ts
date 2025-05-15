@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from './supabase';
 
 export interface StoryWorld {
   id: string;
@@ -156,6 +156,8 @@ export const SupabaseService = {
   },
   
   async createCharacters(characters: Array<Omit<Character, 'id' | 'created_at'>>): Promise<Character[]> {
+    if (characters.length === 0) return [];
+    
     const { data, error } = await supabase
       .from('characters')
       .insert(characters)
@@ -186,6 +188,8 @@ export const SupabaseService = {
   },
   
   async createLocations(locations: Array<Omit<Location, 'id' | 'created_at'>>): Promise<Location[]> {
+    if (locations.length === 0) return [];
+    
     const { data, error } = await supabase
       .from('locations')
       .insert(locations)
@@ -216,6 +220,8 @@ export const SupabaseService = {
   },
   
   async createEvents(events: Array<Omit<Event, 'id' | 'created_at'>>): Promise<Event[]> {
+    if (events.length === 0) return [];
+    
     const { data, error } = await supabase
       .from('events')
       .insert(events)
@@ -235,63 +241,114 @@ export const SupabaseService = {
     locations: Location[];
     events: Event[];
   }> {
-    // In a real implementation, this would call the MCP tool for analysis
-    // For now, we'll simulate the analysis with a timeout and some sample data
-    
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        // Simulate detection results
-        const characters: Character[] = [
-          {
-            id: crypto.randomUUID(),
-            name: 'Character 1',
-            description: 'Detected from the story text',
-            story_id: storyId,
-            story_world_id: storyWorldId,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: crypto.randomUUID(),
-            name: 'Character 2',
-            description: 'Detected from the story text',
-            story_id: storyId,
-            story_world_id: storyWorldId,
-            created_at: new Date().toISOString()
+    try {
+      // Call the analyze-story edge function
+      const { data, error } = await supabase.functions.invoke('analyze-story', {
+        body: {
+          story_text: fileContent,
+          story_title: 'Story Analysis', // This will be replaced by the story title in the database
+          options: {
+            create_project: false, // We'll handle this ourselves
+            extract_characters: true,
+            extract_locations: true,
+            extract_events: true,
+            extract_relationships: true,
+            interactive_mode: false
           }
-        ];
-        
-        const locations: Location[] = [
-          {
-            id: crypto.randomUUID(),
-            name: 'Location 1',
-            description: 'Detected from the story text',
-            story_id: storyId,
-            story_world_id: storyWorldId,
-            created_at: new Date().toISOString()
-          }
-        ];
-        
-        const events: Event[] = [
-          {
-            id: crypto.randomUUID(),
-            title: 'Event 1',
-            description: 'Detected from the story text',
-            story_id: storyId,
-            sequence_number: 1,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: crypto.randomUUID(),
-            title: 'Event 2',
-            description: 'Detected from the story text',
-            story_id: storyId,
-            sequence_number: 2,
-            created_at: new Date().toISOString()
-          }
-        ];
-        
-        resolve({ characters, locations, events });
-      }, 2000);
-    });
+        }
+      });
+      
+      if (error) {
+        console.error('Error calling analyze-story edge function:', error);
+        throw error;
+      }
+      
+      // Convert the returned data to our interface types
+      const characters: Character[] = (data.characters || []).map((char: any) => ({
+        id: crypto.randomUUID(),
+        name: char.name,
+        role: char.role || 'supporting',
+        story_id: storyId,
+        story_world_id: storyWorldId,
+        description: char.description || '',
+        created_at: new Date().toISOString()
+      }));
+      
+      const locations: Location[] = (data.locations || []).map((loc: any) => ({
+        id: crypto.randomUUID(),
+        name: loc.name,
+        location_type: loc.location_type || 'other',
+        story_id: storyId,
+        story_world_id: storyWorldId,
+        description: loc.description || '',
+        created_at: new Date().toISOString()
+      }));
+      
+      const events: Event[] = (data.events || []).map((evt: any, index: number) => ({
+        id: crypto.randomUUID(),
+        title: evt.title,
+        description: evt.description || '',
+        story_id: storyId,
+        sequence_number: evt.sequence_number || index + 1,
+        created_at: new Date().toISOString()
+      }));
+      
+      return { characters, locations, events };
+    } catch (error) {
+      console.error('Error in analyzeStory:', error);
+      // Return empty arrays instead of crashing
+      return {
+        characters: [],
+        locations: [],
+        events: []
+      };
+    }
+  },
+  
+  // Save Analysis Results
+  async saveAnalysisResults(
+    storyId: string,
+    storyWorldId: string,
+    characters: Character[],
+    locations: Location[],
+    events: Event[]
+  ): Promise<boolean> {
+    try {
+      // Prepare data for insertion (remove IDs as they will be generated by the database)
+      const charsToInsert = characters.map(({id, ...rest}) => ({
+        ...rest,
+        story_id: storyId,
+        story_world_id: storyWorldId
+      }));
+      
+      const locsToInsert = locations.map(({id, ...rest}) => ({
+        ...rest,
+        story_id: storyId,
+        story_world_id: storyWorldId
+      }));
+      
+      const evtsToInsert = events.map(({id, ...rest}) => ({
+        ...rest,
+        story_id: storyId
+      }));
+      
+      // Insert data in parallel
+      const [charResult, locResult, evtResult] = await Promise.all([
+        charsToInsert.length > 0 ? this.createCharacters(charsToInsert) : Promise.resolve([]),
+        locsToInsert.length > 0 ? this.createLocations(locsToInsert) : Promise.resolve([]),
+        evtsToInsert.length > 0 ? this.createEvents(evtsToInsert) : Promise.resolve([])
+      ]);
+      
+      console.log('Saved analysis results:', {
+        characters: charResult.length,
+        locations: locResult.length,
+        events: evtResult.length
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error saving analysis results:', error);
+      return false;
+    }
   }
 };
