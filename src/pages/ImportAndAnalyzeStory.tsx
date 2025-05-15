@@ -18,6 +18,8 @@ const ImportAndAnalyzeStory: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isCreatingStoryWorld, setIsCreatingStoryWorld] = useState<boolean>(false);
   const [isCreatingStory, setIsCreatingStory] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [newStoryWorldName, setNewStoryWorldName] = useState<string>('');
   const [newStoryTitle, setNewStoryTitle] = useState<string>('');
   
@@ -26,8 +28,13 @@ const ImportAndAnalyzeStory: React.FC = () => {
   // Enhanced version (May 15, 2025)
   useEffect(() => {
     const loadStoryWorlds = async () => {
-      const worlds = await SupabaseService.getStoryWorlds();
-      setStoryWorlds(worlds);
+      try {
+        const worlds = await SupabaseService.getStoryWorlds();
+        setStoryWorlds(worlds);
+      } catch (error) {
+        console.error('Failed to load story worlds:', error);
+        setError('Failed to load story worlds. Please refresh the page.');
+      }
     };
     
     loadStoryWorlds();
@@ -35,13 +42,25 @@ const ImportAndAnalyzeStory: React.FC = () => {
 
   useEffect(() => {
     const loadStories = async () => {
-      if (selectedStoryWorldId) {
-        const storiesList = await SupabaseService.getStories(selectedStoryWorldId);
-        setStories(storiesList);
-      } else {
-        setStories([]);
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        if (selectedStoryWorldId) {
+          console.log(`Loading stories for story world ID: ${selectedStoryWorldId}`);
+          const storiesList = await SupabaseService.getStories(selectedStoryWorldId);
+          console.log('Loaded stories:', storiesList);
+          setStories(storiesList);
+        } else {
+          setStories([]);
+        }
+        setSelectedStoryId('');
+      } catch (error) {
+        console.error('Error loading stories:', error);
+        setError('Failed to load stories. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
-      setSelectedStoryId('');
     };
     
     loadStories();
@@ -88,37 +107,62 @@ const ImportAndAnalyzeStory: React.FC = () => {
   const handleCreateStoryWorld = async () => {
     if (!newStoryWorldName.trim()) return;
     
-    const newStoryWorld = await SupabaseService.createStoryWorld({
-      name: newStoryWorldName
-    });
+    setIsLoading(true);
+    setError(null);
     
-    if (newStoryWorld) {
-      setStoryWorlds(prev => [...prev, newStoryWorld]);
-      setSelectedStoryWorldId(newStoryWorld.id);
-      setNewStoryWorldName('');
-      setIsCreatingStoryWorld(false);
+    try {
+      const newStoryWorld = await SupabaseService.createStoryWorld({
+        name: newStoryWorldName
+      });
+      
+      if (newStoryWorld) {
+        setStoryWorlds(prev => [...prev, newStoryWorld]);
+        setSelectedStoryWorldId(newStoryWorld.id);
+        setNewStoryWorldName('');
+        setIsCreatingStoryWorld(false);
+      } else {
+        throw new Error('Failed to create story world');
+      }
+    } catch (err) {
+      console.error('Error creating story world:', err);
+      setError('Failed to create story world. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleCreateStory = async () => {
     if (!newStoryTitle.trim() || !selectedStoryWorldId) return;
     
+    setIsLoading(true);
+    setError(null);
+    
     try {
+      console.log('Creating new story with title:', newStoryTitle);
+      console.log('Story world ID:', selectedStoryWorldId);
+      
       const newStory = await SupabaseService.createStory({
         title: newStoryTitle,
+        name: newStoryTitle,
         story_world_id: selectedStoryWorldId,
-        // name will be automatically set to title in the SupabaseService
+        storyworld_id: selectedStoryWorldId
       });
+      
+      console.log('Story creation result:', newStory);
       
       if (newStory) {
         setStories(prev => [...prev, newStory]);
         setSelectedStoryId(newStory.id);
         setNewStoryTitle('');
         setIsCreatingStory(false);
+      } else {
+        throw new Error('Failed to create story - result was null');
       }
-    } catch (error) {
-      console.error('Error creating story:', error);
-      alert('Error creating story. Please try again.');
+    } catch (err: any) {
+      console.error('Error creating story:', err);
+      setError(`Failed to create story: ${err.message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -163,12 +207,18 @@ const ImportAndAnalyzeStory: React.FC = () => {
     }
   };
 
-  const isAnalyzeDisabled = !selectedStoryId || files.length === 0;
+  const isAnalyzeDisabled = !selectedStoryId || files.length === 0 || isLoading;
 
   return (
     <div className="import-analyze-container">
       <h1>Import and Analyze Story</h1>
       <p>Upload a file to extract narrative elements like characters, locations, events, and plot structure. The system will analyze the content and organize it within StoryVerse.</p>
+      
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
       
       <div className="selection-container">
         <div className="selection-group">
@@ -180,15 +230,27 @@ const ImportAndAnalyzeStory: React.FC = () => {
                 value={newStoryWorldName}
                 onChange={(e) => setNewStoryWorldName(e.target.value)}
                 placeholder="Enter story world name"
+                disabled={isLoading}
               />
-              <button onClick={handleCreateStoryWorld}>Create</button>
-              <button onClick={() => setIsCreatingStoryWorld(false)}>Cancel</button>
+              <button 
+                onClick={handleCreateStoryWorld}
+                disabled={isLoading || !newStoryWorldName.trim()}
+              >
+                {isLoading ? 'Creating...' : 'Create'}
+              </button>
+              <button 
+                onClick={() => setIsCreatingStoryWorld(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
             </div>
           ) : (
             <select
               id="storyWorld"
               value={selectedStoryWorldId}
               onChange={handleStoryWorldChange}
+              disabled={isLoading}
             >
               <option value="">Select a Story World</option>
               {storyWorlds.map(world => (
@@ -208,26 +270,31 @@ const ImportAndAnalyzeStory: React.FC = () => {
                 value={newStoryTitle}
                 onChange={(e) => setNewStoryTitle(e.target.value)}
                 placeholder="Enter story title"
-                disabled={!selectedStoryWorldId}
+                disabled={!selectedStoryWorldId || isLoading}
               />
               <button 
                 onClick={handleCreateStory}
-                disabled={!selectedStoryWorldId}
+                disabled={!selectedStoryWorldId || isLoading || !newStoryTitle.trim()}
               >
-                Create
+                {isLoading ? 'Creating...' : 'Create'}
               </button>
-              <button onClick={() => setIsCreatingStory(false)}>Cancel</button>
+              <button 
+                onClick={() => setIsCreatingStory(false)}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
             </div>
           ) : (
             <select
               id="story"
               value={selectedStoryId}
               onChange={handleStoryChange}
-              disabled={!selectedStoryWorldId}
+              disabled={!selectedStoryWorldId || isLoading}
             >
               <option value="">Select a Story</option>
               {stories.map(story => (
-                <option key={story.id} value={story.id}>{story.title}</option>
+                <option key={story.id} value={story.id}>{story.title || story.name}</option>
               ))}
               {selectedStoryWorldId && <option value="create-new">Create New...</option>}
             </select>
@@ -249,6 +316,7 @@ const ImportAndAnalyzeStory: React.FC = () => {
             accept=".txt,.md,.fountain" 
             onChange={handleFileInputChange}
             multiple
+            disabled={isLoading}
           />
           <p className="supported-formats">
             Supported formats: TXT, Markdown, Fountain, PDF*, DOCX*, EPUB*
@@ -267,6 +335,7 @@ const ImportAndAnalyzeStory: React.FC = () => {
                   <button 
                     className="remove-file"
                     onClick={() => setFiles(files.filter((_, i) => i !== index))}
+                    disabled={isLoading}
                   >
                     ✕
                   </button>
@@ -283,7 +352,7 @@ const ImportAndAnalyzeStory: React.FC = () => {
           disabled={isAnalyzeDisabled}
           onClick={handleAnalyzeClick}
         >
-          Analyze
+          {isLoading ? 'Processing...' : 'Analyze'}
         </button>
       </div>
     </div>
