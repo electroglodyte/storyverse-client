@@ -272,7 +272,10 @@ export interface PlotlineCharacter {
 export enum SceneType {
   BEAT = 'beat',
   OUTLINE = 'outline',
-  SCENE = 'scene'
+  SCENE = 'scene',
+  CHAPTER = 'chapter',
+  OUTLINE_ELEMENT = 'outline_element',
+  SUMMARY = 'summary'
 }
 
 // Scene Status enum

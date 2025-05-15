@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { FaArrowLeft, FaFileExport, FaDownload, FaClipboard, FaCheck } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { Scene, Story } from '../../supabase-tables';
+import { Scene, Story, SceneType } from '../../supabase-tables';
 
 interface ExportFormat {
   id: string;
@@ -440,10 +440,10 @@ const SceneExportPage: React.FC = () => {
                         <td>{scene.title}</td>
                         <td>
                           <span className="badge badge-sm">
-                            {scene.type === 'scene' ? 'Scene' : 
-                             scene.type === 'chapter' ? 'Chapter' :
-                             scene.type === 'outline_element' ? 'Outline' : 
-                             scene.type === 'summary' ? 'Summary' : scene.type}
+                            {scene.type === SceneType.SCENE ? 'Scene' : 
+                             scene.type === SceneType.CHAPTER ? 'Chapter' :
+                             scene.type === SceneType.OUTLINE_ELEMENT ? 'Outline' : 
+                             scene.type === SceneType.SUMMARY ? 'Summary' : scene.type}
                           </span>
                         </td>
                       </tr>

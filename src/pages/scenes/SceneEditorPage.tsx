@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { FaSave, FaHistory, FaComments, FaEye, FaArrowLeft, FaCheck, FaTimes, FaCode, FaQuestion, FaParagraph } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { Scene } from '../../supabase-tables';
+import { Scene, SceneType, SceneStatus } from '../../supabase-tables';
 import { renderFountainPreview, renderMarkdownPreview, convertToFountain, convertToMarkdown, detectFormat } from '../../utils/formatters';
 
 const SceneEditorPage: React.FC = () => {
@@ -18,7 +18,8 @@ const SceneEditorPage: React.FC = () => {
     story_id: '',
     sequence_number: 0,
     is_visible: true,
-    type: 'scene',
+    type: SceneType.SCENE,
+    status: SceneStatus.DRAFT,
     format: 'plain',
     created_at: '',
     updated_at: '',
@@ -602,10 +603,10 @@ const SceneEditorPage: React.FC = () => {
                   onChange={handleChange}
                   className="select select-bordered w-full"
                 >
-                  <option value="scene">Scene</option>
-                  <option value="chapter">Chapter</option>
-                  <option value="outline_element">Outline Element</option>
-                  <option value="summary">Summary</option>
+                  <option value={SceneType.SCENE}>Scene</option>
+                  <option value={SceneType.CHAPTER}>Chapter</option>
+                  <option value={SceneType.OUTLINE_ELEMENT}>Outline Element</option>
+                  <option value={SceneType.SUMMARY}>Summary</option>
                 </select>
               </div>
               
