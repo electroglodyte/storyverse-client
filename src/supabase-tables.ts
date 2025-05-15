@@ -1,6 +1,6 @@
 /**
  * StoryVerse Database Schema
- * Version: 0.4.1
+ * Version: 0.4.2
  * 
  * This file contains TypeScript types for all tables in the Supabase database.
  */
@@ -268,6 +268,22 @@ export interface PlotlineCharacter {
   created_at: string;
 }
 
+// Scene Type enum
+export enum SceneType {
+  BEAT = 'beat',
+  OUTLINE = 'outline',
+  SCENE = 'scene'
+}
+
+// Scene Status enum
+export enum SceneStatus {
+  IDEA = 'idea',
+  DRAFT = 'draft', 
+  REVISED = 'revised',
+  POLISHED = 'polished',
+  FINISHED = 'finished'
+}
+
 // Scene - a specific moment within a story, linked to an event
 export interface Scene {
   id: string;
@@ -278,7 +294,8 @@ export interface Scene {
   story_id?: string;
   sequence_number?: number;
   is_visible?: boolean;
-  type?: 'scene' | 'chapter' | 'outline_element' | 'summary';
+  type: SceneType;
+  status: SceneStatus;
   format?: 'plain' | 'fountain' | 'markdown';
   metadata?: Record<string, any>;
   created_at: string;
