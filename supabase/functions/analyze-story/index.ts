@@ -14,11 +14,51 @@ serve(async (req) => {
 
   try {
     // Get request data
-    const { story_text, story_title, story_world_id, options = {} } = await req.json();
+    const requestBody = await req.json();
+    const { story_text, story_title, story_world_id, options = {} } = requestBody;
+    
+    // Debug mode
+    const debugMode = options.debug || false;
+    let debugInfo = {};
+    
+    // Log incoming request if in debug mode
+    if (debugMode) {
+      console.log("Request received for analyze-story:");
+      console.log(`Story title: ${story_title}`);
+      console.log(`Text length: ${story_text?.length || 0} characters`);
+      console.log(`Options:`, options);
+      
+      // Add to debug info
+      debugInfo.request = {
+        title: story_title,
+        textLength: story_text?.length || 0,
+        options: {...options, story_text: undefined} // Don't include full text in debug
+      };
+    }
     
     if (!story_text) {
+      const errorMessage = 'Story text is required';
+      if (debugMode) console.log(`Error: ${errorMessage}`);
+      
       return new Response(
-        JSON.stringify({ error: 'Story text is required' }),
+        JSON.stringify({ 
+          error: errorMessage,
+          debug: debugMode ? debugInfo : undefined
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+    
+    // Validate text length
+    if (story_text.trim().length < 50) {
+      const errorMessage = 'Story text is too short for meaningful analysis (min 50 characters)';
+      if (debugMode) console.log(`Error: ${errorMessage}`);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          debug: debugMode ? debugInfo : undefined
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
@@ -29,18 +69,44 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
     
-    // Step 1: Perform in-depth analysis of the text
-    console.log("Starting narrative analysis of story text...");
-    const extractedElements = await extractNarrativeElements(story_text);
-    console.log(`Analysis complete. Found ${extractedElements.characters.length} characters, ${extractedElements.locations.length} locations, ${extractedElements.events.length} events, ${extractedElements.scenes.length} scenes, and ${extractedElements.plotlines.length} plotlines.`);
+    if (debugMode) {
+      console.log("Supabase client created, starting extraction process");
+    }
     
-    // Step 2: Create or update story in database if specified
+    // Extract narrative elements from text
+    const extractedElements = await extractNarrativeElements(story_text, { 
+      debug: debugMode,
+      debugInfo
+    });
+    
+    if (debugMode) {
+      console.log("Extraction complete, results:", {
+        characters: extractedElements.characters.length,
+        locations: extractedElements.locations.length,
+        scenes: extractedElements.scenes?.length || 0,
+        events: extractedElements.events.length,
+        plotlines: extractedElements.plotlines?.length || 0
+      });
+      
+      // Add to debug info
+      debugInfo.extractionResults = {
+        characters: extractedElements.characters.length,
+        locations: extractedElements.locations.length,
+        scenes: extractedElements.scenes?.length || 0,
+        events: extractedElements.events.length,
+        plotlines: extractedElements.plotlines?.length || 0
+      };
+    }
+    
+    // Create or update story in database if specified
     let storyId = null;
-    if (options.create_project || options.story_id) {
+    if (options.create_project) {
+      // Use provided story ID or create a new one
       storyId = options.story_id;
       
       if (!storyId) {
-        // Create new story
+        if (debugMode) console.log("Creating new story in database");
+        
         const { data: story, error: storyError } = await supabaseClient
           .from('stories')
           .insert({
@@ -48,31 +114,73 @@ serve(async (req) => {
             title: story_title,
             synopsis: extractedElements.synopsis || getShortSynopsis(story_text),
             description: story_text.length > 1000 ? story_text.substring(0, 1000) + '...' : story_text,
-            story_world_id: story_world_id,
+            story_world_id: story_world_id
           })
           .select('id')
           .single();
         
         if (storyError) {
-          throw new Error(`Failed to create story: ${storyError.message}`);
+          const errorMessage = `Failed to create story: ${storyError.message}`;
+          if (debugMode) console.log(`Error: ${errorMessage}`);
+          
+          throw new Error(errorMessage);
         }
         
         storyId = story?.id;
+        if (debugMode) console.log(`Created story with ID: ${storyId}`);
+      } else {
+        if (debugMode) console.log(`Using provided story ID: ${storyId}`);
       }
       
-      // Step 3: Persist all extracted elements to database
-      console.log(`Storing extracted elements for story ID: ${storyId}`);
-      await persistAllElements(supabaseClient, storyId, extractedElements, options);
-      console.log("All elements stored in database");
+      // Store extracted elements in database
+      if (options.extract_characters !== false && extractedElements.characters.length > 0) {
+        await storeCharacters(supabaseClient, storyId, extractedElements.characters);
+        if (debugMode) console.log(`Stored ${extractedElements.characters.length} characters`);
+      }
+      
+      if (options.extract_locations !== false && extractedElements.locations.length > 0) {
+        await storeLocations(supabaseClient, storyId, extractedElements.locations);
+        if (debugMode) console.log(`Stored ${extractedElements.locations.length} locations`);
+      }
+      
+      if (options.extract_events !== false && extractedElements.events.length > 0) {
+        await storeEvents(supabaseClient, storyId, extractedElements.events);
+        if (debugMode) console.log(`Stored ${extractedElements.events.length} events`);
+      }
+      
+      if (options.extract_scenes !== false && extractedElements.scenes && extractedElements.scenes.length > 0) {
+        await storeScenes(supabaseClient, storyId, extractedElements.scenes);
+        if (debugMode) console.log(`Stored ${extractedElements.scenes.length} scenes`);
+      }
+      
+      if (options.extract_plotlines !== false && extractedElements.plotlines && extractedElements.plotlines.length > 0) {
+        await storePlotlines(supabaseClient, storyId, extractedElements.plotlines);
+        if (debugMode) console.log(`Stored ${extractedElements.plotlines.length} plotlines`);
+      }
+    }
+    
+    // In debug mode, add timing information
+    if (debugMode) {
+      debugInfo.timing = {
+        extractionCompleted: new Date().toISOString()
+      };
+    }
+    
+    // Prepare response
+    const response = {
+      success: true,
+      story_id: storyId,
+      title: story_title,
+      ...extractedElements
+    };
+    
+    // Add debug info if requested
+    if (debugMode) {
+      response.debug = debugInfo;
     }
     
     return new Response(
-      JSON.stringify({
-        success: true,
-        story_id: storyId,
-        title: story_title,
-        ...extractedElements
-      }),
+      JSON.stringify(response),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
     
@@ -85,43 +193,130 @@ serve(async (req) => {
   }
 });
 
-/**
- * Main function to extract all narrative elements from text
- */
-async function extractNarrativeElements(text) {
+// Main function to extract all narrative elements from text
+async function extractNarrativeElements(text, options = {}) {
+  const debugMode = options.debug || false;
+  const debugInfo = options.debugInfo || {};
+  
+  // Capture timing information if in debug mode
+  let timingInfo = {};
+  if (debugMode) {
+    timingInfo.startTime = new Date().toISOString();
+  }
+  
   // 1. Detect text format (screenplay, novel, etc.)
   const textFormat = detectTextFormat(text);
-  console.log(`Detected text format: ${textFormat}`);
+  if (debugMode) {
+    console.log(`Detected text format: ${textFormat}`);
+    timingInfo.formatDetected = new Date().toISOString();
+  }
   
   // 2. Preprocess text based on format
   const processedText = preprocessText(text, textFormat);
+  if (debugMode) {
+    timingInfo.preprocessingCompleted = new Date().toISOString();
+  }
   
   // 3. Extract characters using comprehensive approach
   const characters = extractCharacters(processedText, textFormat);
+  if (debugMode) {
+    console.log(`Extracted ${characters.length} characters`);
+    timingInfo.charactersExtracted = new Date().toISOString();
+    
+    // Debug info for characters
+    let characterDetails = [];
+    for (const char of characters.slice(0, 5)) { // Log first 5 for brevity
+      characterDetails.push({
+        name: char.name,
+        role: char.role,
+        confidence: char.confidence,
+        appearances: char.appearances
+      });
+    }
+    debugInfo.characters = characterDetails;
+  }
   
   // 4. Extract locations
   const locations = extractLocations(processedText, textFormat);
+  if (debugMode) {
+    console.log(`Extracted ${locations.length} locations`);
+    timingInfo.locationsExtracted = new Date().toISOString();
+    
+    // Debug info for locations
+    let locationDetails = [];
+    for (const loc of locations.slice(0, 5)) { // Log first 5 for brevity
+      locationDetails.push({
+        name: loc.name,
+        type: loc.location_type,
+        confidence: loc.confidence,
+        appearances: loc.appearances
+      });
+    }
+    debugInfo.locations = locationDetails;
+  }
   
   // 5. Split text into scenes/sections
   const scenes = extractScenes(processedText, textFormat);
+  if (debugMode) {
+    console.log(`Extracted ${scenes.length} scenes`);
+    timingInfo.scenesExtracted = new Date().toISOString();
+    
+    // Debug info for scenes
+    debugInfo.scenes = {
+      count: scenes.length,
+      types: {}
+    };
+    scenes.forEach(scene => {
+      debugInfo.scenes.types[scene.type] = (debugInfo.scenes.types[scene.type] || 0) + 1;
+    });
+  }
   
   // 6. Extract events from scenes
   const events = extractEvents(scenes, characters, locations);
+  if (debugMode) {
+    console.log(`Extracted ${events.length} events`);
+    timingInfo.eventsExtracted = new Date().toISOString();
+  }
   
   // 7. Detect character relationships
   const characterRelationships = identifyCharacterRelationships(processedText, characters);
+  if (debugMode) {
+    console.log(`Identified ${characterRelationships.length} character relationships`);
+    timingInfo.relationshipsIdentified = new Date().toISOString();
+  }
   
   // 8. Identify plotlines
   const plotlines = identifyPlotlines(events, characters);
+  if (debugMode) {
+    console.log(`Identified ${plotlines.length} plotlines`);
+    timingInfo.plotlinesIdentified = new Date().toISOString();
+  }
   
   // 9. Identify event dependencies
   const eventDependencies = identifyEventDependencies(events);
+  if (debugMode) {
+    console.log(`Identified ${eventDependencies.length} event dependencies`);
+    timingInfo.dependenciesIdentified = new Date().toISOString();
+  }
   
   // 10. Create character arcs
   const characterArcs = identifyCharacterArcs(events, characters, characterRelationships);
+  if (debugMode) {
+    console.log(`Created ${characterArcs.length} character arcs`);
+    timingInfo.arcsIdentified = new Date().toISOString();
+  }
   
   // 11. Generate synopsis
   const synopsis = generateSynopsis(events, characters, plotlines);
+  if (debugMode) {
+    console.log('Generated synopsis');
+    timingInfo.synopsisGenerated = new Date().toISOString();
+  }
+  
+  // Add timing info to debug info
+  if (debugMode) {
+    debugInfo.timing = timingInfo;
+  }
   
   return {
     characters,
@@ -132,13 +327,13 @@ async function extractNarrativeElements(text) {
     characterRelationships,
     eventDependencies,
     characterArcs,
-    synopsis
+    synopsis,
+    text_format: textFormat,
+    debug_info: debugMode ? debugInfo : undefined
   };
 }
 
-/**
- * Detect the format of the text (screenplay, novel, etc.)
- */
+// Detect the format of the text (screenplay, novel, etc.)
 function detectTextFormat(text) {
   // Check for screenplay format patterns
   const screenplayIndicators = [
@@ -178,27 +373,23 @@ function detectTextFormat(text) {
   return 'general'; // Default
 }
 
-/**
- * Preprocess text based on its format
- */
+// Preprocess text based on its format
 function preprocessText(text, format) {
-  // Remove excess whitespace
-  let processed = text.replace(/\s+/g, ' ').trim();
+  // Basic cleanup
+  let processed = text.replace(/\r\n/g, '\n'); // Normalize line endings
   
   // Format-specific preprocessing
   if (format === 'screenplay' || format === 'fountain') {
     // Split into lines and handle scene headings
-    const lines = text.split('\n');
+    const lines = processed.split('\n');
     // Additional screenplay-specific processing could go here
     return lines.join('\n');
   }
   
-  return text;
+  return processed;
 }
 
-/**
- * Extract characters from text using a comprehensive approach
- */
+// Extract characters from text using a comprehensive approach
 function extractCharacters(text, format) {
   const characters = [];
   const potentialCharacters = new Map(); // name -> confidence score
@@ -236,9 +427,7 @@ function extractCharacters(text, format) {
   return characters.sort((a, b) => b.appearances - a.appearances);
 }
 
-/**
- * Extract characters from screenplay format
- */
+// Extract characters from screenplay format
 function extractScreenplayCharacters(text, potentialCharacters) {
   // Look for character names in screenplay format (ALL CAPS followed by dialogue)
   const lines = text.split('\n');
@@ -267,6 +456,7 @@ function extractScreenplayCharacters(text, potentialCharacters) {
           const char = potentialCharacters.get(name);
           char.appearances++;
           char.confidence = Math.min(char.confidence + 0.05, 0.95);
+          char.mentions = char.mentions || [];
           char.mentions.push({ text: nextLine, context: previousLine });
           potentialCharacters.set(name, char);
         }
@@ -277,9 +467,7 @@ function extractScreenplayCharacters(text, potentialCharacters) {
   }
 }
 
-/**
- * Extract characters from novel format
- */
+// Extract characters from novel format
 function extractNovelCharacters(text, potentialCharacters) {
   // 1. Look for names in dialogue attribution
   const dialoguePattern = /["'].*?["'].*?(said|asked|replied|shouted|whispered|murmured|exclaimed) ([A-Z][a-z]+)/g;
@@ -297,6 +485,7 @@ function extractNovelCharacters(text, potentialCharacters) {
       const char = potentialCharacters.get(name);
       char.appearances++;
       char.confidence = Math.min(char.confidence + 0.05, 0.9);
+      char.mentions = char.mentions || [];
       char.mentions.push({ 
         text: match[0], 
         context: text.substring(Math.max(0, match.index - 50), match.index + match[0].length + 50) 
@@ -358,9 +547,7 @@ function extractNovelCharacters(text, potentialCharacters) {
   }
 }
 
-/**
- * Determine character role based on appearances and context
- */
+// Determine character role based on appearances and context
 function determineCharacterRole(name, text, appearances) {
   // Simple heuristic: character with most appearances is likely protagonist
   // A more sophisticated implementation would analyze narrative centrality
@@ -387,9 +574,7 @@ function determineCharacterRole(name, text, appearances) {
   return 'background';
 }
 
-/**
- * Generate a character description based on context
- */
+// Generate a character description based on context
 function generateCharacterDescription(text, name, mentions) {
   if (!mentions || mentions.length === 0) {
     return `A character named ${name} in the story.`;
@@ -474,9 +659,7 @@ function generateCharacterDescription(text, name, mentions) {
   return description;
 }
 
-/**
- * Extract locations from text
- */
+// Extract locations from text
 function extractLocations(text, format) {
   const locations = [];
   const potentialLocations = new Map(); // name -> {confidence, appearances}
@@ -505,9 +688,7 @@ function extractLocations(text, format) {
   return locations.sort((a, b) => b.appearances - a.appearances);
 }
 
-/**
- * Extract locations from screenplay format
- */
+// Extract locations from screenplay format
 function extractScreenplayLocations(text, potentialLocations) {
   // Look for scene headings (INT./EXT.)
   const sceneHeadingPattern = /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)(.+?)(-|--|\.|$)/gmi;
@@ -526,6 +707,7 @@ function extractScreenplayLocations(text, potentialLocations) {
       } else {
         const loc = potentialLocations.get(locationName);
         loc.appearances++;
+        loc.contexts = loc.contexts || [];
         loc.contexts.push(text.substring(Math.max(0, match.index - 20), match.index + match[0].length + 100));
         potentialLocations.set(locationName, loc);
       }
@@ -533,9 +715,7 @@ function extractScreenplayLocations(text, potentialLocations) {
   }
 }
 
-/**
- * Extract locations from novel format
- */
+// Extract locations from novel format
 function extractNovelLocations(text, potentialLocations) {
   // Common location indicators
   const locationIndicators = [
@@ -565,6 +745,7 @@ function extractNovelLocations(text, potentialLocations) {
           const loc = potentialLocations.get(locationName);
           loc.appearances++;
           loc.confidence = Math.min(loc.confidence + 0.05, 0.9);
+          loc.contexts = loc.contexts || [];
           loc.contexts.push(text.substring(Math.max(0, match.index - 50), match.index + match[0].length + 50));
           potentialLocations.set(locationName, loc);
         }
@@ -595,6 +776,7 @@ function extractNovelLocations(text, potentialLocations) {
           const loc = potentialLocations.get(locationName);
           loc.appearances++;
           loc.confidence = Math.min(loc.confidence + 0.05, 0.9);
+          loc.contexts = loc.contexts || [];
           loc.contexts.push(text.substring(Math.max(0, match.index - 50), match.index + match[0].length + 50));
           potentialLocations.set(locationName, loc);
         }
@@ -603,9 +785,7 @@ function extractNovelLocations(text, potentialLocations) {
   }
 }
 
-/**
- * Determine the type of location
- */
+// Determine the type of location
 function determineLocationType(name) {
   const locationTypes = {
     'city': ['city', 'town', 'village', 'metropolis', 'borough', 'district'],
@@ -626,9 +806,7 @@ function determineLocationType(name) {
   return 'other';
 }
 
-/**
- * Generate a location description
- */
+// Generate a location description
 function generateLocationDescription(name, contexts) {
   if (!contexts || contexts.length === 0) {
     return `A location named ${name} in the story.`;
@@ -665,9 +843,7 @@ function generateLocationDescription(name, contexts) {
   return `A location named ${name} in the story.`;
 }
 
-/**
- * Extract scenes from text
- */
+// Extract scenes from text
 function extractScenes(text, format) {
   const scenes = [];
   
@@ -740,13 +916,10 @@ function extractScenes(text, format) {
   return scenes;
 }
 
-/**
- * Divide a text section into scenes
- */
+// Divide a text section into scenes
 function divideIntoScenes(text, scenes, parentIndex) {
   // Look for scene breaks - blank lines, time transitions, location changes
   const paragraphs = text.split(/\n\s*\n/);
-  let sceneStart = 0;
   let currentScene = { lines: [], title: '' };
   
   // Scene break indicators
@@ -805,9 +978,7 @@ function divideIntoScenes(text, scenes, parentIndex) {
   }
 }
 
-/**
- * Extract events from scenes
- */
+// Extract events from scenes
 function extractEvents(scenes, characters, locations) {
   const events = [];
   
@@ -873,9 +1044,7 @@ function extractEvents(scenes, characters, locations) {
   return events;
 }
 
-/**
- * Estimate character importance in a scene
- */
+// Estimate character importance in a scene
 function estimateCharacterImportance(characterName, sceneContent) {
   const characterMentions = sceneContent.match(new RegExp(`\\b${characterName}\\b`, 'gi'));
   const totalMentions = characterMentions ? characterMentions.length : 0;
@@ -896,9 +1065,7 @@ function estimateCharacterImportance(characterName, sceneContent) {
   return importanceScore;
 }
 
-/**
- * Identify character relationships
- */
+// Identify character relationships
 function identifyCharacterRelationships(text, characters) {
   const relationships = [];
   
@@ -940,16 +1107,14 @@ function identifyCharacterRelationships(text, characters) {
   return relationships;
 }
 
-/**
- * Determine relationship type between characters
- */
+// Determine relationship type between characters
 function determineRelationshipType(mentions, char1Name, char2Name) {
   // Look for relationship indicators
-  const familyIndicators = /\\b(father|mother|son|daughter|brother|sister|uncle|aunt|cousin|relative|family|parent|child|sibling)\\b/i;
-  const friendIndicators = /\\b(friend|ally|comrade|companion|partner|confidant)\\b/i;
-  const enemyIndicators = /\\b(enemy|rival|opponent|foe|nemesis|adversary|antagonist)\\b/i;
-  const romanticIndicators = /\\b(love|lover|husband|wife|spouse|boyfriend|girlfriend|partner|married|engaged|dating|romantic|kiss|passion)\\b/i;
-  const professionalIndicators = /\\b(colleague|coworker|boss|employee|subordinate|superior|professional|work|business)\\b/i;
+  const familyIndicators = /\b(father|mother|son|daughter|brother|sister|uncle|aunt|cousin|relative|family|parent|child|sibling)\b/i;
+  const friendIndicators = /\b(friend|ally|comrade|companion|partner|confidant)\b/i;
+  const enemyIndicators = /\b(enemy|rival|opponent|foe|nemesis|adversary|antagonist)\b/i;
+  const romanticIndicators = /\b(love|lover|husband|wife|spouse|boyfriend|girlfriend|partner|married|engaged|dating|romantic|kiss|passion)\b/i;
+  const professionalIndicators = /\b(colleague|coworker|boss|employee|subordinate|superior|professional|work|business)\b/i;
   
   // Count matches for each type
   let familyCount = 0;
@@ -986,9 +1151,7 @@ function determineRelationshipType(mentions, char1Name, char2Name) {
   return 'other';
 }
 
-/**
- * Generate a relationship description
- */
+// Generate a relationship description
 function generateRelationshipDescription(mentions, char1Name, char2Name, relationshipType) {
   if (mentions.length === 0) {
     return `Relationship between ${char1Name} and ${char2Name}.`;
@@ -1025,9 +1188,7 @@ function generateRelationshipDescription(mentions, char1Name, char2Name, relatio
   return description;
 }
 
-/**
- * Identify plotlines from events and characters
- */
+// Identify plotlines from events and characters
 function identifyPlotlines(events, characters) {
   const plotlines = [];
   
@@ -1076,9 +1237,7 @@ function identifyPlotlines(events, characters) {
   return plotlines;
 }
 
-/**
- * Identify event dependencies
- */
+// Identify event dependencies
 function identifyEventDependencies(events) {
   const dependencies = [];
   
@@ -1101,9 +1260,7 @@ function identifyEventDependencies(events) {
   return dependencies;
 }
 
-/**
- * Identify character arcs
- */
+// Identify character arcs
 function identifyCharacterArcs(events, characters, relationships) {
   const characterArcs = [];
   
@@ -1115,7 +1272,7 @@ function identifyCharacterArcs(events, characters, relationships) {
   for (const character of mainCharacters) {
     // Find events involving this character
     const characterEvents = events.filter(event => 
-      event.characters.some(c => c.name === character.name)
+      event.characters && event.characters.some(c => c.name === character.name)
     );
     
     if (characterEvents.length < 3) continue; // Not enough events for an arc
@@ -1135,9 +1292,7 @@ function identifyCharacterArcs(events, characters, relationships) {
   return characterArcs;
 }
 
-/**
- * Generate a synopsis of the story
- */
+// Generate a synopsis of the story
 function generateSynopsis(events, characters, plotlines) {
   if (events.length === 0 || characters.length === 0) {
     return '';
@@ -1176,244 +1331,78 @@ function generateSynopsis(events, characters, plotlines) {
   return synopsis;
 }
 
-/**
- * Persist all extracted elements to the database
- */
-async function persistAllElements(supabase, storyId, elements, options) {
-  const { characters, locations, scenes, events, plotlines, characterRelationships, eventDependencies, characterArcs } = elements;
-  
-  // Store characters
-  const characterIds = {};
-  if (options.extract_characters !== false && characters.length > 0) {
-    console.log(`Storing ${characters.length} characters...`);
-    for (const character of characters) {
-      const { data, error } = await supabase.from('characters').insert({
-        name: character.name,
-        story_id: storyId,
-        role: character.role || 'supporting',
-        description: character.description || '',
-        attributes: { 
-          confidence: character.confidence || 0.5,
-          appearances: character.appearances || 0
-        }
-      }).select('id').single();
-      
-      if (error) {
-        console.error(`Failed to store character ${character.name}:`, error);
-      } else {
-        characterIds[character.name] = data.id;
-      }
-    }
-  }
-  
-  // Store locations
-  const locationIds = {};
-  if (options.extract_locations !== false && locations.length > 0) {
-    console.log(`Storing ${locations.length} locations...`);
-    for (const location of locations) {
-      const { data, error } = await supabase.from('locations').insert({
-        name: location.name,
-        story_id: storyId,
-        location_type: location.location_type || 'other',
-        description: location.description || '',
-        attributes: { 
-          confidence: location.confidence || 0.5,
-          appearances: location.appearances || 0 
-        }
-      }).select('id').single();
-      
-      if (error) {
-        console.error(`Failed to store location ${location.name}:`, error);
-      } else {
-        locationIds[location.name] = data.id;
-      }
-    }
-  }
-  
-  // Store scenes
-  const sceneIds = {};
-  if (options.extract_scenes !== false && scenes.length > 0) {
-    console.log(`Storing ${scenes.length} scenes...`);
-    for (const scene of scenes) {
-      const { data, error } = await supabase.from('scenes').insert({
-        title: scene.title,
-        description: scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content,
-        content: scene.content,
-        story_id: storyId,
-        sequence_number: scene.sequence_number,
-        type: scene.type,
-        status: 'finished'
-      }).select('id').single();
-      
-      if (error) {
-        console.error(`Failed to store scene ${scene.title}:`, error);
-      } else {
-        sceneIds[scene.sequence_number] = data.id;
-        
-        // Link scene to characters and locations
-        for (const characterName of Object.keys(characterIds)) {
-          if (scene.content.includes(characterName)) {
-            await supabase.from('scene_characters').insert({
-              scene_id: data.id,
-              character_id: characterIds[characterName],
-              importance: 'primary'
-            });
-          }
-        }
-        
-        for (const locationName of Object.keys(locationIds)) {
-          if (scene.content.includes(locationName)) {
-            await supabase.from('scene_locations').insert({
-              scene_id: data.id,
-              location_id: locationIds[locationName]
-            });
-          }
-        }
-      }
-    }
-  }
-  
-  // Store events
-  const eventIds = {};
-  if (options.extract_events !== false && events.length > 0) {
-    console.log(`Storing ${events.length} events...`);
-    for (const event of events) {
-      const { data, error } = await supabase.from('events').insert({
-        title: event.title,
-        description: event.description,
-        story_id: storyId,
-        sequence_number: event.sequence_number,
-        visible: true
-      }).select('id').single();
-      
-      if (error) {
-        console.error(`Failed to store event ${event.title}:`, error);
-      } else {
-        eventIds[event.sequence_number] = data.id;
-        
-        // Link event to characters
-        for (const character of event.characters) {
-          if (characterIds[character.name]) {
-            await supabase.from('character_events').insert({
-              event_id: data.id,
-              character_id: characterIds[character.name],
-              importance: character.importance || 5,
-              character_sequence_number: event.sequence_number
-            });
-          }
-        }
-      }
-    }
-  }
-  
-  // Store plotlines
-  const plotlineIds = {};
-  if (options.extract_plotlines !== false && plotlines.length > 0) {
-    console.log(`Storing ${plotlines.length} plotlines...`);
-    for (const plotline of plotlines) {
-      const { data, error } = await supabase.from('plotlines').insert({
-        title: plotline.title,
-        description: plotline.description,
-        story_id: storyId,
-        plotline_type: plotline.plotline_type || 'main'
-      }).select('id').single();
-      
-      if (error) {
-        console.error(`Failed to store plotline ${plotline.title}:`, error);
-      } else {
-        plotlineIds[plotline.title] = data.id;
-        
-        // Link plotline to events (assuming all events are part of all plotlines in this simple implementation)
-        for (const eventId of Object.values(eventIds)) {
-          await supabase.from('plotline_events').insert({
-            plotline_id: data.id,
-            event_id: eventId
-          });
-        }
-        
-        // Link plotline to characters
-        if (plotline.character_ids && plotline.character_ids.length > 0) {
-          for (const charName of Object.keys(characterIds)) {
-            await supabase.from('plotline_characters').insert({
-              plotline_id: data.id,
-              character_id: characterIds[charName]
-            });
-          }
-        }
-      }
-    }
-  }
-  
-  // Store character relationships
-  if (options.extract_relationships !== false && characterRelationships.length > 0) {
-    console.log(`Storing ${characterRelationships.length} character relationships...`);
-    for (const relationship of characterRelationships) {
-      if (characterIds[relationship.character1_name] && characterIds[relationship.character2_name]) {
-        await supabase.from('character_relationships').insert({
-          character1_id: characterIds[relationship.character1_name],
-          character2_id: characterIds[relationship.character2_name],
-          relationship_type: relationship.relationship_type,
-          description: relationship.description,
-          intensity: relationship.intensity || 5,
-          story_id: storyId
-        });
-      }
-    }
-  }
-  
-  // Store event dependencies
-  if (options.extract_dependencies !== false && eventDependencies.length > 0) {
-    console.log(`Storing ${eventDependencies.length} event dependencies...`);
-    for (const dependency of eventDependencies) {
-      if (eventIds[dependency.predecessor_sequence] && eventIds[dependency.successor_sequence]) {
-        await supabase.from('event_dependencies').insert({
-          predecessor_event_id: eventIds[dependency.predecessor_sequence],
-          successor_event_id: eventIds[dependency.successor_sequence],
-          dependency_type: dependency.dependency_type,
-          strength: dependency.strength || 5,
-          notes: dependency.description
-        });
-      }
-    }
-  }
-  
-  // Store character arcs
-  if (options.extract_arcs !== false && characterArcs.length > 0) {
-    console.log(`Storing ${characterArcs.length} character arcs...`);
-    for (const arc of characterArcs) {
-      if (characterIds[arc.character_name]) {
-        const { data, error } = await supabase.from('character_arcs').insert({
-          character_id: characterIds[arc.character_name],
-          story_id: storyId,
-          title: arc.title,
-          description: arc.description,
-          starting_state: arc.starting_state,
-          ending_state: arc.ending_state
-        }).select('id').single();
-        
-        if (!error && data) {
-          // Link character arc to events
-          const arcId = data.id;
-          const relevantEventIds = Object.values(eventIds);
-          
-          for (const eventId of relevantEventIds) {
-            await supabase.from('arc_events').insert({
-              arc_id: arcId,
-              event_id: eventId,
-              arc_type: 'character'
-            });
-          }
-        }
-      }
-    }
-  }
-}
-
-/**
- * Get a short synopsis of the text (fallback)
- */
+// Get a short synopsis of the text (fallback)
 function getShortSynopsis(text) {
   // Extract the first few sentences as a synopsis
   const firstParagraph = text.split('\n\n')[0] || '';
   return firstParagraph.length > 200 ? firstParagraph.substring(0, 200) + '...' : firstParagraph;
+}
+
+// Database storage functions
+async function storeCharacters(supabase, storyId, characters) {
+  for (const character of characters) {
+    await supabase.from('characters').insert({
+      name: character.name,
+      story_id: storyId,
+      role: character.role || 'supporting',
+      description: character.description || '',
+      attributes: { 
+        confidence: character.confidence || 0.5,
+        appearances: character.appearances || 0
+      }
+    });
+  }
+}
+
+async function storeLocations(supabase, storyId, locations) {
+  for (const location of locations) {
+    await supabase.from('locations').insert({
+      name: location.name,
+      story_id: storyId,
+      location_type: location.location_type || 'other',
+      description: location.description || '',
+      attributes: { 
+        confidence: location.confidence || 0.5,
+        appearances: location.appearances || 0
+      }
+    });
+  }
+}
+
+async function storeEvents(supabase, storyId, events) {
+  for (const event of events) {
+    await supabase.from('events').insert({
+      title: event.title,
+      story_id: storyId,
+      description: event.description || '',
+      sequence_number: event.sequence_number || 0,
+      visible: true
+    });
+  }
+}
+
+async function storeScenes(supabase, storyId, scenes) {
+  for (const scene of scenes) {
+    await supabase.from('scenes').insert({
+      title: scene.title,
+      story_id: storyId,
+      content: scene.content || '',
+      description: scene.content ? (scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content) : '',
+      sequence_number: scene.sequence_number || 0,
+      type: scene.type || 'scene',
+      status: 'finished',
+      is_visible: true
+    });
+  }
+}
+
+async function storePlotlines(supabase, storyId, plotlines) {
+  for (const plotline of plotlines) {
+    await supabase.from('plotlines').insert({
+      title: plotline.title,
+      story_id: storyId,
+      description: plotline.description || '',
+      plotline_type: plotline.plotline_type || 'main'
+    });
+  }
 }
