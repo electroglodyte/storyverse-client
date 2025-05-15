@@ -5,7 +5,7 @@ import {
   FaHome, FaBook, FaFileAlt, FaSearch, 
   FaChartBar, FaProjectDiagram, FaBolt, FaRobot, 
   FaCog, FaTheaterMasks, FaPen, FaFileImport, FaFileExport,
-  FaHistory, FaComments, FaExchangeAlt, FaEdit, FaAnalytics
+  FaHistory, FaComments, FaExchangeAlt, FaEdit
 } from 'react-icons/fa';
 
 export const SideNav: React.FC = () => {
