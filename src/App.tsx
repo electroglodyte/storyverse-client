@@ -18,7 +18,8 @@ import {
   FaMapMarkerAlt,
   FaUserFriends,
   FaFileAlt,
-  FaFileCode
+  FaFileCode,
+  FaFileImport
 } from 'react-icons/fa';
 
 function App() {
@@ -45,6 +46,7 @@ function App() {
     if (location.pathname.startsWith('/factions')) return 'Factions';
     if (location.pathname.startsWith('/scenes')) return 'Scenes';
     if (location.pathname.startsWith('/timeline')) return 'Timeline';
+    if (location.pathname.startsWith('/import')) return 'Import & Analyze';
     if (location.pathname.startsWith('/app-settings')) return 'Application Settings';
     return 'StoryVerse';
   };
@@ -66,6 +68,10 @@ function App() {
           <Link to="/" className={`sidebar-link ${isActive('/') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaHome /></span>
             Dashboard
+          </Link>
+          <Link to="/import" className={`sidebar-link ${isActive('/import') ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><FaFileImport /></span>
+            Import & Analyze
           </Link>
           <Link to="/story-worlds" className={`sidebar-link ${isActive('/story-worlds') ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><FaBook /></span>
