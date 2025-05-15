@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 48,
+  patch: 49,
   date: '2025-05-15',
-  notes: 'Enhanced StoryAnalysisProgress component with comprehensive error handling, detailed debugging output, and more robust state management during saving. This should resolve issues with saving extracted story elements. Previous version (0.9.47): Implemented robust deduplication for all entity types in SupabaseService.'
+  notes: 'EMERGENCY FIX: Completely rewrote StoryAnalysisProgress component to bypass SupabaseService and directly access the database. This implementation uses direct database queries with explicit deduplication checks for each entity type. Previous version (0.9.48): Enhanced StoryAnalysisProgress with error handling and debugging.'
 };
