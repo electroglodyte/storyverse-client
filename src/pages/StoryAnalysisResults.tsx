@@ -17,44 +17,210 @@ interface AnalysisResults {
   storyWorldId: string;
 }
 
-// Enhanced StoryAnalysisResults component displaying the rich narrative elements
-// extracted by our improved analyze-story edge function
+// Enhanced StoryAnalysisResults component with improved data resilience and handling
 const StoryAnalysisResults: React.FC = () => {
   const [results, setResults] = useState<AnalysisResults | null>(null);
   const [story, setStory] = useState<Story | null>(null);
   const [storyWorld, setStoryWorld] = useState<StoryWorld | null>(null);
   const [activeTab, setActiveTab] = useState<'characters' | 'locations' | 'events' | 'scenes' | 'plotlines' | 'relationships' | 'dependencies' | 'arcs'>('characters');
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   
   const navigate = useNavigate();
 
+  // Load results with improved error handling and recovery methods
   useEffect(() => {
     const loadResults = async () => {
-      const resultsStr = sessionStorage.getItem('analysisResults');
-      
-      if (!resultsStr) {
-        navigate('/import');
-        return;
+      try {
+        setIsLoading(true);
+        
+        // Try to get results from session storage
+        const resultsStr = sessionStorage.getItem('analysisResults');
+        
+        // If not in session storage, try backup from localStorage
+        if (!resultsStr) {
+          console.log("No results found in session storage, trying backup...");
+          const backupResultsStr = localStorage.getItem('analysisResultsBackup');
+          
+          if (backupResultsStr) {
+            console.log("Found backup results in localStorage, restoring to session storage");
+            sessionStorage.setItem('analysisResults', backupResultsStr);
+            parseAndSetResults(backupResultsStr);
+          } else {
+            console.error("No analysis results found in any storage location");
+            setError("Analysis results not found. Please return to the import screen.");
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          parseAndSetResults(resultsStr);
+        }
+      } catch (err) {
+        console.error("Error loading analysis results:", err);
+        setError("Failed to load analysis results. Please try again.");
+        setIsLoading(false);
       }
-      
-      const parsedResults: AnalysisResults = JSON.parse(resultsStr);
-      setResults(parsedResults);
-      
-      // Load story and story world details
-      const stories = await SupabaseService.getStories(parsedResults.storyWorldId);
-      const storyItem = stories.find(s => s.id === parsedResults.storyId);
-      if (storyItem) {
-        setStory(storyItem);
-      }
-      
-      const storyWorlds = await SupabaseService.getStoryWorlds();
-      const worldItem = storyWorlds.find(w => w.id === parsedResults.storyWorldId);
-      if (worldItem) {
-        setStoryWorld(worldItem);
+    };
+    
+    // Helper function to parse results and load related data
+    const parseAndSetResults = async (resultsStr: string) => {
+      try {
+        const parsedResults = JSON.parse(resultsStr);
+        
+        // Check if we have a previous format (direct entity data) or new format (ID references)
+        let resultsObj: AnalysisResults;
+        
+        if (parsedResults.savedEntityIds && parsedResults.counts && parsedResults.storyId) {
+          // New format with IDs and counts - fetch the actual entities
+          const storyId = parsedResults.storyId;
+          const storyWorldId = parsedResults.storyWorldId;
+          
+          // Load data from database based on saved IDs
+          try {
+            console.log("Loading entities from database using saved IDs");
+            resultsObj = await loadEntitiesFromIds(parsedResults.savedEntityIds, storyId, storyWorldId);
+          } catch (fetchError) {
+            console.error("Failed to load entities from IDs:", fetchError);
+            
+            // If we can't load by IDs, construct an empty result with counts
+            resultsObj = {
+              storyId: storyId,
+              storyWorldId: storyWorldId,
+              characters: [],
+              locations: [],
+              events: [],
+              scenes: [],
+              plotlines: [],
+              characterRelationships: []
+            };
+          }
+          
+          // Set the results
+          setResults(resultsObj);
+        } else if (parsedResults.characters && parsedResults.storyId) {
+          // Old format with direct entity data
+          console.log("Using direct entity data from session storage");
+          setResults(parsedResults);
+        } else {
+          throw new Error("Invalid analysis results format");
+        }
+        
+        // Load story and story world details
+        await loadStoryAndWorld(parsedResults.storyId, parsedResults.storyWorldId);
+      } catch (parseError) {
+        console.error("Error parsing analysis results:", parseError);
+        setError("Failed to parse analysis results. Please return to the import screen.");
+        setIsLoading(false);
       }
     };
     
     loadResults();
   }, [navigate]);
+  
+  // Helper function to load entities by IDs
+  const loadEntitiesFromIds = async (
+    savedIds: {[key: string]: string[]},
+    storyId: string,
+    storyWorldId: string
+  ): Promise<AnalysisResults> => {
+    // Prepare the result object
+    const result: AnalysisResults = {
+      storyId,
+      storyWorldId,
+      characters: [],
+      locations: [],
+      events: [],
+      scenes: [],
+      plotlines: [],
+      characterRelationships: []
+    };
+    
+    try {
+      // Load characters
+      if (savedIds.characters && savedIds.characters.length > 0) {
+        const allCharacters = await SupabaseService.getCharacters(storyId);
+        result.characters = allCharacters.filter(char => 
+          savedIds.characters.includes(char.id)
+        );
+        console.log(`Loaded ${result.characters.length} characters`);
+      }
+      
+      // Load locations
+      if (savedIds.locations && savedIds.locations.length > 0) {
+        const allLocations = await SupabaseService.getLocations(storyId);
+        result.locations = allLocations.filter(loc => 
+          savedIds.locations.includes(loc.id)
+        );
+        console.log(`Loaded ${result.locations.length} locations`);
+      }
+      
+      // Load events
+      if (savedIds.events && savedIds.events.length > 0) {
+        const allEvents = await SupabaseService.getEvents(storyId);
+        result.events = allEvents.filter(event => 
+          savedIds.events.includes(event.id)
+        );
+        console.log(`Loaded ${result.events.length} events`);
+      }
+      
+      // Load scenes
+      if (savedIds.scenes && savedIds.scenes.length > 0) {
+        const allScenes = await SupabaseService.getScenes(storyId);
+        result.scenes = allScenes.filter(scene => 
+          savedIds.scenes.includes(scene.id)
+        );
+        console.log(`Loaded ${result.scenes?.length || 0} scenes`);
+      }
+      
+      // Load plotlines
+      if (savedIds.plotlines && savedIds.plotlines.length > 0) {
+        const allPlotlines = await SupabaseService.getPlotlines(storyId);
+        result.plotlines = allPlotlines.filter(plot => 
+          savedIds.plotlines.includes(plot.id)
+        );
+        console.log(`Loaded ${result.plotlines?.length || 0} plotlines`);
+      }
+      
+      // Load relationships - these don't have IDs saved separately
+      result.characterRelationships = await SupabaseService.getCharacterRelationships(storyId);
+      console.log(`Loaded ${result.characterRelationships?.length || 0} relationships`);
+    } catch (error) {
+      console.error("Error loading entities by IDs:", error);
+    }
+    
+    return result;
+  };
+  
+  // Load story and story world details
+  const loadStoryAndWorld = async (storyId: string, storyWorldId: string) => {
+    try {
+      // Load story details
+      const stories = await SupabaseService.getStories(storyWorldId);
+      const storyItem = stories.find(s => s.id === storyId);
+      if (storyItem) {
+        setStory(storyItem);
+        console.log("Found story:", storyItem.title);
+      } else {
+        console.warn("Story not found in database:", storyId);
+      }
+      
+      // Load story world details
+      const storyWorlds = await SupabaseService.getStoryWorlds();
+      const worldItem = storyWorlds.find(w => w.id === storyWorldId);
+      if (worldItem) {
+        setStoryWorld(worldItem);
+        console.log("Found story world:", worldItem.name);
+      } else {
+        console.warn("Story world not found in database:", storyWorldId);
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading story and world details:", error);
+      setError("Failed to load story details. Please try again.");
+      setIsLoading(false);
+    }
+  };
 
   const handleTabChange = (tab: 'characters' | 'locations' | 'events' | 'scenes' | 'plotlines' | 'relationships' | 'dependencies' | 'arcs') => {
     setActiveTab(tab);
@@ -69,11 +235,59 @@ const StoryAnalysisResults: React.FC = () => {
       navigate(`/stories/${story.id}`);
     }
   };
+  
+  const handleBackToImport = () => {
+    navigate('/import');
+  };
 
+  // Display loading state
+  if (isLoading) {
+    return (
+      <div className="analysis-results-container">
+        <div className="loading">
+          <div className="loading-spinner"></div>
+          <p>Loading results...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Display error state
+  if (error) {
+    return (
+      <div className="analysis-results-container">
+        <div className="error-state">
+          <h2>Error Loading Results</h2>
+          <p className="error-message">{error}</p>
+          <div className="error-actions">
+            <button className="primary-button" onClick={handleBackToImport}>
+              Back to Import
+            </button>
+            <button className="secondary-button" onClick={handleBackToHome}>
+              Go to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Display warning if no results or story data
   if (!results || !story || !storyWorld) {
     return (
       <div className="analysis-results-container">
-        <div className="loading">Loading results...</div>
+        <div className="warning-state">
+          <h2>Missing Analysis Data</h2>
+          <p>Could not find complete analysis data. This may be due to a browser session issue.</p>
+          <div className="warning-actions">
+            <button className="primary-button" onClick={handleBackToImport}>
+              Back to Import
+            </button>
+            <button className="secondary-button" onClick={handleBackToHome}>
+              Go to Home
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -403,7 +617,10 @@ const StoryAnalysisResults: React.FC = () => {
         <button className="primary-button" onClick={handleViewStory}>
           View Story Detail
         </button>
-        <button className="secondary-button" onClick={handleBackToHome}>
+        <button className="secondary-button" onClick={handleBackToImport}>
+          Back to Import
+        </button>
+        <button className="tertiary-button" onClick={handleBackToHome}>
           Back to Home
         </button>
       </div>
