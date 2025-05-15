@@ -12,7 +12,7 @@ import {
   Chip,
   Grid
 } from '@mui/material';
-import { supabase } from '../services/supabase';
+import { supabase } from '../../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 const ImportAnalyzer = () => {
