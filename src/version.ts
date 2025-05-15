@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 60,
+  patch: 61,
   date: '2025-05-15',
-  notes: 'EXTRACTION REVIEW FIX: Complete rewrite of extraction review screen rendering with guaranteed DOM isolation, improved event handling, multiple redundancy checks, and aggressive CSS.'
+  notes: 'COMPREHENSIVE FIX: Added forced delay to prevent instant extraction, improved entity deduplication with exact matching, fixed sidebar/header visibility, and prevented duplicate saves.'
 };
