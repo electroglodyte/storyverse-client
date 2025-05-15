@@ -20,6 +20,7 @@ const StoryWorldDetailPage: React.FC = () => {
     description: '',
     tags: []
   });
+  const [error, setError] = useState<string | null>(null);
 
   // For new story world creation
   useEffect(() => {
@@ -36,28 +37,40 @@ const StoryWorldDetailPage: React.FC = () => {
 
       try {
         setLoading(true);
+        setError(null); // Reset any previous errors
         
-        // First try 'story_worlds' table
-        let { data: storyWorldData, error: storyWorldError } = await supabase
+        // First try 'story_worlds' table with a more specific query
+        let { data: storyWorldDataArray, error: storyWorldError } = await supabase
           .from('story_worlds')
           .select('*')
-          .eq('id', id)
-          .maybeSingle(); // Use maybeSingle instead of single to prevent errors
+          .eq('id', id);
+        
+        if (storyWorldError) {
+          console.error('Error fetching from story_worlds:', storyWorldError);
+          throw new Error('Error fetching story world data');
+        }
+
+        // If we get multiple results, take the first one
+        let storyWorldData = storyWorldDataArray && storyWorldDataArray.length > 0 
+          ? storyWorldDataArray[0] 
+          : null;
         
         // If not found in 'story_worlds', try 'storyworlds' table
-        if (!storyWorldData && storyWorldError) {
-          const { data: storyWorldsData, error: storyWorldsError } = await supabase
+        if (!storyWorldData) {
+          const { data: storyWorldsDataArray, error: storyWorldsError } = await supabase
             .from('storyworlds')
             .select('*')
-            .eq('id', id)
-            .maybeSingle();
+            .eq('id', id);
           
           if (storyWorldsError) {
             console.error('Error fetching from storyworlds:', storyWorldsError);
             throw new Error('Story world not found in either table');
           }
           
-          storyWorldData = storyWorldsData;
+          // If we get multiple results, take the first one
+          storyWorldData = storyWorldsDataArray && storyWorldsDataArray.length > 0 
+            ? storyWorldsDataArray[0] 
+            : null;
         }
         
         if (!storyWorldData) {
@@ -139,6 +152,7 @@ const StoryWorldDetailPage: React.FC = () => {
         setSeries(allSeriesData);
 
       } catch (error: any) {
+        setError(error.message || 'An error occurred loading the story world');
         toast.error(`Error loading story world: ${error.message}`);
         console.error('Error loading story world:', error);
       } finally {
