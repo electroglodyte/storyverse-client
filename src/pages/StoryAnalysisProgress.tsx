@@ -41,6 +41,15 @@ const StoryAnalysisProgress: React.FC = () => {
   const [storyWorldId, setStoryWorldId] = useState<string>('');
   const [retryAttempt, setRetryAttempt] = useState<number>(0);
   const [savingProgress, setSavingProgress] = useState<number>(0);
+  const [extractionSummary, setExtractionSummary] = useState<any>(null);
+  const [saveResults, setSaveResults] = useState<any>({
+    characters: 0,
+    locations: 0,
+    events: 0,
+    scenes: 0,
+    plotlines: 0,
+    relationships: 0
+  });
   
   // Use a ref to track displayed items to avoid duplication
   const displayedItemsRef = useRef<DisplayedItems>({});
@@ -107,6 +116,10 @@ const StoryAnalysisProgress: React.FC = () => {
       }
       
       await addDetectedItem('System', 'Text analysis complete');
+      
+      // Log the complete response for debugging
+      console.log("Complete analysis response:", response.data);
+      
       return response.data;
     } catch (err: any) {
       console.error("Error analyzing text:", err);
@@ -114,7 +127,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Save a single character to the database
+  // Save a single character to the database and return the result
   const saveCharacter = async (char: any, storyId: string, storyWorldId: string) => {
     const charData = {
       name: char.name,
@@ -134,6 +147,13 @@ const StoryAnalysisProgress: React.FC = () => {
       if (result && result.length > 0) {
         await addDetectedItem('Character', result[0].name);
         setCharacters(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          characters: prev.characters + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -160,6 +180,13 @@ const StoryAnalysisProgress: React.FC = () => {
       if (result && result.length > 0) {
         await addDetectedItem('Location', result[0].name);
         setLocations(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          locations: prev.locations + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -187,6 +214,13 @@ const StoryAnalysisProgress: React.FC = () => {
       if (result && result.length > 0) {
         await addDetectedItem('Scene', result[0].title);
         setScenes(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          scenes: prev.scenes + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -212,6 +246,13 @@ const StoryAnalysisProgress: React.FC = () => {
       if (result && result.length > 0) {
         await addDetectedItem('Event', result[0].title);
         setEvents(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          events: prev.events + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -235,6 +276,13 @@ const StoryAnalysisProgress: React.FC = () => {
       if (result && result.length > 0) {
         await addDetectedItem('Plotline', result[0].title);
         setPlotlines(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          plotlines: prev.plotlines + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -269,6 +317,13 @@ const StoryAnalysisProgress: React.FC = () => {
           await addDetectedItem('Relationship', `${char1.name} - ${char2.name}`);
         }
         setCharacterRelationships(prev => [...prev, result[0]]);
+        
+        // Update save results
+        setSaveResults(prev => ({
+          ...prev,
+          relationships: prev.relationships + 1
+        }));
+        
         return result[0];
       }
     } catch (err) {
@@ -278,7 +333,7 @@ const StoryAnalysisProgress: React.FC = () => {
     return null;
   };
   
-  // Save extracted elements to database in small batches
+  // Save extracted elements to database in small batches with individual tracking
   const saveAnalysisResultsInBatches = async () => {
     try {
       // Get elements from session storage
@@ -289,6 +344,16 @@ const StoryAnalysisProgress: React.FC = () => {
       
       const elements = JSON.parse(extractedElementsStr);
       const analysisData = JSON.parse(sessionStorage.getItem('analysisData')!);
+      
+      // Reset save results counters
+      setSaveResults({
+        characters: 0,
+        locations: 0,
+        events: 0,
+        scenes: 0,
+        plotlines: 0,
+        relationships: 0
+      });
       
       const totalSteps = 5; // Characters, locations, scenes, events, plotlines
       let currentStep = 0;
@@ -407,25 +472,37 @@ const StoryAnalysisProgress: React.FC = () => {
       await addDetectedItem('System', 'Analysis completed successfully');
       
       // Store comprehensive results for the results page
-      sessionStorage.setItem('analysisResults', JSON.stringify({
-        characters,
-        locations,
-        events,
-        scenes,
-        plotlines,
-        characterRelationships,
-        eventDependencies,
-        characterArcs,
+      const analysisResults = {
+        characters: characters,
+        locations: locations,
+        events: events,
+        scenes: scenes,
+        plotlines: plotlines,
+        characterRelationships: characterRelationships,
+        eventDependencies: eventDependencies,
+        characterArcs: characterArcs,
         storyId: analysisData.storyId,
-        storyWorldId: analysisData.storyWorldId
-      }));
+        storyWorldId: analysisData.storyWorldId,
+        // Include actual counts from database
+        counts: {
+          characters: saveResults.characters,
+          locations: saveResults.locations,
+          events: saveResults.events,
+          scenes: saveResults.scenes,
+          plotlines: saveResults.plotlines,
+          relationships: saveResults.relationships
+        }
+      };
+      
+      sessionStorage.setItem('analysisResults', JSON.stringify(analysisResults));
       
       return {
-        characters: characters.length,
-        locations: locations.length,
-        events: events.length,
-        scenes: scenes.length,
-        plotlines: plotlines.length
+        characters: saveResults.characters,
+        locations: saveResults.locations,
+        events: saveResults.events,
+        scenes: saveResults.scenes,
+        plotlines: saveResults.plotlines,
+        relationships: saveResults.relationships
       };
     } catch (err: any) {
       console.error("Error saving analysis results:", err);
@@ -486,6 +563,18 @@ const StoryAnalysisProgress: React.FC = () => {
       const extractedElementsStr = sessionStorage.getItem('extractedElements');
       if (extractedElementsStr) {
         // We already have extracted elements, so we can skip to saving
+        const elements = JSON.parse(extractedElementsStr);
+        
+        // Set extraction summary
+        setExtractionSummary({
+          characters: elements.characters?.length || 0,
+          locations: elements.locations?.length || 0,
+          events: elements.events?.length || 0,
+          scenes: elements.scenes?.length || 0,
+          plotlines: elements.plotlines?.length || 0,
+          relationships: elements.characterRelationships?.length || 0
+        });
+        
         setAnalysisPhase('extracted');
         return;
       }
@@ -509,8 +598,24 @@ const StoryAnalysisProgress: React.FC = () => {
           elements = await analyzeText(analysisData);
           
           if (elements) {
+            // Check if elements is valid
+            if (!elements.characters && !elements.locations && !elements.scenes && 
+                !elements.events && !elements.plotlines) {
+              throw new Error('Extraction returned empty or invalid results');
+            }
+            
             // Store extracted elements in session storage
             sessionStorage.setItem('extractedElements', JSON.stringify(elements));
+            
+            // Set extraction summary
+            setExtractionSummary({
+              characters: elements.characters?.length || 0,
+              locations: elements.locations?.length || 0,
+              events: elements.events?.length || 0,
+              scenes: elements.scenes?.length || 0,
+              plotlines: elements.plotlines?.length || 0,
+              relationships: elements.characterRelationships?.length || 0
+            });
             
             // Continue to the saving phase
             setAnalysisPhase('extracted');
@@ -581,7 +686,9 @@ const StoryAnalysisProgress: React.FC = () => {
       setAnalysisStage('Starting to save elements...');
       
       // Save extracted elements to database
-      await saveAnalysisResultsInBatches();
+      const results = await saveAnalysisResultsInBatches();
+      
+      console.log("Final save results:", results);
       
       setAnalysisPhase('complete');
     } catch (err: any) {
@@ -602,8 +709,8 @@ const StoryAnalysisProgress: React.FC = () => {
   // Effect for handling phase changes
   useEffect(() => {
     if (analysisPhase === 'extracted') {
-      // If we have extracted elements, proceed to saving
-      processSaving();
+      // We've reached the extraction complete phase
+      setIsAnalyzing(false);
     }
   }, [analysisPhase]);
 
@@ -702,7 +809,31 @@ const StoryAnalysisProgress: React.FC = () => {
           <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
           
           <div className="extraction-summary">
-            {/* Display extraction summary here */}
+            {extractionSummary && (
+              <div className="summary">
+                <div className="summary-item">
+                  <h3>Characters</h3>
+                  <span className="count">{extractionSummary.characters}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Locations</h3>
+                  <span className="count">{extractionSummary.locations}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Events</h3>
+                  <span className="count">{extractionSummary.events}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Scenes</h3>
+                  <span className="count">{extractionSummary.scenes}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Plotlines</h3>
+                  <span className="count">{extractionSummary.plotlines}</span>
+                </div>
+              </div>
+            )}
+            
             {debugInfo && (
               <div className="debug-info">
                 <h3>Debug Information</h3>
@@ -751,23 +882,23 @@ const StoryAnalysisProgress: React.FC = () => {
               <div className="summary">
                 <div className="summary-item">
                   <h3>Characters</h3>
-                  <span className="count">{characters.length}</span>
+                  <span className="count">{saveResults.characters}</span>
                 </div>
                 <div className="summary-item">
                   <h3>Locations</h3>
-                  <span className="count">{locations.length}</span>
+                  <span className="count">{saveResults.locations}</span>
                 </div>
                 <div className="summary-item">
                   <h3>Events</h3>
-                  <span className="count">{events.length}</span>
+                  <span className="count">{saveResults.events}</span>
                 </div>
                 <div className="summary-item">
                   <h3>Scenes</h3>
-                  <span className="count">{scenes.length}</span>
+                  <span className="count">{saveResults.scenes}</span>
                 </div>
                 <div className="summary-item">
                   <h3>Plotlines</h3>
-                  <span className="count">{plotlines.length}</span>
+                  <span className="count">{saveResults.plotlines}</span>
                 </div>
               </div>
               
@@ -775,7 +906,7 @@ const StoryAnalysisProgress: React.FC = () => {
                 <button className="view-results-button" onClick={handleViewResults}>
                   View Results
                 </button>
-                {characters.length === 0 && locations.length === 0 && events.length === 0 && (
+                {saveResults.characters === 0 && saveResults.locations === 0 && saveResults.scenes === 0 && (
                   <button className="retry-button" onClick={handleRetry}>
                     Retry Analysis
                   </button>
