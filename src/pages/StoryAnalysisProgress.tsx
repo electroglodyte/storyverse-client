@@ -15,7 +15,8 @@ interface AnalysisData {
   }>;
 }
 
-// Updated StoryAnalysisProgress component (May 15, 2025)
+// Updated StoryAnalysisProgress component that uses the analyze-story edge function
+// to properly detect and display real characters from the story
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   const [currentFile, setCurrentFile] = useState<string>('');
@@ -45,18 +46,19 @@ const StoryAnalysisProgress: React.FC = () => {
         setCurrentFile(file.name);
         
         try {
-          // Call the actual edge function for analysis
+          // Call the analyze-story edge function
           const { data, error } = await supabase.functions.invoke('analyze-story', {
             body: {
               story_text: file.content,
               story_title: file.name.replace(/\.[^/.]+$/, ""),
+              story_world_id: analysisData.storyWorldId,
               options: {
                 create_project: false, // We already have a story ID
                 extract_characters: true,
                 extract_locations: true,
                 extract_events: true,
                 extract_relationships: true,
-                interactive_mode: true // Enable real-time detection updates
+                interactive_mode: true
               }
             }
           });
@@ -66,7 +68,7 @@ const StoryAnalysisProgress: React.FC = () => {
             continue;
           }
           
-          // Process real detected characters from the text analysis
+          // Process detected characters from the edge function
           if (data.characters && data.characters.length > 0) {
             const chars = data.characters.map((char: any) => ({
               id: '',
@@ -87,7 +89,7 @@ const StoryAnalysisProgress: React.FC = () => {
             setCharacters(chars);
           }
           
-          // Process real detected locations
+          // Process detected locations
           if (data.locations && data.locations.length > 0) {
             const locs = data.locations.map((loc: any) => ({
               id: '',
@@ -108,11 +110,11 @@ const StoryAnalysisProgress: React.FC = () => {
             setLocations(locs);
           }
           
-          // Process real detected events
+          // Process detected events
           if (data.events && data.events.length > 0) {
             const evts = data.events.map((evt: any) => ({
               id: '',
-              title: evt.title,
+              title: evt.title || evt.name,
               story_id: analysisData.storyId,
               description: evt.description || '',
               sequence_number: evt.sequence_number || 0,
