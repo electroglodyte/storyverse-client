@@ -12,6 +12,7 @@ export interface StoryWorld {
 export interface Story {
   id: string;
   title: string;
+  name?: string; // Added to match supabase-tables.ts for backward compatibility
   story_world_id: string;
   description?: string;
   synopsis?: string;
@@ -102,9 +103,15 @@ export const SupabaseService = {
   },
   
   async createStory(story: Omit<Story, 'id' | 'created_at' | 'updated_at'>): Promise<Story | null> {
+    // Add name field if not provided (for backward compatibility)
+    const storyWithName = { 
+      ...story, 
+      name: story.name || story.title // Use name if provided, otherwise use title
+    };
+
     const { data, error } = await supabase
       .from('stories')
-      .insert([story])
+      .insert([storyWithName])
       .select()
       .single();
     
