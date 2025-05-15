@@ -103,16 +103,22 @@ const ImportAndAnalyzeStory: React.FC = () => {
   const handleCreateStory = async () => {
     if (!newStoryTitle.trim() || !selectedStoryWorldId) return;
     
-    const newStory = await SupabaseService.createStory({
-      title: newStoryTitle,
-      story_world_id: selectedStoryWorldId
-    });
-    
-    if (newStory) {
-      setStories(prev => [...prev, newStory]);
-      setSelectedStoryId(newStory.id);
-      setNewStoryTitle('');
-      setIsCreatingStory(false);
+    try {
+      const newStory = await SupabaseService.createStory({
+        title: newStoryTitle,
+        story_world_id: selectedStoryWorldId,
+        name: newStoryTitle // Ensure name field is populated (required by some tables)
+      });
+      
+      if (newStory) {
+        setStories(prev => [...prev, newStory]);
+        setSelectedStoryId(newStory.id);
+        setNewStoryTitle('');
+        setIsCreatingStory(false);
+      }
+    } catch (error) {
+      console.error('Error creating story:', error);
+      alert('Error creating story. Please try again.');
     }
   };
 
