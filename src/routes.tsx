@@ -42,7 +42,12 @@ import SceneVersionCompare from './pages/scenes/SceneVersionCompare';
 import SceneImportPage from './pages/scenes/SceneImportPage';
 import SceneExportPage from './pages/scenes/SceneExportPage';
 
-// Import and Analysis Pages
+// Import and Analysis Pages (updated to use our new components)
+import ImportAndAnalyzeStory from './pages/ImportAndAnalyzeStory';
+import StoryAnalysisProgress from './pages/StoryAnalysisProgress';
+import StoryAnalysisResults from './pages/StoryAnalysisResults';
+
+// Legacy import component - keep for backward compatibility
 import ImportAnalyzer from './pages/import/ImportAnalyzer';
 
 // Import error boundary
@@ -70,6 +75,19 @@ const router = createBrowserRouter([
       // Import and Analysis Routes
       {
         path: 'import',
+        element: <ImportAndAnalyzeStory />,
+      },
+      {
+        path: 'analyze-progress',
+        element: <StoryAnalysisProgress />,
+      },
+      {
+        path: 'analysis-results',
+        element: <StoryAnalysisResults />,
+      },
+      // Legacy Import route - keep for backward compatibility
+      {
+        path: 'import/legacy',
         element: <ImportAnalyzer />,
       },
       // Story World routes - handle both 'storyworlds' and 'story-worlds' for backwards compatibility
