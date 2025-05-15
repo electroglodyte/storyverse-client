@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SupabaseService, Character, Location, Event } from '../services/SupabaseService';
+import { supabase } from '../services/supabase';
 
 import './StoryAnalysisProgress.css';
 
@@ -43,25 +44,102 @@ const StoryAnalysisProgress: React.FC = () => {
         
         setCurrentFile(file.name);
         
-        // Simulate detecting items with delays
-        await simulateDetection('Character', 'John Smith');
-        await simulateDetection('Character', 'Sarah Johnson');
-        await simulateDetection('Location', 'Downtown Café');
-        await simulateDetection('Event', 'First Meeting');
-        await simulateDetection('Character', 'Detective Williams');
-        await simulateDetection('Location', 'Police Station');
-        await simulateDetection('Event', 'The Investigation Begins');
-        
-        // Call the actual analysis service
-        const results = await SupabaseService.analyzeStory(
-          analysisData.storyId,
-          analysisData.storyWorldId,
-          file.content
-        );
-        
-        setCharacters(results.characters);
-        setLocations(results.locations);
-        setEvents(results.events);
+        try {
+          // Call the actual edge function for analysis
+          const { data, error } = await supabase.functions.invoke('analyze-story', {
+            body: {
+              story_text: file.content,
+              story_title: file.name.replace(/\.[^/.]+$/, ""),
+              options: {
+                create_project: false, // We already have a story ID
+                extract_characters: true,
+                extract_locations: true,
+                extract_events: true,
+                extract_relationships: true,
+                interactive_mode: true // Enable real-time detection updates
+              }
+            }
+          });
+          
+          if (error) {
+            console.error("Error analyzing story:", error);
+            continue;
+          }
+          
+          // Process real detected characters from the text analysis
+          if (data.characters && data.characters.length > 0) {
+            const chars = data.characters.map((char: any) => ({
+              id: '',
+              name: char.name,
+              role: char.role || 'supporting',
+              story_id: analysisData.storyId,
+              story_world_id: analysisData.storyWorldId,
+              description: char.description || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            // Show each character in detection log
+            for (const char of chars) {
+              await addDetectedItem('Character', char.name);
+            }
+            
+            setCharacters(chars);
+          }
+          
+          // Process real detected locations
+          if (data.locations && data.locations.length > 0) {
+            const locs = data.locations.map((loc: any) => ({
+              id: '',
+              name: loc.name,
+              location_type: loc.location_type || 'other',
+              story_id: analysisData.storyId,
+              story_world_id: analysisData.storyWorldId,
+              description: loc.description || '',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            // Show each location in detection log
+            for (const loc of locs) {
+              await addDetectedItem('Location', loc.name);
+            }
+            
+            setLocations(locs);
+          }
+          
+          // Process real detected events
+          if (data.events && data.events.length > 0) {
+            const evts = data.events.map((evt: any) => ({
+              id: '',
+              title: evt.title,
+              story_id: analysisData.storyId,
+              description: evt.description || '',
+              sequence_number: evt.sequence_number || 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }));
+            
+            // Show each event in detection log
+            for (const evt of evts) {
+              await addDetectedItem('Event', evt.title);
+            }
+            
+            setEvents(evts);
+          }
+          
+          // Save the extracted entities to the database
+          await SupabaseService.saveAnalysisResults(
+            analysisData.storyId,
+            analysisData.storyWorldId,
+            chars || [],
+            locs || [],
+            evts || []
+          );
+          
+        } catch (err) {
+          console.error("Error in analysis process:", err);
+        }
       }
       
       setIsAnalyzing(false);
@@ -79,12 +157,12 @@ const StoryAnalysisProgress: React.FC = () => {
     analyzeStory();
   }, [navigate]);
 
-  const simulateDetection = async (type: string, name: string) => {
+  const addDetectedItem = async (type: string, name: string) => {
     return new Promise<void>(resolve => {
       setTimeout(() => {
         setDetectedItems(prev => [...prev, { type, name }]);
         resolve();
-      }, Math.random() * 1000 + 500); // Random delay between 500-1500ms
+      }, Math.random() * 300 + 200); // Shorter random delay for smoother experience
     });
   };
 
