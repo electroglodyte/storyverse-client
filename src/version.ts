@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 46,
+  patch: 47,
   date: '2025-05-15',
-  notes: 'Removed the "suspicious default values" check as it was only needed for debugging. Simplified the StoryAnalysisProgress component to focus solely on the extraction and saving process. Previous version (0.9.45): Fixed the "suspicious default values" issue in the analyze-story edge function with better randomization and pattern-breaking logic.'
+  notes: 'Implemented robust deduplication for all entity types in SupabaseService to prevent duplicate entries when saving extracted story elements. This fixes issues where characters and locations were being duplicated when analyzing stories. Previous version (0.9.46): Removed the "suspicious default values" check as it was only needed for debugging.'
 };
