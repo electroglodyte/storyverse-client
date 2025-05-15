@@ -294,7 +294,7 @@ const ImportAndAnalyzeStory: React.FC = () => {
             >
               <option value="">Select a Story</option>
               {stories.map(story => (
-                <option key={story.id} value={story.id}>{story.title || story.name}</option>
+                <option key={story.id} value={story.id}>{story.title}</option>
               ))}
               {selectedStoryWorldId && <option value="create-new">Create New...</option>}
             </select>
