@@ -536,7 +536,7 @@ const analyzeStoryTool = {
   }
 };
 
-module.exports = {
+export default {
   getCharacterJourneyTool,
   compareCharacterJourneysTool,
   updateEventSequenceTool,

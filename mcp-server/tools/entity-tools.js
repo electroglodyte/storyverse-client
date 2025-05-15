@@ -560,7 +560,7 @@ const createPlotlineTool = {
   }
 };
 
-module.exports = {
+export default { 
   setupStoryWorldTool,
   setupSeriesTool,
   setupStoryTool,

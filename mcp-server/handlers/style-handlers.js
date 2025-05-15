@@ -1,5 +1,5 @@
 // handlers/style-handlers.js
-const { supabase } = require('../config');
+import { supabase } from '../config.js';
 
 // Helper functions
 const calculateSentenceMetrics = (text) => {
@@ -130,7 +130,7 @@ const writeInStyle = async (args) => {
   }
 };
 
-module.exports = {
+export default {
   analyzeWritingSample,
   getStyleProfile,
   createStyleProfile,

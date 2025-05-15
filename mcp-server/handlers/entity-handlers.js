@@ -1,5 +1,5 @@
 // handlers/entity-handlers.js
-const { supabase } = require('../config');
+import { supabase } from '../config.js';
 
 // Handler implementations
 const setupStoryWorld = async (args) => {
@@ -400,7 +400,7 @@ const createPlotline = async (args) => {
   }
 };
 
-module.exports = {
+export default {
   setupStoryWorld,
   setupSeries,
   setupStory,

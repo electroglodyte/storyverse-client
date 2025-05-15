@@ -1,9 +1,9 @@
 // tools/index.js
-const styleTool = require('./style-tools');
-const narrativeTools = require('./narrative-tools');
-const entityTools = require('./entity-tools');
+import styleTool from './style-tools.js';
+import narrativeTools from './narrative-tools.js';
+import entityTools from './entity-tools.js';
 
-module.exports = {
+export default {
   ...styleTool,
   ...narrativeTools,
   ...entityTools

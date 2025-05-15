@@ -176,7 +176,7 @@ const writeInStyleTool = {
   }
 };
 
-module.exports = {
+export default {
   analyzeWritingSampleTool,
   getStyleProfileTool,
   createStyleProfileTool,

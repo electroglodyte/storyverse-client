@@ -1,12 +1,13 @@
 // server.js
-const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/schemas');
-const tools = require('./tools');
-const handlers = require('./handlers');
+import { loadMcpModules } from './load-mcp.js';
+import toolsModule from './tools/index.js';
+import handlersModule from './handlers/index.js';
 
 // Initialize MCP server
-const setupServer = () => {
+export async function setupServer() {
+  // Load MCP modules directly from file paths
+  const { Server, CallToolRequestSchema, ListToolsRequestSchema } = await loadMcpModules();
+  
   const server = new Server(
     {
       name: "StoryVerse MCP Server",
@@ -23,7 +24,7 @@ const setupServer = () => {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
     console.error("Received list_tools request");
     return {
-      tools: Object.values(tools)
+      tools: Object.values(toolsModule)
     };
   });
 
@@ -35,15 +36,12 @@ const setupServer = () => {
       
       // Look up the appropriate handler
       const handlerName = name;
-      if (!handlers[handlerName]) {
+      if (!handlersModule[handlerName]) {
         throw new Error(`Unknown tool: ${name}`);
       }
       
       // Call the handler
-      const result = await handlers[handlerName](args);
-      
-      // Format the response based on the handler's return value
-      // ...response formatting logic...
+      const result = await handlersModule[handlerName](args);
       
       return result;
     } catch (error) {
@@ -61,6 +59,4 @@ const setupServer = () => {
   });
 
   return server;
-};
-
-module.exports = { setupServer };
+}

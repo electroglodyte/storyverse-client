@@ -1,10 +1,10 @@
 // handlers/index.js
-const styleHandlers = require('./style-handlers');
-const narrativeHandlers = require('./narrative-handlers');
-const entityHandlers = require('./entity-handlers');
-const sceneHandlers = require('./scene-handlers');
+import styleHandlers from './style-handlers.js';
+import narrativeHandlers from './narrative-handlers.js';
+import entityHandlers from './entity-handlers.js';
+import sceneHandlers from './scene-handlers.js';
 
-module.exports = {
+export default {
   ...styleHandlers,
   ...narrativeHandlers,
   ...entityHandlers,

@@ -1,5 +1,5 @@
 // handlers/scene-handlers.js
-const { supabase } = require('../config');
+import { supabase } from '../config.js';
 
 // Helper functions
 function splitTextIntoScenes(text, delimiter) {
@@ -1234,7 +1234,7 @@ const exportFountain = async (args) => {
   }
 };
 
-module.exports = {
+export default {
   // Helper functions
   splitTextIntoScenes,
   detectFormat,

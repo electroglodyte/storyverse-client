@@ -1,5 +1,5 @@
 // handlers/narrative-handlers.js
-const { supabase } = require('../config');
+import { supabase } from '../config.js';
 
 // Handler implementations
 const getCharacterJourney = async (args) => {
@@ -489,7 +489,7 @@ const analyzeStory = async (args) => {
   }
 };
 
-module.exports = {
+export default {
   getCharacterJourney,
   compareCharacterJourneys,
   updateEventSequence,

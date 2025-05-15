@@ -1,21 +1,16 @@
 // index.js
-const { setupServer } = require('./server');
-const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-
-// Create function to run SQL script against Supabase
-const runSqlSetup = async () => {
-  // Implementation...
-};
+import { setupServer } from './server.js';
+import { loadMcpModules } from './load-mcp.js';
 
 // Start server with DB initialization
 async function runServer() {
   try {
     console.error("Starting MCP server...");
     
-    // Try to run database setup
-    await runSqlSetup().catch(err => console.error("DB setup error:", err));
+    // Load MCP modules directly from file paths
+    const { StdioServerTransport } = await loadMcpModules();
     
-    const server = setupServer();
+    const server = await setupServer();
     const transport = new StdioServerTransport();
     await server.connect(transport);
     console.error("StoryVerse MCP Server running with database access");
