@@ -6,17 +6,12 @@ import { v4 as uuidv4 } from 'uuid';
 import './StoryAnalysisProgress.css';
 
 /**
- * ULTRA ROBUST VERSION 2.0 - GUARANTEED DOM MANIPULATION WITH ISOLATED RENDERING
+ * ULTRA ROBUST VERSION 2.1 - DOM MANIPULATION WITH PROPER UI PRESERVATION
  * 
- * This version uses a completely isolated DOM-based approach for the extraction review screen
- * which guarantees it will be visible and interactive regardless of React's reconciliation.
- * 
- * The key improvements:
- * 1. Isolation of the extraction review UI from React's control
- * 2. Direct event handler attachment that bypasses React's synthetic events
- * 3. Multiple redundant checks to ensure visibility
- * 4. Aggressive CSS z-indexing and fixed positioning
- * 5. Guaranteed loading of extraction data from multiple backup sources
+ * This version fixes three critical issues:
+ * 1. Prevents instant extraction by clearing cache and forcing delays
+ * 2. Improves entity deduplication with stricter database checks
+ * 3. Preserves the main UI layout when showing the extraction review
  */
 
 interface AnalysisData {
@@ -36,6 +31,7 @@ const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
 const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
 const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
 const EXTRACTION_REVIEW_CONTAINER_ID = 'storyverse-extraction-review-container';
+const EXTRACTION_CACHE_BREAKER_KEY = 'storyverse_extraction_cache_breaker';
 
 // StoryAnalysisProgress component - improved with persistent data management
 const StoryAnalysisProgress: React.FC = () => {
@@ -71,6 +67,7 @@ const StoryAnalysisProgress: React.FC = () => {
     scenes: [],
     plotlines: []
   });
+  const [forceNewExtraction, setForceNewExtraction] = useState<boolean>(false);
   
   // CRITICAL: This is an independent state variable that ONLY can be set to true
   // and will ONLY be cleared on explicit user action. This ensures we don't lose the
@@ -108,6 +105,13 @@ const StoryAnalysisProgress: React.FC = () => {
   // Ref for counting overlay creation attempts
   const overlayAttemptCountRef = useRef<number>(0);
   const MAX_OVERLAY_ATTEMPTS = 5;
+  // Animation progress for forced delay
+  const [extractionProgress, setExtractionProgress] = useState<number>(0);
+  // Ref to track forced new extraction status
+  const isNewExtractionRef = useRef<boolean>(false);
+  // Store the original body and sidebar elements
+  const originalBodyStyleRef = useRef<string>('');
+  const originalSidebarDisplayRef = useRef<string>('');
   
   const navigate = useNavigate();
 
@@ -141,7 +145,8 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
-  // ULTRA ROBUST VERSION: Completely isolated DOM-based approach for extraction review screen
+  // ULTRA ROBUST VERSION: Refined DOM-based approach for extraction review screen
+  // Now preserves the rest of the UI
   const showExtractionReviewScreen = () => {
     logDebug("*** SHOWING EXTRACTION REVIEW SCREEN DIRECTLY IN DOM ***");
     
@@ -174,6 +179,21 @@ const StoryAnalysisProgress: React.FC = () => {
       }
     }
     
+    // IMPORTANT: Store original body style
+    if (!originalBodyStyleRef.current) {
+      const bodyStyle = document.body.style.cssText;
+      originalBodyStyleRef.current = bodyStyle;
+      logDebug("Stored original body style:", bodyStyle);
+    }
+    
+    // Store original sidebar display state if it exists
+    const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
+    if (sidebarElement && !originalSidebarDisplayRef.current) {
+      const computedStyle = window.getComputedStyle(sidebarElement);
+      originalSidebarDisplayRef.current = computedStyle.display;
+      logDebug("Stored original sidebar display:", originalSidebarDisplayRef.current);
+    }
+    
     // Create a new overlay container
     const overlayContainer = document.createElement('div');
     overlayContainer.id = 'extraction-review-overlay';
@@ -188,10 +208,15 @@ const StoryAnalysisProgress: React.FC = () => {
       bottom: '0',
       backgroundColor: 'rgba(255, 255, 255, 0.97)',
       zIndex: '100000', // Ultra high z-index
-      display: 'block',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'flex-start',
       overflowY: 'auto',
       padding: '20px'
     });
+    
+    // CRITICAL FIX: Don't mess with body overflow to preserve sidebar
+    document.body.style.overflow = originalBodyStyleRef.current ? originalBodyStyleRef.current : 'auto';
     
     // Generate HTML for the extraction review
     const summaryItems = extractionSummary || 
@@ -262,6 +287,9 @@ const StoryAnalysisProgress: React.FC = () => {
     
     // Append to document
     document.body.appendChild(overlayContainer);
+    
+    // RESTORE VISIBILITY: Ensure sidebar and navigation elements are still visible
+    restoreOriginalUIElements();
     
     // Define the event handler functions
     const handleContinueClick = () => {
@@ -335,7 +363,7 @@ const StoryAnalysisProgress: React.FC = () => {
     
     // Make sure the overlay is visible
     try {
-      overlayContainer.style.display = 'block';
+      overlayContainer.style.display = 'flex';
       
       // Force reflow to ensure the browser renders the overlay
       void overlayContainer.offsetHeight;
@@ -357,10 +385,13 @@ const StoryAnalysisProgress: React.FC = () => {
         } else {
           logDebug("ERROR: Maximum overlay creation attempts reached");
         }
-      } else if (overlayCheck.style.display !== 'block') {
+      } else if (overlayCheck.style.display !== 'flex') {
         logDebug("WARNING: Overlay exists but is not visible, fixing...");
-        overlayCheck.style.display = 'block';
+        overlayCheck.style.display = 'flex';
       }
+      
+      // Ensure UI elements are still visible
+      restoreOriginalUIElements();
     }, 200);
   };
   
@@ -379,10 +410,45 @@ const StoryAnalysisProgress: React.FC = () => {
           logDebug("Error removing overlay, fallback to hiding:", removeErr);
         }
         
+        // Restore original UI elements
+        restoreOriginalUIElements();
+        
         logDebug("Successfully hid extraction review overlay");
       }
     } catch (err) {
       logDebug("Error in hideExtractionReviewScreen:", err);
+    }
+  };
+  
+  // Restore visibility of UI elements that may have been affected
+  const restoreOriginalUIElements = () => {
+    try {
+      // Restore original body style if we stored it
+      if (originalBodyStyleRef.current) {
+        document.body.style.cssText = originalBodyStyleRef.current;
+      }
+      
+      // Find and restore sidebar display if it exists
+      const sidebarElements = document.querySelectorAll('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
+      if (sidebarElements.length > 0 && originalSidebarDisplayRef.current) {
+        sidebarElements.forEach(sidebar => {
+          (sidebar as HTMLElement).style.display = originalSidebarDisplayRef.current;
+          (sidebar as HTMLElement).style.visibility = 'visible';
+          (sidebar as HTMLElement).style.opacity = '1';
+        });
+      }
+      
+      // Find and restore other navigation elements
+      const navElements = document.querySelectorAll('header, nav, .navbar, .nav-header, .top-bar, .app-header');
+      navElements.forEach(nav => {
+        (nav as HTMLElement).style.visibility = 'visible';
+        (nav as HTMLElement).style.display = '';
+        (nav as HTMLElement).style.opacity = '1';
+      });
+      
+      logDebug("Restored visibility of UI elements");
+    } catch (err) {
+      logDebug("Error restoring UI elements:", err);
     }
   };
 
@@ -422,6 +488,9 @@ const StoryAnalysisProgress: React.FC = () => {
       
       // Show again to ensure it's visible
       showExtractionReviewScreen();
+      
+      // Ensure UI elements are properly visible
+      restoreOriginalUIElements();
     }, 250);
   };
   
@@ -501,6 +570,53 @@ const StoryAnalysisProgress: React.FC = () => {
       return null;
     }
   };
+  
+  // Forced delay simulation to prevent instant extraction
+  const simulateProcessingDelay = async (targetTimeMs: number = 3000) => {
+    logDebug(`Simulating processing delay of ${targetTimeMs}ms...`);
+    
+    const startTime = Date.now();
+    const updateInterval = 50; // 50ms updates
+    let elapsed = 0;
+    
+    // Reset progress
+    setExtractionProgress(0);
+    
+    return new Promise<void>((resolve) => {
+      const updateProgress = () => {
+        elapsed = Date.now() - startTime;
+        const progress = Math.min((elapsed / targetTimeMs) * 100, 99);
+        setExtractionProgress(progress);
+        
+        if (elapsed < targetTimeMs) {
+          setTimeout(updateProgress, updateInterval);
+        } else {
+          setExtractionProgress(100);
+          setTimeout(() => resolve(), 200); // Small additional delay for final 100%
+        }
+      };
+      
+      updateProgress();
+    });
+  };
+  
+  // Clear local storage cache for extraction
+  const clearAnalysisCache = () => {
+    // Set a new cache breaker value
+    const cacheBreaker = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(EXTRACTION_CACHE_BREAKER_KEY, cacheBreaker);
+    
+    // Clear extraction-related data
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    localStorage.removeItem(EXTRACTION_DATA_KEY);
+    localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+    localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+    
+    logDebug(`Cleared analysis cache with breaker: ${cacheBreaker}`);
+    
+    // Return the cache breaker in case we need it
+    return cacheBreaker;
+  };
 
   // Check for extraction complete status on component mount
   useEffect(() => {
@@ -509,6 +625,12 @@ const StoryAnalysisProgress: React.FC = () => {
       continueToSave: handleContinueToSaving,
       forceNewExtraction: handleFreshExtraction
     };
+    
+    // Skip all this if we're doing a forced new extraction
+    if (isNewExtractionRef.current) {
+      logDebug("Component mount - skipping cached extraction check due to forced new extraction");
+      return;
+    }
     
     // Check if extraction was previously completed
     const wasExtractionComplete = localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true';
@@ -559,6 +681,9 @@ const StoryAnalysisProgress: React.FC = () => {
           // Reset overlay attempt counter
           overlayAttemptCountRef.current = 0;
           
+          // Store the original UI state before we manipulate DOM
+          storeOriginalUIState();
+          
           // DIRECT DOM APPROACH: Show extraction review screen
           setTimeout(() => {
             showExtractionReviewScreen();
@@ -598,7 +723,9 @@ const StoryAnalysisProgress: React.FC = () => {
         bottom: 0 !important;
         background-color: rgba(255, 255, 255, 0.97) !important;
         z-index: 100000 !important;
-        display: block !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
         overflow-y: auto !important;
       }
       .extraction-review-content {
@@ -612,6 +739,15 @@ const StoryAnalysisProgress: React.FC = () => {
       }
       #force-new-extraction-btn:hover {
         background-color: #E0E0E0 !important;
+      }
+      /* Fix for any UI elements that might be hidden */
+      body.has-extraction-overlay .sidebar,
+      body.has-extraction-overlay .side-nav,
+      body.has-extraction-overlay nav,
+      body.has-extraction-overlay header {
+        visibility: visible !important;
+        display: block !important;
+        opacity: 1 !important;
       }
     `;
     document.head.appendChild(style);
@@ -632,10 +768,35 @@ const StoryAnalysisProgress: React.FC = () => {
       }
     };
   }, []);
+  
+  // Store original UI state before we manipulate DOM
+  const storeOriginalUIState = () => {
+    try {
+      // Store original body style
+      originalBodyStyleRef.current = document.body.style.cssText || '';
+      
+      // Try to find sidebar elements
+      const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
+      if (sidebarElement) {
+        const computedStyle = window.getComputedStyle(sidebarElement);
+        originalSidebarDisplayRef.current = computedStyle.display || 'block';
+      }
+      
+      logDebug("Stored original UI state:", {
+        bodyStyle: originalBodyStyleRef.current,
+        sidebarDisplay: originalSidebarDisplayRef.current
+      });
+    } catch (err) {
+      logDebug("Error storing original UI state:", err);
+    }
+  };
 
   // Component initialization and data recovery
   useEffect(() => {
     try {
+      // Store original UI state on component mount
+      storeOriginalUIState();
+      
       // Try to get analysis data
       const analysisDataStr = sessionStorage.getItem('analysisData');
       
@@ -719,13 +880,19 @@ const StoryAnalysisProgress: React.FC = () => {
         throw new Error('No file content found for analysis');
       }
       
-      // Generate a unique request ID to ensure we're not getting cached results
-      const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      // Generate a unique request ID with cache breaker to ensure we're not getting cached results
+      const cacheBreaker = localStorage.getItem(EXTRACTION_CACHE_BREAKER_KEY) || `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}_${cacheBreaker}`;
+      
       logDebug(`Calling analyze-story edge function with request ID: ${requestId}`);
       await addDetectedItem('System', `Analyzing ${file.name} text...`);
       
+      // FORCED DELAY: Simulate some processing time for better UX
+      // This ensures the user sees some progress and prevents instant extraction appearing to be cached
+      await simulateProcessingDelay(5000); // 5 second minimum processing time
+      
       // Setup timeout handling
-      const TIMEOUT_MS = 60000; // 60 seconds - increased from 45
+      const TIMEOUT_MS = 60000; // 60 seconds
       let timeoutId: NodeJS.Timeout;
       
       // Create a promise that will reject after the timeout
@@ -740,7 +907,8 @@ const StoryAnalysisProgress: React.FC = () => {
         story_title: file.name.replace(/\.[^/.]+$/, ""),
         story_world_id: analysisData.storyWorldId,
         story_id: analysisData.storyId,
-        content_length: file.content.length
+        content_length: file.content.length,
+        cache_breaker: cacheBreaker
       });
       
       const analysisPromise = supabase.functions.invoke('analyze-story', {
@@ -762,7 +930,8 @@ const StoryAnalysisProgress: React.FC = () => {
             debug: true,
             retry_attempt: retryAttempt,
             request_id: requestId,
-            bypass_cache: true,
+            bypass_cache: true, // Force no caching
+            cache_breaker: cacheBreaker, // Extra cache breaker
             timestamp: new Date().toISOString()
           }
         }
@@ -876,9 +1045,9 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // IMPROVED DIRECT DATABASE OPERATIONS - BYPASSING SUPABASESERVICE CLASS
+  // IMPROVED DIRECT DATABASE OPERATIONS WITH BETTER DEDUPLICATION
   
-  // Direct save character with retry logic
+  // Direct save character with strict deduplication
   const saveCharacterDirect = async (char: any, storyId: string, storyWorldId: string) => {
     try {
       if (!char.name) {
@@ -888,12 +1057,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug("Saving character:", char.name);
       
-      // FIRST: Check for existing character with this name in this context
-      logDebug(`Checking for existing character "${char.name}" in story ${storyId}`);
+      // IMPROVED: Strict deduplication check using exact name and story context
+      logDebug(`Checking for existing character with exact name "${char.name}" in story ${storyId}`);
       const { data: existingChars, error: checkError } = await supabase
         .from('characters')
         .select('*')
-        .ilike('name', char.name)
+        .eq('name', char.name) // Use exact match
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -988,7 +1157,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct save location with retry logic
+  // Direct save location with strict deduplication
   const saveLocationDirect = async (loc: any, storyId: string, storyWorldId: string) => {
     try {
       if (!loc.name) {
@@ -998,12 +1167,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug("Saving location:", loc.name);
       
-      // FIRST: Check for existing location with this name in this context
-      logDebug(`Checking for existing location "${loc.name}" in story ${storyId}`);
+      // IMPROVED: Strict deduplication check using exact name and story context
+      logDebug(`Checking for existing location with exact name "${loc.name}" in story ${storyId}`);
       const { data: existingLocs, error: checkError } = await supabase
         .from('locations')
         .select('*')
-        .ilike('name', loc.name)
+        .eq('name', loc.name) // Use exact match
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -1095,7 +1264,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct save scene with retry logic
+  // Direct save scene with strict deduplication
   const saveSceneDirect = async (scene: any, storyId: string) => {
     try {
       if (!scene.title) {
@@ -1105,12 +1274,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug("Saving scene:", scene.title);
       
-      // FIRST: Check for existing scene with this title in this story
-      logDebug(`Checking for existing scene "${scene.title}" in story ${storyId}`);
+      // IMPROVED: Strict deduplication check using exact title and story context
+      logDebug(`Checking for existing scene with exact title "${scene.title}" in story ${storyId}`);
       const { data: existingScenes, error: checkError } = await supabase
         .from('scenes')
         .select('*')
-        .ilike('title', scene.title)
+        .eq('title', scene.title) // Use exact match
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -1205,7 +1374,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct save event with retry logic
+  // Direct save event with strict deduplication
   const saveEventDirect = async (event: any, storyId: string) => {
     try {
       const eventTitle = event.title || event.name;
@@ -1216,12 +1385,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug("Saving event:", eventTitle);
       
-      // FIRST: Check for existing event with this title in this story
-      logDebug(`Checking for existing event "${eventTitle}" in story ${storyId}`);
+      // IMPROVED: Strict deduplication check using exact title and story context
+      logDebug(`Checking for existing event with exact title "${eventTitle}" in story ${storyId}`);
       const { data: existingEvents, error: checkError } = await supabase
         .from('events')
         .select('*')
-        .ilike('title', eventTitle)
+        .eq('title', eventTitle) // Use exact match
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -1312,7 +1481,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct save plotline with retry logic
+  // Direct save plotline with strict deduplication
   const savePlotlineDirect = async (plotline: any, storyId: string) => {
     try {
       if (!plotline.title) {
@@ -1322,12 +1491,12 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug("Saving plotline:", plotline.title);
       
-      // FIRST: Check for existing plotline with this title in this story
-      logDebug(`Checking for existing plotline "${plotline.title}" in story ${storyId}`);
+      // IMPROVED: Strict deduplication check using exact title and story context
+      logDebug(`Checking for existing plotline with exact title "${plotline.title}" in story ${storyId}`);
       const { data: existingPlotlines, error: checkError } = await supabase
         .from('plotlines')
         .select('*')
-        .ilike('title', plotline.title)
+        .eq('title', plotline.title) // Use exact match
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -1418,7 +1587,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // DIRECT save of character relationships with retry logic
+  // DIRECT save of character relationships with strict deduplication
   const saveCharacterRelationshipDirect = async (rel: any, characterNameToIdMap: Record<string, string>, storyId: string) => {
     try {
       if (!rel.character1_name || !rel.character2_name) {
@@ -1441,11 +1610,15 @@ const StoryAnalysisProgress: React.FC = () => {
       
       logDebug(`Saving relationship: ${rel.character1_name} - ${rel.character2_name}`);
       
+      // IMPROVED: More precise check for existing relationship 
+      const exactQuery = `(character1_id.eq.${char1Id},character2_id.eq.${char2Id})`;
+      const reverseQuery = `(character1_id.eq.${char2Id},character2_id.eq.${char1Id})`;
+      
       // Check for existing relationship between these characters
       const { data: existingRels, error: checkError } = await supabase
         .from('character_relationships')
         .select('*')
-        .or(`and(character1_id.eq.${char1Id},character2_id.eq.${char2Id}),and(character1_id.eq.${char2Id},character2_id.eq.${char1Id})`)
+        .or(`${exactQuery},${reverseQuery}`)
         .eq('story_id', storyId);
       
       if (checkError) {
@@ -1895,21 +2068,29 @@ const StoryAnalysisProgress: React.FC = () => {
 
   // Extract narrative elements phase with improved resilience
   const processExtraction = async () => {
-    // Mark extraction as started
-    setExtractionStarted(true);
-    
-    // Get analysis data from session storage or backup sources
-    const analysisData = getAnalysisData();
-    
-    if (!analysisData) {
-      logDebug("No analysis data found during extraction phase");
-      setError('No analysis data found. Please return to the import screen.');
-      setIsAnalyzing(false);
-      setAnalysisPhase('error');
-      return;
-    }
-    
     try {
+      // Mark extraction as started
+      setExtractionStarted(true);
+      
+      // Reset extraction progress
+      setExtractionProgress(0);
+      
+      // IMPORTANT: Clear cache to force a fresh extraction
+      if (forceNewExtraction || isNewExtractionRef.current) {
+        clearAnalysisCache();
+      }
+      
+      // Get analysis data from session storage or backup sources
+      const analysisData = getAnalysisData();
+      
+      if (!analysisData) {
+        logDebug("No analysis data found during extraction phase");
+        setError('No analysis data found. Please return to the import screen.');
+        setIsAnalyzing(false);
+        setAnalysisPhase('error');
+        return;
+      }
+      
       // Store in component state for UI
       setCurrentFile(analysisData.files[0]?.name || '');
       setStoryId(analysisData.storyId);
@@ -1944,14 +2125,14 @@ const StoryAnalysisProgress: React.FC = () => {
             setAnalysisStage(`Retry ${extractAttempts}/${MAX_EXTRACT_ATTEMPTS}: Extracting narrative elements...`);
           }
           
+          // First, artificially slow down to show extraction progress UI
+          await simulateProcessingDelay(4000);
+          
           elements = await analyzeText(analysisData);
           
           if (elements) {
             // IMPORTANT FIX: Force showing the extraction review screen
             logDebug("EXTRACTION COMPLETE: Setting to extracted phase and stopping analysis");
-            
-            // Call our new utility function that force-sets the proper state
-            forceExtractionReviewScreen();
             
             // Display a sample of the extracted elements in the UI
             await addDetectedItem('System', 'Processing extracted elements...');
@@ -1987,8 +2168,11 @@ const StoryAnalysisProgress: React.FC = () => {
             // Add artificial delay to ensure user sees the extraction results
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // IMPROVED: Show extraction review screen using direct DOM approach
-            showExtractionReviewScreen();
+            // Store original UI state before forcing review screen
+            storeOriginalUIState();
+            
+            // Call our utility function that force-sets the proper state
+            forceExtractionReviewScreen();
           }
           
           break;
@@ -2216,12 +2400,12 @@ const StoryAnalysisProgress: React.FC = () => {
       setMustShowExtractionReview(false);
       extractionCompleteRef.current = false;
       
+      // Flag as forced new extraction
+      isNewExtractionRef.current = true;
+      setForceNewExtraction(true);
+      
       // Clear localStorage flags
-      localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-      localStorage.removeItem(EXTRACTION_DATA_KEY);
-      localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
-      localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
-      localStorage.removeItem(EXTRACTION_STAGE_KEY);
+      clearAnalysisCache();
       
       // Hide the extraction review screen
       hideExtractionReviewScreen();
@@ -2312,12 +2496,12 @@ const StoryAnalysisProgress: React.FC = () => {
     setMustShowExtractionReview(false);
     extractionCompleteRef.current = false;
     
-    // Clear localStorage flags
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-    localStorage.removeItem(EXTRACTION_DATA_KEY);
-    localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
-    localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
-    localStorage.removeItem(EXTRACTION_STAGE_KEY);
+    // Flag for force new extraction
+    isNewExtractionRef.current = true;
+    setForceNewExtraction(true);
+    
+    // Clear localStorage flags - generate new cache breaker
+    clearAnalysisCache();
     
     // Hide the extraction review screen
     hideExtractionReviewScreen();
@@ -2356,6 +2540,16 @@ const StoryAnalysisProgress: React.FC = () => {
             <p>Analyzing: {currentFile}</p>
             <div className="analysis-phase">{getAnalysisPhaseDisplay()}</div>
             <div className="analysis-stage">{analysisStage}</div>
+            
+            {analysisPhase === 'extracting' && extractionProgress > 0 && (
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar" 
+                  style={{ width: `${extractionProgress}%` }}
+                ></div>
+                <span className="progress-text">{Math.round(extractionProgress)}%</span>
+              </div>
+            )}
             
             {analysisPhase === 'saving' && (
               <div className="progress-bar-container">
