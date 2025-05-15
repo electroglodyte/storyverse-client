@@ -12,8 +12,9 @@ export interface StoryWorld {
 export interface Story {
   id: string;
   title: string;
-  name?: string; // Added to match supabase-tables.ts for backward compatibility
+  name?: string;
   story_world_id: string;
+  storyworld_id?: string;
   description?: string;
   synopsis?: string;
   status?: string;
@@ -102,25 +103,37 @@ export const SupabaseService = {
     return data || [];
   },
   
-  async createStory(story: Omit<Story, 'id' | 'created_at' | 'updated_at'>): Promise<Story | null> {
-    // Add name field if not provided (for backward compatibility)
-    const storyWithName = { 
-      ...story, 
-      name: story.name || story.title // Use name if provided, otherwise use title
+  async createStory(storyData: Partial<Story>): Promise<Story | null> {
+    console.log('Creating story with data:', storyData);
+    
+    // Ensure both name and title are set
+    const storyToCreate = {
+      ...storyData,
+      name: storyData.title || storyData.name, // Ensure name is set
+      title: storyData.title || storyData.name, // Ensure title is set
+      storyworld_id: storyData.story_world_id, // Add alias for compatibility
     };
-
-    const { data, error } = await supabase
-      .from('stories')
-      .insert([storyWithName])
-      .select()
-      .single();
     
-    if (error) {
-      console.error('Error creating story:', error);
-      return null;
+    console.log('Prepared story data:', storyToCreate);
+    
+    try {
+      const { data, error } = await supabase
+        .from('stories')
+        .insert([storyToCreate])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Supabase error creating story:', error);
+        throw error;
+      }
+      
+      console.log('Story created successfully:', data);
+      return data;
+    } catch (error) {
+      console.error('Exception creating story:', error);
+      throw error;
     }
-    
-    return data;
   },
   
   // Characters
