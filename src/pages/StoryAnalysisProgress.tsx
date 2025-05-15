@@ -26,9 +26,89 @@ interface AnalysisData {
 // Constants for localStorage keys
 const EXTRACTION_COMPLETE_KEY = 'storyverse_extraction_complete';
 const EXTRACTION_DATA_KEY = 'storyverse_extraction_data';
+const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
+const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
+const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
+
+// A dedicated component for the extraction review screen
+// This component is completely isolated from the parent's state management
+const ExtractionReviewScreen = ({ 
+  extractionSummary, 
+  timestamp, 
+  onContinue, 
+  onReset,
+  debugInfo 
+}) => {
+  // Execute continue action with confirmation
+  const handleContinue = () => {
+    console.log("USER EXPLICITLY CLICKED 'Continue to Save Elements'");
+    // Clear the extraction complete flag before continuing
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    // Call parent handler
+    onContinue();
+  };
+
+  return (
+    <div className="extraction-complete">
+      <div className="success-icon">✓</div>
+      <h2>Extraction Complete!</h2>
+      <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
+      
+      <div className="extraction-summary">
+        {extractionSummary && (
+          <div className="summary">
+            <div className="summary-item">
+              <h3>Characters</h3>
+              <span className="count">{extractionSummary.characters}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Locations</h3>
+              <span className="count">{extractionSummary.locations}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Events</h3>
+              <span className="count">{extractionSummary.events}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Scenes</h3>
+              <span className="count">{extractionSummary.scenes}</span>
+            </div>
+            <div className="summary-item">
+              <h3>Plotlines</h3>
+              <span className="count">{extractionSummary.plotlines}</span>
+            </div>
+          </div>
+        )}
+        
+        {timestamp && (
+          <div className="extraction-timestamp">
+            Extracted at: {new Date(timestamp).toLocaleString()}
+          </div>
+        )}
+        
+        {debugInfo && (
+          <div className="debug-info">
+            <h3>Debug Information</h3>
+            <pre>{debugInfo}</pre>
+          </div>
+        )}
+      </div>
+      
+      <div className="actions-container">
+        <button className="continue-button" onClick={handleContinue}>
+          Continue to Save Elements
+        </button>
+        <button className="retry-button" onClick={onReset}>
+          Force New Extraction
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // StoryAnalysisProgress component - improved with persistent data management
 const StoryAnalysisProgress: React.FC = () => {
+  // Base state for dynamic rendering
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   const [analysisPhase, setAnalysisPhase] = useState<'extracting' | 'saving' | 'complete' | 'error' | 'extracted'>('extracting');
   const [currentFile, setCurrentFile] = useState<string>('');
@@ -60,8 +140,13 @@ const StoryAnalysisProgress: React.FC = () => {
     scenes: [],
     plotlines: []
   });
-  // NEW: State variable to track extraction completion
-  const [isExtractionComplete, setIsExtractionComplete] = useState<boolean>(false);
+  
+  // CRITICAL: This is an independent state variable that ONLY can be set to true
+  // and will ONLY be cleared on explicit user action. This ensures we don't lose the
+  // extraction complete state in React's render cycle.
+  const [mustShowExtractionReview, setMustShowExtractionReview] = useState<boolean>(
+    localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true'
+  );
   
   // Use refs to store critical data to prevent loss during re-renders
   const analysisDataRef = useRef<AnalysisData | null>(null);
@@ -126,25 +211,22 @@ const StoryAnalysisProgress: React.FC = () => {
     // Set persistent flag in localStorage
     localStorage.setItem(EXTRACTION_COMPLETE_KEY, 'true');
     
+    // Set our dedicated state variable to true
+    setMustShowExtractionReview(true);
+    
     // Update all relevant state and refs
     setAnalysisPhase('extracted');
     setIsAnalyzing(false);
-    setIsExtractionComplete(true);
     extractionCompleteRef.current = true;
     forceExtractionReviewRef.current = true;
     
-    // Schedule this again in 100ms, 300ms and 1000ms to ensure it sticks
+    // Schedule this again in 100ms to ensure it sticks
     timerRef.current = setTimeout(() => {
       logDebug("*** REINFORCING EXTRACTION REVIEW MODE (delayed) ***");
       setAnalysisPhase('extracted');
       setIsAnalyzing(false);
-      
-      // Try again at 500ms to be safe
-      timerRef.current = setTimeout(() => {
-        setAnalysisPhase('extracted');
-        setIsAnalyzing(false);
-      }, 500);
-    }, 200);
+      setMustShowExtractionReview(true);
+    }, 100);
   };
   
   // Improved analysis data access with multiple backups
@@ -229,46 +311,60 @@ const StoryAnalysisProgress: React.FC = () => {
     // Check if extraction was previously completed
     const wasExtractionComplete = localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true';
     const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
+    const extractionSummaryStr = localStorage.getItem(EXTRACTION_SUMMARY_KEY);
+    const extractionTimestampStr = localStorage.getItem(EXTRACTION_TIMESTAMP_KEY);
     
-    if (wasExtractionComplete && extractionDataStr) {
-      try {
-        logDebug("Restoring from previous extraction completion state");
-        const extractionData = JSON.parse(extractionDataStr);
-        
-        // Restore the UI state to show extraction review
-        setExtractedElements(extractionData);
-        extractedElementsRef.current = extractionData;
-        setIsExtractionComplete(true);
-        extractionCompleteRef.current = true;
-        setAnalysisPhase('extracted');
-        setIsAnalyzing(false);
-        
-        // Set the extraction summary
-        setExtractionSummary({
-          characters: extractionData.characters?.length || 0,
-          locations: extractionData.locations?.length || 0,
-          events: extractionData.events?.length || 0,
-          scenes: extractionData.scenes?.length || 0,
-          plotlines: extractionData.plotlines?.length || 0,
-          relationships: extractionData.characterRelationships?.length || 0
-        });
-        
-        const timestamp = localStorage.getItem('extractionTimestamp') || new Date().toISOString();
-        setExtractionTimestamp(timestamp);
-        
-        logDebug("Successfully restored extraction complete state");
-      } catch (err) {
-        logDebug("Error restoring extraction state:", err);
-        // Clear the flags since they're invalid
-        localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-        localStorage.removeItem(EXTRACTION_DATA_KEY);
+    if (wasExtractionComplete) {
+      logDebug("Found extraction complete flag in localStorage, forcing review screen");
+      setMustShowExtractionReview(true);
+      
+      if (extractionDataStr) {
+        try {
+          logDebug("Restoring from previous extraction completion state");
+          const extractionData = JSON.parse(extractionDataStr);
+          
+          // Restore the UI state to show extraction review
+          setExtractedElements(extractionData);
+          extractedElementsRef.current = extractionData;
+          extractionCompleteRef.current = true;
+          setAnalysisPhase('extracted');
+          setIsAnalyzing(false);
+          
+          // Set the extraction summary if available
+          if (extractionSummaryStr) {
+            const summary = JSON.parse(extractionSummaryStr);
+            setExtractionSummary(summary);
+          } else {
+            // Create summary from extraction data
+            setExtractionSummary({
+              characters: extractionData.characters?.length || 0,
+              locations: extractionData.locations?.length || 0,
+              events: extractionData.events?.length || 0,
+              scenes: extractionData.scenes?.length || 0,
+              plotlines: extractionData.plotlines?.length || 0,
+              relationships: extractionData.characterRelationships?.length || 0
+            });
+          }
+          
+          // Set timestamp
+          if (extractionTimestampStr) {
+            setExtractionTimestamp(extractionTimestampStr);
+          } else {
+            setExtractionTimestamp(new Date().toISOString());
+          }
+          
+          logDebug("Successfully restored extraction complete state");
+        } catch (err) {
+          logDebug("Error restoring extraction state:", err);
+          // Don't clear the flags - we still want to show the review screen
+          // but we'll need to re-extract the data
+        }
       }
     } else {
       // Reset flags on component mount
       forceExtractionReviewRef.current = true;
       extractionCompleteRef.current = false;
-      setIsExtractionComplete(false);
-      localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+      setMustShowExtractionReview(false);
     }
     
     // Clean up timers on unmount
@@ -344,6 +440,9 @@ const StoryAnalysisProgress: React.FC = () => {
         localStorage.removeItem('analysisDataBackup');
         localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
         localStorage.removeItem(EXTRACTION_DATA_KEY);
+        localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+        localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+        localStorage.removeItem(EXTRACTION_STAGE_KEY);
         logDebug("Cleared analysis data backup after successful completion");
       }
     };
@@ -354,6 +453,8 @@ const StoryAnalysisProgress: React.FC = () => {
     try {
       logDebug("Beginning text analysis with fresh state");
       setAnalysisStage('Extracting narrative elements from text...');
+      localStorage.setItem(EXTRACTION_STAGE_KEY, 'Extracting narrative elements from text...');
+      
       const file = analysisData.files[0];
       
       if (!file || !file.content) {
@@ -488,10 +589,24 @@ const StoryAnalysisProgress: React.FC = () => {
       setExtractedElements(data);
       extractedElementsRef.current = data;
       
-      // Store the extraction data in localStorage for recovery
+      // Create extraction summary
+      const summary = {
+        characters: data.characters?.length || 0,
+        locations: data.locations?.length || 0,
+        events: data.events?.length || 0,
+        scenes: data.scenes?.length || 0,
+        plotlines: data.plotlines?.length || 0,
+        relationships: data.characterRelationships?.length || 0
+      };
+      
+      // Store the extraction data and summary in localStorage for recovery
       try {
         localStorage.setItem(EXTRACTION_DATA_KEY, JSON.stringify(data));
-        localStorage.setItem('extractionTimestamp', new Date().toISOString());
+        localStorage.setItem(EXTRACTION_SUMMARY_KEY, JSON.stringify(summary));
+        const timestamp = new Date().toISOString();
+        localStorage.setItem(EXTRACTION_TIMESTAMP_KEY, timestamp);
+        setExtractionTimestamp(timestamp);
+        setExtractionSummary(summary);
       } catch (err) {
         logDebug("Error storing extraction data in localStorage:", err);
       }
@@ -1483,6 +1598,9 @@ const StoryAnalysisProgress: React.FC = () => {
       // Clear extraction flags now that save is complete
       localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
       localStorage.removeItem(EXTRACTION_DATA_KEY);
+      localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+      localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+      localStorage.removeItem(EXTRACTION_STAGE_KEY);
       
       logDebug("=== Direct database save process completed successfully ===");
       
@@ -1568,25 +1686,6 @@ const StoryAnalysisProgress: React.FC = () => {
           elements = await analyzeText(analysisData);
           
           if (elements) {
-            // Create extraction timestamp
-            const timestamp = new Date().toISOString();
-            setExtractionTimestamp(timestamp);
-            localStorage.setItem('extractionTimestamp', timestamp);
-            
-            // Set extraction summary
-            setExtractionSummary({
-              characters: elements.characters?.length || 0,
-              locations: elements.locations?.length || 0,
-              events: elements.events?.length || 0,
-              scenes: elements.scenes?.length || 0,
-              plotlines: elements.plotlines?.length || 0,
-              relationships: elements.characterRelationships?.length || 0
-            });
-            
-            // Store in component state AND in ref for redundancy
-            setExtractedElements(elements);
-            extractedElementsRef.current = elements;
-            
             // IMPORTANT FIX: Force showing the extraction review screen
             logDebug("EXTRACTION COMPLETE: Setting to extracted phase and stopping analysis");
             
@@ -1664,6 +1763,10 @@ const StoryAnalysisProgress: React.FC = () => {
     try {
       logDebug("=== Starting processSavingDirectly ===");
       
+      // Remove the extraction complete flag - now we're saving
+      localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+      setMustShowExtractionReview(false);
+      
       // 1. Check if the user is authenticated
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -1679,8 +1782,23 @@ const StoryAnalysisProgress: React.FC = () => {
       // 2. Verify extracted elements - try multiple sources
       let elements = extractedElements || extractedElementsRef.current;
       if (!elements) {
-        logDebug("No extracted elements found when trying to save");
-        throw new Error('No extracted elements found. Please try extracting the data again.');
+        // Try to load from localStorage
+        const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
+        if (extractionDataStr) {
+          try {
+            elements = JSON.parse(extractionDataStr);
+            // Restore to component state
+            setExtractedElements(elements);
+            extractedElementsRef.current = elements;
+          } catch (err) {
+            logDebug("Error parsing extraction data from localStorage:", err);
+          }
+        }
+        
+        if (!elements) {
+          logDebug("No extracted elements found when trying to save");
+          throw new Error('No extracted elements found. Please try extracting the data again.');
+        }
       }
       
       logDebug("Extracted elements available for saving:", {
@@ -1767,11 +1885,11 @@ const StoryAnalysisProgress: React.FC = () => {
   // Start extraction when component mounts
   useEffect(() => {
     // Start extraction only if it's not already started and we're not already showing extraction review
-    if (!extractionStarted && analysisPhase !== 'extracted') {
+    if (!extractionStarted && !mustShowExtractionReview) {
       logDebug("Starting initial extraction");
       processExtraction();
     }
-  }, [extractionStarted, analysisPhase]);
+  }, [extractionStarted, mustShowExtractionReview]);
   
   // Navigation handler with improved data persistence
   const handleViewResults = () => {
@@ -1831,12 +1949,15 @@ const StoryAnalysisProgress: React.FC = () => {
       extractedElementsRef.current = null;
       setExtractionStarted(false);
       setFullErrorDetails(null);
-      setIsExtractionComplete(false);
+      setMustShowExtractionReview(false);
       extractionCompleteRef.current = false;
       
       // Clear localStorage flags
       localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
       localStorage.removeItem(EXTRACTION_DATA_KEY);
+      localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+      localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+      localStorage.removeItem(EXTRACTION_STAGE_KEY);
       
       // Force page reload to clear any browser cache/state
       window.location.reload();
@@ -1846,6 +1967,10 @@ const StoryAnalysisProgress: React.FC = () => {
   // Continue to saving handler with improved data integrity checks
   const handleContinueToSaving = () => {
     logDebug("USER EXPLICITLY CLICKED 'Continue to Save Elements'");
+    
+    // Clear the extraction complete flag
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    setMustShowExtractionReview(false);
     
     // Backup session storage data before continuing
     const analysisDataStr = sessionStorage.getItem('analysisData');
@@ -1876,17 +2001,29 @@ const StoryAnalysisProgress: React.FC = () => {
     
     // Verify we have the extracted data before proceeding
     if (!extractedElements && !extractedElementsRef.current) {
-      logDebug("ERROR: Extracted elements missing before save phase");
-      setError("Missing extracted elements data. Please try extracting again.");
-      return;
+      // Try to get from localStorage
+      const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
+      if (extractionDataStr) {
+        try {
+          const extractionData = JSON.parse(extractionDataStr);
+          setExtractedElements(extractionData);
+          extractedElementsRef.current = extractionData;
+        } catch (err) {
+          logDebug("Error parsing extraction data:", err);
+        }
+      }
+      
+      // If still no data, show error
+      if (!extractedElements && !extractedElementsRef.current) {
+        logDebug("ERROR: Extracted elements missing before save phase");
+        setError("Missing extracted elements data. Please try extracting again.");
+        return;
+      }
     }
     
     // Now allow saving to proceed
     logDebug("PROCEEDING TO SAVE PHASE: User has reviewed extraction and confirmed");
     forceExtractionReviewRef.current = false;
-    
-    // Clear the extraction complete flag - user is proceeding to saving
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
     
     processSavingDirectly();
   };
@@ -1902,12 +2039,15 @@ const StoryAnalysisProgress: React.FC = () => {
     setAnalysisPhase('extracting');
     setIsAnalyzing(true);
     setFullErrorDetails(null);
-    setIsExtractionComplete(false);
+    setMustShowExtractionReview(false);
     extractionCompleteRef.current = false;
     
     // Clear localStorage flags
     localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
     localStorage.removeItem(EXTRACTION_DATA_KEY);
+    localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+    localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+    localStorage.removeItem(EXTRACTION_STAGE_KEY);
     
     // Force page reload to clear any browser cache/state
     window.location.reload();
@@ -1931,6 +2071,26 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
+  // RENDERING LOGIC WITH EXTRACTION REVIEW PRIORITIZED
+  
+  // Check if we need to show the extraction review screen
+  // This is a completely separate check from React state to ensure it's always shown
+  if (mustShowExtractionReview || localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true') {
+    return (
+      <div className="analysis-progress-container">
+        <h1>Analyzing Story</h1>
+        <ExtractionReviewScreen
+          extractionSummary={extractionSummary || JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || '{}')}
+          timestamp={extractionTimestamp || localStorage.getItem(EXTRACTION_TIMESTAMP_KEY) || new Date().toISOString()}
+          onContinue={handleContinueToSaving}
+          onReset={handleFreshExtraction}
+          debugInfo={debugInfo}
+        />
+      </div>
+    );
+  }
+
+  // Regular component rendering
   return (
     <div className="analysis-progress-container">
       <h1>Analyzing Story</h1>
@@ -1972,7 +2132,9 @@ const StoryAnalysisProgress: React.FC = () => {
             </div>
           </div>
         </>
-      ) : analysisPhase === 'extracted' || isExtractionComplete ? (
+      ) : analysisPhase === 'extracted' ? (
+        // This path should never be taken due to our priority rendering above
+        // but we keep it as a fallback
         <div className="extraction-complete">
           <div className="success-icon">✓</div>
           <h2>Extraction Complete!</h2>
