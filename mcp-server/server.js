@@ -2,6 +2,9 @@
 import { loadMcpModules } from './load-mcp.js';
 import toolsModule from './tools/index.js';
 import handlersModule from './handlers/index.js';
+import express from 'express';
+import cors from 'cors';
+import analyzeRoutes from './routes/analyze-routes.js';
 
 // Initialize MCP server
 export async function setupServer() {
@@ -11,7 +14,7 @@ export async function setupServer() {
   const server = new Server(
     {
       name: "StoryVerse MCP Server",
-      version: "0.3.0",
+      version: "0.4.0",
     },
     {
       capabilities: {
@@ -58,5 +61,31 @@ export async function setupServer() {
     }
   });
 
+  // Setup RESTful API
+  setupRestApi();
+
   return server;
+}
+
+// Setup Express-based REST API
+function setupRestApi() {
+  const app = express();
+  
+  // Middleware
+  app.use(cors());
+  app.use(express.json({ limit: '50mb' }));
+  
+  // Routes
+  app.use('/', analyzeRoutes);
+  
+  // Default route
+  app.get('/', (req, res) => {
+    res.json({ message: 'StoryVerse MCP Server API', version: '0.4.0' });
+  });
+  
+  // Start the server
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.error(`REST API running on port ${PORT}`);
+  });
 }
