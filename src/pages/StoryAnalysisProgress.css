@@ -407,3 +407,32 @@
   background-color: #e0e0e0;
   transform: translateY(-2px);
 }
+
+/* IMPROVED STYLES FOR DEDICATED EXTRACTION REVIEW CONTAINER */
+#storyverse-extraction-review-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.95);
+  z-index: 1000;
+  display: none;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.extraction-review-container {
+  transition: opacity 0.3s ease;
+}
+
+/* Ensure the modal container doesn't disappear unexpectedly */
+#storyverse-extraction-review-container.active {
+  display: block !important;
+}
+
+/* Ensure the modal's buttons are always on top and clickable */
+#storyverse-extraction-review-container .actions-container {
+  position: relative;
+  z-index: 1001;
+}
