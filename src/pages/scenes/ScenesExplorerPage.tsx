@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import { FaEdit, FaTrash, FaHistory, FaComments, FaEye, FaPlus, FaFilter, FaSort, FaFileImport, FaFileExport } from 'react-icons/fa';
 import toast from 'react-hot-toast';
-import { Scene } from '../../supabase-tables';
+import { Scene, SceneType } from '../../supabase-tables';
 
 const ScenesExplorerPage: React.FC = () => {
   const [scenes, setScenes] = useState<(Scene & { commentCount?: number })[]>([]);
@@ -121,10 +121,10 @@ const ScenesExplorerPage: React.FC = () => {
               className="select select-bordered w-40"
             >
               <option value="all">All Types</option>
-              <option value="scene">Scene</option>
-              <option value="chapter">Chapter</option>
-              <option value="outline_element">Outline Element</option>
-              <option value="summary">Summary</option>
+              <option value={SceneType.SCENE}>Scene</option>
+              <option value={SceneType.CHAPTER}>Chapter</option>
+              <option value={SceneType.OUTLINE_ELEMENT}>Outline Element</option>
+              <option value={SceneType.SUMMARY}>Summary</option>
             </select>
           </div>
 
@@ -232,10 +232,10 @@ const ScenesExplorerPage: React.FC = () => {
                   </td>
                   <td>
                     <span className="badge badge-sm">
-                      {scene.type === 'scene' ? 'Scene' : 
-                       scene.type === 'chapter' ? 'Chapter' :
-                       scene.type === 'outline_element' ? 'Outline' : 
-                       scene.type === 'summary' ? 'Summary' : scene.type}
+                      {scene.type === SceneType.SCENE ? 'Scene' : 
+                       scene.type === SceneType.CHAPTER ? 'Chapter' :
+                       scene.type === SceneType.OUTLINE_ELEMENT ? 'Outline' : 
+                       scene.type === SceneType.SUMMARY ? 'Summary' : scene.type}
                     </span>
                   </td>
                   <td>
