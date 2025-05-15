@@ -39,7 +39,26 @@
   margin-bottom: 5px;
 }
 
-/* New style for the analysis stage indicator */
+/* Phase indicator styling */
+.analysis-phase {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #451D18;
+  background-color: #f7f0ee;
+  padding: 8px 16px;
+  border-radius: 20px;
+  margin: 10px 0;
+  border: 1px solid #e6d5d0;
+  animation: subtle-pulse 2s infinite;
+}
+
+@keyframes subtle-pulse {
+  0% { background-color: #f7f0ee; }
+  50% { background-color: #efe4e1; }
+  100% { background-color: #f7f0ee; }
+}
+
+/* Stage indicator styling */
 .analysis-stage {
   font-size: 0.9rem;
   color: #777;
@@ -120,7 +139,7 @@
   color: #e65100;
 }
 
-/* New entity type styles */
+/* Entity type styles */
 .item-type.scene {
   background-color: #f3e5f5;
   color: #6a1b9a;
