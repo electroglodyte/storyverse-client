@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.4.0
+ * Version: 0.5.0
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -305,3 +305,10 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "export_project", description: "Exports a complete project as a single document" },
   { name: "export_fountain", description: "Exports scenes in Fountain format, with proper screenplay formatting" }
 ];
+
+// Path to the MCP server code in GitHub
+export const MCP_SERVER_LOCATION = {
+  repository: "https://github.com/electroglodyte/storyverse-client/tree/main/mcp-server",
+  startCommand: "node index.js", 
+  localPath: "/mcp-server/index.js"
+};
