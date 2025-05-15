@@ -5,7 +5,7 @@ import {
   FaHome, FaBook, FaFileAlt, FaSearch, 
   FaChartBar, FaProjectDiagram, FaBolt, FaRobot, 
   FaCog, FaTheaterMasks, FaPen, FaFileImport, FaFileExport,
-  FaHistory, FaComments, FaExchangeAlt, FaEdit
+  FaHistory, FaComments, FaExchangeAlt, FaEdit, FaAnalytics
 } from 'react-icons/fa';
 
 export const SideNav: React.FC = () => {
@@ -294,6 +294,18 @@ export const SideNav: React.FC = () => {
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>TOOLS</h3>
         <ul>
+          {/* Add Import & Analyze link */}
+          <li>
+            <Link
+              to="/import"
+              style={isActive('/import') ? activeStyle : navItemStyle}
+              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+              onMouseOut={(e) => {if (!isActive('/import')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            >
+              <FaFileImport style={{ marginRight: '0.5rem' }} />
+              <span>Import & Analyze</span>
+            </Link>
+          </li>
           <li>
             <Link
               to="/style-analysis"
