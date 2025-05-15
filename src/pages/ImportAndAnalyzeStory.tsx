@@ -106,8 +106,8 @@ const ImportAndAnalyzeStory: React.FC = () => {
     try {
       const newStory = await SupabaseService.createStory({
         title: newStoryTitle,
-        story_world_id: selectedStoryWorldId
-        // name property removed as it's not in the current Story interface
+        story_world_id: selectedStoryWorldId,
+        // name will be automatically set to title in the SupabaseService
       });
       
       if (newStory) {
