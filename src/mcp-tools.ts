@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.7.0
+ * Version: 0.7.1
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -250,6 +250,16 @@ interface AnalyzeImportedStoryTool {
   description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure";
 }
 
+interface ExtractStoryElementsTool {
+  name: "extract_story_elements";
+  description: "Extracts characters, locations, events, and other narrative elements from an imported text";
+}
+
+interface ImportStoryWithProgressTool {
+  name: "import_story_with_progress";
+  description: "Imports and analyzes a story with real-time progress updates on detected elements";
+}
+
 // Combined type representing all available tools
 type McpTool = 
   | AnalyzeWritingSampleTool
@@ -296,7 +306,9 @@ type McpTool =
   | CombineScenesTool
   | SceneToWritingSampleTool
   | DetectStorylinesTool
-  | AnalyzeImportedStoryTool;
+  | AnalyzeImportedStoryTool
+  | ExtractStoryElementsTool
+  | ImportStoryWithProgressTool;
 
 // Export as a constant array of all available tools
 export const MCP_TOOLS: McpTool[] = [
@@ -350,7 +362,9 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" },
   
   // Import Tools
-  { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" }
+  { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" },
+  { name: "extract_story_elements", description: "Extracts characters, locations, events, and other narrative elements from an imported text" },
+  { name: "import_story_with_progress", description: "Imports and analyzes a story with real-time progress updates on detected elements" }
 ];
 
 // Path to the MCP server code in GitHub
@@ -366,5 +380,6 @@ export const EDGE_FUNCTIONS = {
   styleProfileCreator: "style-profile-creator",
   webApi: "web-api",
   serveWeb: "serve-web",
-  mcpServer: "mcp-server"
+  mcpServer: "mcp-server",
+  importStory: "import-story"
 };
