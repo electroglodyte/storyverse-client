@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
@@ -56,48 +56,130 @@ const StoryAnalysisProgress: React.FC = () => {
     plotlines: []
   });
   
+  // Use a ref to store analysisData to avoid losing it during re-renders
+  const analysisDataRef = useRef<AnalysisData | null>(null);
+  const logHistoryRef = useRef<string[]>([]);
+  
   const navigate = useNavigate();
 
   // Log information to console and update UI
   const logDebug = (message: string, data?: any) => {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${message}`;
-    console.log(logMessage);
-    if (data) {
-      console.log(data);
+    try {
+      const timestamp = new Date().toISOString();
+      const logMessage = `[${timestamp}] ${message}`;
+      console.log(logMessage);
+      
+      // Store in history ref
+      logHistoryRef.current.push(logMessage);
+      
+      if (data) {
+        console.log(data);
+        // For critical data, stringify it and add to history
+        if (data.storyId || data.storyWorldId || data.files || data.characters || data.locations) {
+          try {
+            const dataStr = JSON.stringify(data, null, 2).substring(0, 500) + (JSON.stringify(data).length > 500 ? '...' : '');
+            logHistoryRef.current.push(`[${timestamp}] DATA: ${dataStr}`);
+          } catch (err) {
+            logHistoryRef.current.push(`[${timestamp}] DATA: [Too complex to stringify]`);
+          }
+        }
+      }
+      
+      // Update debug info in UI - show last 20 log entries
+      setDebugInfo(logHistoryRef.current.slice(-20).join('\n'));
+    } catch (err) {
+      console.error("Error in logDebug:", err);
     }
-    
-    // Update debug info in UI
-    setDebugInfo(prev => {
-      const newInfo = prev ? `${prev}\n${logMessage}` : logMessage;
-      return newInfo;
-    });
+  };
+  
+  // Function to safely access and store analysis data
+  const getAnalysisData = (): AnalysisData | null => {
+    try {
+      // First try from ref
+      if (analysisDataRef.current) {
+        logDebug("Getting analysis data from ref");
+        return analysisDataRef.current;
+      }
+      
+      // Then try from session storage
+      const analysisDataStr = sessionStorage.getItem('analysisData');
+      if (analysisDataStr) {
+        logDebug("Getting analysis data from sessionStorage");
+        try {
+          const parsedData = JSON.parse(analysisDataStr);
+          
+          // Validate required fields
+          if (!parsedData.storyId || !parsedData.storyWorldId) {
+            logDebug("Analysis data missing required fields", parsedData);
+            return null;
+          }
+          
+          // Store in ref for future access
+          analysisDataRef.current = parsedData;
+          return parsedData;
+        } catch (err) {
+          logDebug("Error parsing analysis data from session storage:", err);
+          return null;
+        }
+      }
+      
+      // Fallback: Try to recreate from component state
+      if (storyId && storyWorldId) {
+        logDebug("Recreating analysis data from component state");
+        const reconstructedData: AnalysisData = {
+          storyId,
+          storyWorldId,
+          files: [{
+            name: currentFile || 'unknown.txt',
+            type: 'text/plain',
+            content: null
+          }]
+        };
+        
+        // Store for future use
+        analysisDataRef.current = reconstructedData;
+        sessionStorage.setItem('analysisData', JSON.stringify(reconstructedData));
+        
+        return reconstructedData;
+      }
+      
+      logDebug("Could not retrieve analysis data from any source");
+      return null;
+    } catch (err) {
+      logDebug("Unexpected error in getAnalysisData:", err);
+      return null;
+    }
   };
 
-  // Clear session storage on component mount
+  // Initialize and preserve data on mount
   useEffect(() => {
-    // Only keep analysisData but remove ALL other items
-    const analysisData = sessionStorage.getItem('analysisData');
-    
-    // Log the session storage before clearing
-    logDebug("Session storage before clearing:", { analysisData });
-    
-    sessionStorage.clear();
-    if (analysisData) {
-      sessionStorage.setItem('analysisData', analysisData);
+    try {
+      // Try to get analysis data
+      const analysisDataStr = sessionStorage.getItem('analysisData');
       
-      // Parse and log for debugging
-      try {
-        const parsedData = JSON.parse(analysisData);
-        logDebug("Analysis data preserved in session storage:", parsedData);
-      } catch (err) {
-        logDebug("Error parsing analysis data:", err);
+      if (analysisDataStr) {
+        logDebug("Found analysis data in sessionStorage on mount");
+        try {
+          const parsedData = JSON.parse(analysisDataStr);
+          analysisDataRef.current = parsedData;
+          
+          // Set component state from this data
+          if (parsedData.storyId) setStoryId(parsedData.storyId);
+          if (parsedData.storyWorldId) setStoryWorldId(parsedData.storyWorldId);
+          if (parsedData.files && parsedData.files[0]) {
+            setCurrentFile(parsedData.files[0].name || '');
+          }
+          
+          logDebug("Initialized component state from sessionStorage", parsedData);
+        } catch (err) {
+          logDebug("Error parsing analysis data on mount:", err);
+        }
+      } else {
+        logDebug("WARNING: No analysis data found in sessionStorage on mount!");
       }
-    } else {
-      logDebug("WARNING: No analysis data found in session storage!");
+    } catch (err) {
+      logDebug("Unexpected error during initialization:", err);
     }
-    
-    logDebug("Session storage cleared on component mount");
   }, []);
 
   // Analyze text and extract narrative elements
@@ -845,270 +927,269 @@ const StoryAnalysisProgress: React.FC = () => {
         plotlines: elements.plotlines?.length || 0
       });
       
-      // Get analysis data from session storage
-      const analysisDataStr = sessionStorage.getItem('analysisData');
-      if (!analysisDataStr) {
-        logDebug("No analysis data found in session storage");
-        throw new Error('No analysis data found in session storage');
+      // Get analysis data - use our robust accessor
+      const analysisData = getAnalysisData();
+      if (!analysisData) {
+        logDebug("No analysis data found when trying to save");
+        throw new Error('No analysis data found. Please try extracting the data again.');
       }
       
-      try {
-        const analysisData = JSON.parse(analysisDataStr);
-        logDebug("Analysis data from session storage:", analysisData);
-        
-        // Verify we have valid story and storyWorld IDs
-        if (!analysisData.storyId) {
-          logDebug("Missing storyId in analysis data");
-          throw new Error('Missing storyId in analysis data');
-        }
-        
-        if (!analysisData.storyWorldId) {
-          logDebug("Missing storyWorldId in analysis data");
-          throw new Error('Missing storyWorldId in analysis data');
-        }
-        
-        logDebug(`Starting to save extracted elements to story ${analysisData.storyId}, storyWorld ${analysisData.storyWorldId}`);
-        
-        // Reset saved entity IDs
-        setSavedEntityIds({
-          characters: [],
-          locations: [],
-          events: [],
-          scenes: [],
-          plotlines: []
-        });
-        
-        // Reset save results counters
-        setSaveResults({
-          characters: 0,
-          locations: 0,
-          events: 0,
-          scenes: 0,
-          plotlines: 0,
-          relationships: 0
-        });
-        
-        const totalSteps = 5; // Characters, locations, scenes, events, plotlines
-        let currentStep = 0;
-        
-        // Save characters with direct db access
-        let savedCharacters = [];
-        if (elements.characters?.length > 0) {
-          setAnalysisStage(`Saving characters (${elements.characters.length})...`);
-          await addDetectedItem('System', `Saving ${elements.characters.length} characters`);
-          
-          // Save each character individually
-          for (let i = 0; i < elements.characters.length; i++) {
-            try {
-              const character = elements.characters[i];
-              logDebug(`Saving character ${i+1}/${elements.characters.length}: ${character.name}`);
-              const savedChar = await saveCharacterDirect(character, analysisData.storyId, analysisData.storyWorldId);
-              if (savedChar) {
-                savedCharacters.push(savedChar);
-              }
-            } catch (err) {
-              logDebug(`Error saving character at index ${i}:`, err);
-              // Continue with next character despite errors
-            }
-            
-            // Update progress
-            const characterProgress = (i + 1) / elements.characters.length;
-            setSavingProgress((currentStep + characterProgress) / totalSteps * 100);
-          }
-        }
-        
-        currentStep++;
-        
-        // Save locations with direct db access
-        let savedLocations = [];
-        if (elements.locations?.length > 0) {
-          setAnalysisStage(`Saving locations (${elements.locations.length})...`);
-          await addDetectedItem('System', `Saving ${elements.locations.length} locations`);
-          
-          // Save each location individually
-          for (let i = 0; i < elements.locations.length; i++) {
-            try {
-              const location = elements.locations[i];
-              logDebug(`Saving location ${i+1}/${elements.locations.length}: ${location.name}`);
-              const savedLoc = await saveLocationDirect(location, analysisData.storyId, analysisData.storyWorldId);
-              if (savedLoc) {
-                savedLocations.push(savedLoc);
-              }
-            } catch (err) {
-              logDebug(`Error saving location at index ${i}:`, err);
-              // Continue with next location despite errors
-            }
-            
-            // Update progress
-            const locationProgress = (i + 1) / elements.locations.length;
-            setSavingProgress((currentStep + locationProgress) / totalSteps * 100);
-          }
-        }
-        
-        currentStep++;
-        
-        // Save scenes with direct db access
-        let savedScenes = [];
-        if (elements.scenes?.length > 0) {
-          setAnalysisStage(`Saving scenes (${elements.scenes.length})...`);
-          await addDetectedItem('System', `Saving ${elements.scenes.length} scenes`);
-          
-          // Save each scene individually
-          for (let i = 0; i < elements.scenes.length; i++) {
-            try {
-              const scene = elements.scenes[i];
-              logDebug(`Saving scene ${i+1}/${elements.scenes.length}: ${scene.title}`);
-              const savedScene = await saveSceneDirect(scene, analysisData.storyId);
-              if (savedScene) {
-                savedScenes.push(savedScene);
-              }
-            } catch (err) {
-              logDebug(`Error saving scene at index ${i}:`, err);
-              // Continue with next scene despite errors
-            }
-            
-            // Update progress
-            const sceneProgress = (i + 1) / elements.scenes.length;
-            setSavingProgress((currentStep + sceneProgress) / totalSteps * 100);
-          }
-        }
-        
-        currentStep++;
-        
-        // Save events with direct db access
-        let savedEvents = [];
-        if (elements.events?.length > 0) {
-          setAnalysisStage(`Saving events (${elements.events.length})...`);
-          await addDetectedItem('System', `Saving ${elements.events.length} events`);
-          
-          // Save each event individually
-          for (let i = 0; i < elements.events.length; i++) {
-            try {
-              const event = elements.events[i];
-              const eventTitle = event.title || event.name;
-              logDebug(`Saving event ${i+1}/${elements.events.length}: ${eventTitle}`);
-              const savedEvent = await saveEventDirect(event, analysisData.storyId);
-              if (savedEvent) {
-                savedEvents.push(savedEvent);
-              }
-            } catch (err) {
-              logDebug(`Error saving event at index ${i}:`, err);
-              // Continue with next event despite errors
-            }
-            
-            // Update progress
-            const eventProgress = (i + 1) / elements.events.length;
-            setSavingProgress((currentStep + eventProgress) / totalSteps * 100);
-          }
-        }
-        
-        currentStep++;
-        
-        // Save plotlines with direct db access
-        let savedPlotlines = [];
-        if (elements.plotlines?.length > 0) {
-          setAnalysisStage(`Saving plotlines (${elements.plotlines.length})...`);
-          await addDetectedItem('System', `Saving ${elements.plotlines.length} plotlines`);
-          
-          // Save each plotline individually
-          for (let i = 0; i < elements.plotlines.length; i++) {
-            try {
-              const plotline = elements.plotlines[i];
-              logDebug(`Saving plotline ${i+1}/${elements.plotlines.length}: ${plotline.title}`);
-              const savedPlotline = await savePlotlineDirect(plotline, analysisData.storyId);
-              if (savedPlotline) {
-                savedPlotlines.push(savedPlotline);
-              }
-            } catch (err) {
-              logDebug(`Error saving plotline at index ${i}:`, err);
-              // Continue with next plotline despite errors
-            }
-            
-            // Update progress
-            const plotlineProgress = (i + 1) / elements.plotlines.length;
-            setSavingProgress((currentStep + plotlineProgress) / totalSteps * 100);
-          }
-        }
-        
-        currentStep++;
-        setSavingProgress(100);
-        
-        // Save character relationships after characters are saved
-        if (elements.characterRelationships?.length > 0 && savedCharacters.length > 0) {
-          setAnalysisStage(`Saving character relationships (${elements.characterRelationships.length})...`);
-          await addDetectedItem('System', `Processing ${elements.characterRelationships.length} character relationships`);
-          
-          // Create a map of character names to IDs
-          const characterNameToIdMap: Record<string, string> = {};
-          savedCharacters.forEach(char => {
-            characterNameToIdMap[char.name] = char.id;
-          });
-          
-          logDebug("Character name to ID map:", characterNameToIdMap);
-          
-          // Save each relationship individually
-          let validRelationships = 0;
-          let failedRelationships = 0;
-          
-          for (let i = 0; i < elements.characterRelationships.length; i++) {
-            try {
-              const relationship = elements.characterRelationships[i];
-              logDebug(`Saving relationship ${i+1}/${elements.characterRelationships.length}: ${relationship.character1_name} - ${relationship.character2_name}`);
-              const result = await saveCharacterRelationshipDirect(
-                relationship, 
-                characterNameToIdMap, 
-                analysisData.storyId
-              );
-              
-              if (result) {
-                validRelationships++;
-              } else {
-                failedRelationships++;
-              }
-            } catch (err) {
-              failedRelationships++;
-              logDebug(`Error saving relationship at index ${i}:`, err);
-              // Continue with next relationship despite errors
-            }
-          }
-          
-          await addDetectedItem('System', `Saved ${validRelationships} character relationships, ${failedRelationships} failed`);
-        }
-        
-        // Finalize
-        setAnalysisStage('Finalizing analysis...');
-        await addDetectedItem('System', 'Analysis completed successfully');
-        
-        // Get final save counts
-        const finalResults = {
-          characters: saveResults.characters,
-          locations: saveResults.locations,
-          events: saveResults.events,
-          scenes: saveResults.scenes,
-          plotlines: saveResults.plotlines,
-          relationships: saveResults.relationships
-        };
-        
-        logDebug("Final save results:", finalResults);
-        
-        // Store minimal results for the results page
-        const analysisResults = {
-          savedEntityIds,
-          storyId: analysisData.storyId,
-          storyWorldId: analysisData.storyWorldId,
-          counts: finalResults
-        };
-        
-        // Save analysis results to session storage for the results page
-        logDebug("Saving analysis results to session storage:", analysisResults);
-        sessionStorage.setItem('analysisResults', JSON.stringify(analysisResults));
-        logDebug("=== Direct database save process completed successfully ===");
-        
-        return finalResults;
-      } catch (error) {
-        logDebug("Error parsing analysis data from session storage:", error);
-        throw new Error('Failed to parse analysis data from session storage');
+      logDebug("Using analysis data for save:", {
+        storyId: analysisData.storyId,
+        storyWorldId: analysisData.storyWorldId,
+        files: analysisData.files?.length || 0
+      });
+      
+      // Verify we have valid story and storyWorld IDs
+      if (!analysisData.storyId) {
+        logDebug("Missing storyId in analysis data");
+        throw new Error('Missing storyId in analysis data');
       }
+      
+      if (!analysisData.storyWorldId) {
+        logDebug("Missing storyWorldId in analysis data");
+        throw new Error('Missing storyWorldId in analysis data');
+      }
+      
+      // Reset saved entity IDs
+      setSavedEntityIds({
+        characters: [],
+        locations: [],
+        events: [],
+        scenes: [],
+        plotlines: []
+      });
+      
+      // Reset save results counters
+      setSaveResults({
+        characters: 0,
+        locations: 0,
+        events: 0,
+        scenes: 0,
+        plotlines: 0,
+        relationships: 0
+      });
+      
+      const totalSteps = 5; // Characters, locations, scenes, events, plotlines
+      let currentStep = 0;
+      
+      // Save characters with direct db access
+      let savedCharacters = [];
+      if (elements.characters?.length > 0) {
+        setAnalysisStage(`Saving characters (${elements.characters.length})...`);
+        await addDetectedItem('System', `Saving ${elements.characters.length} characters`);
+        
+        // Save each character individually
+        for (let i = 0; i < elements.characters.length; i++) {
+          try {
+            const character = elements.characters[i];
+            logDebug(`Saving character ${i+1}/${elements.characters.length}: ${character.name}`);
+            const savedChar = await saveCharacterDirect(character, analysisData.storyId, analysisData.storyWorldId);
+            if (savedChar) {
+              savedCharacters.push(savedChar);
+            }
+          } catch (err) {
+            logDebug(`Error saving character at index ${i}:`, err);
+            // Continue with next character despite errors
+          }
+          
+          // Update progress
+          const characterProgress = (i + 1) / elements.characters.length;
+          setSavingProgress((currentStep + characterProgress) / totalSteps * 100);
+        }
+      }
+      
+      currentStep++;
+      
+      // Save locations with direct db access
+      let savedLocations = [];
+      if (elements.locations?.length > 0) {
+        setAnalysisStage(`Saving locations (${elements.locations.length})...`);
+        await addDetectedItem('System', `Saving ${elements.locations.length} locations`);
+        
+        // Save each location individually
+        for (let i = 0; i < elements.locations.length; i++) {
+          try {
+            const location = elements.locations[i];
+            logDebug(`Saving location ${i+1}/${elements.locations.length}: ${location.name}`);
+            const savedLoc = await saveLocationDirect(location, analysisData.storyId, analysisData.storyWorldId);
+            if (savedLoc) {
+              savedLocations.push(savedLoc);
+            }
+          } catch (err) {
+            logDebug(`Error saving location at index ${i}:`, err);
+            // Continue with next location despite errors
+          }
+          
+          // Update progress
+          const locationProgress = (i + 1) / elements.locations.length;
+          setSavingProgress((currentStep + locationProgress) / totalSteps * 100);
+        }
+      }
+      
+      currentStep++;
+      
+      // Save scenes with direct db access
+      let savedScenes = [];
+      if (elements.scenes?.length > 0) {
+        setAnalysisStage(`Saving scenes (${elements.scenes.length})...`);
+        await addDetectedItem('System', `Saving ${elements.scenes.length} scenes`);
+        
+        // Save each scene individually
+        for (let i = 0; i < elements.scenes.length; i++) {
+          try {
+            const scene = elements.scenes[i];
+            logDebug(`Saving scene ${i+1}/${elements.scenes.length}: ${scene.title}`);
+            const savedScene = await saveSceneDirect(scene, analysisData.storyId);
+            if (savedScene) {
+              savedScenes.push(savedScene);
+            }
+          } catch (err) {
+            logDebug(`Error saving scene at index ${i}:`, err);
+            // Continue with next scene despite errors
+          }
+          
+          // Update progress
+          const sceneProgress = (i + 1) / elements.scenes.length;
+          setSavingProgress((currentStep + sceneProgress) / totalSteps * 100);
+        }
+      }
+      
+      currentStep++;
+      
+      // Save events with direct db access
+      let savedEvents = [];
+      if (elements.events?.length > 0) {
+        setAnalysisStage(`Saving events (${elements.events.length})...`);
+        await addDetectedItem('System', `Saving ${elements.events.length} events`);
+        
+        // Save each event individually
+        for (let i = 0; i < elements.events.length; i++) {
+          try {
+            const event = elements.events[i];
+            const eventTitle = event.title || event.name;
+            logDebug(`Saving event ${i+1}/${elements.events.length}: ${eventTitle}`);
+            const savedEvent = await saveEventDirect(event, analysisData.storyId);
+            if (savedEvent) {
+              savedEvents.push(savedEvent);
+            }
+          } catch (err) {
+            logDebug(`Error saving event at index ${i}:`, err);
+            // Continue with next event despite errors
+          }
+          
+          // Update progress
+          const eventProgress = (i + 1) / elements.events.length;
+          setSavingProgress((currentStep + eventProgress) / totalSteps * 100);
+        }
+      }
+      
+      currentStep++;
+      
+      // Save plotlines with direct db access
+      let savedPlotlines = [];
+      if (elements.plotlines?.length > 0) {
+        setAnalysisStage(`Saving plotlines (${elements.plotlines.length})...`);
+        await addDetectedItem('System', `Saving ${elements.plotlines.length} plotlines`);
+        
+        // Save each plotline individually
+        for (let i = 0; i < elements.plotlines.length; i++) {
+          try {
+            const plotline = elements.plotlines[i];
+            logDebug(`Saving plotline ${i+1}/${elements.plotlines.length}: ${plotline.title}`);
+            const savedPlotline = await savePlotlineDirect(plotline, analysisData.storyId);
+            if (savedPlotline) {
+              savedPlotlines.push(savedPlotline);
+            }
+          } catch (err) {
+            logDebug(`Error saving plotline at index ${i}:`, err);
+            // Continue with next plotline despite errors
+          }
+          
+          // Update progress
+          const plotlineProgress = (i + 1) / elements.plotlines.length;
+          setSavingProgress((currentStep + plotlineProgress) / totalSteps * 100);
+        }
+      }
+      
+      currentStep++;
+      setSavingProgress(100);
+      
+      // Save character relationships after characters are saved
+      if (elements.characterRelationships?.length > 0 && savedCharacters.length > 0) {
+        setAnalysisStage(`Saving character relationships (${elements.characterRelationships.length})...`);
+        await addDetectedItem('System', `Processing ${elements.characterRelationships.length} character relationships`);
+        
+        // Create a map of character names to IDs
+        const characterNameToIdMap: Record<string, string> = {};
+        savedCharacters.forEach(char => {
+          characterNameToIdMap[char.name] = char.id;
+        });
+        
+        logDebug("Character name to ID map created with", {
+          mapSize: Object.keys(characterNameToIdMap).length,
+          characters: savedCharacters.length
+        });
+        
+        // Save each relationship individually
+        let validRelationships = 0;
+        let failedRelationships = 0;
+        
+        for (let i = 0; i < elements.characterRelationships.length; i++) {
+          try {
+            const relationship = elements.characterRelationships[i];
+            logDebug(`Saving relationship ${i+1}/${elements.characterRelationships.length}: ${relationship.character1_name} - ${relationship.character2_name}`);
+            const result = await saveCharacterRelationshipDirect(
+              relationship, 
+              characterNameToIdMap, 
+              analysisData.storyId
+            );
+            
+            if (result) {
+              validRelationships++;
+            } else {
+              failedRelationships++;
+            }
+          } catch (err) {
+            failedRelationships++;
+            logDebug(`Error saving relationship at index ${i}:`, err);
+            // Continue with next relationship despite errors
+          }
+        }
+        
+        await addDetectedItem('System', `Saved ${validRelationships} character relationships, ${failedRelationships} failed`);
+      }
+      
+      // Finalize
+      setAnalysisStage('Finalizing analysis...');
+      await addDetectedItem('System', 'Analysis completed successfully');
+      
+      // Get final save counts
+      const finalResults = {
+        characters: saveResults.characters,
+        locations: saveResults.locations,
+        events: saveResults.events,
+        scenes: saveResults.scenes,
+        plotlines: saveResults.plotlines,
+        relationships: saveResults.relationships
+      };
+      
+      logDebug("Final save results:", finalResults);
+      
+      // Store minimal results for the results page
+      const analysisResults = {
+        savedEntityIds,
+        storyId: analysisData.storyId,
+        storyWorldId: analysisData.storyWorldId,
+        counts: finalResults
+      };
+      
+      // Save analysis results to session storage for the results page
+      logDebug("Saving analysis results to session storage:", analysisResults);
+      sessionStorage.setItem('analysisResults', JSON.stringify(analysisResults));
+      logDebug("=== Direct database save process completed successfully ===");
+      
+      return finalResults;
     } catch (err: any) {
       const errorDetails = err instanceof Error ? 
         `${err.message}\n${err.stack || ''}` : 
@@ -1154,6 +1235,10 @@ const StoryAnalysisProgress: React.FC = () => {
     
     try {
       const analysisData: AnalysisData = JSON.parse(analysisDataStr);
+      
+      // Store in ref for future use
+      analysisDataRef.current = analysisData;
+      
       setCurrentFile(analysisData.files[0]?.name || '');
       setStoryId(analysisData.storyId);
       setStoryWorldId(analysisData.storyWorldId);
@@ -1271,29 +1356,78 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct database save phase
+  // Direct database save phase with tracing
   const processSavingDirectly = async () => {
     try {
       logDebug("=== Starting processSavingDirectly ===");
+      
+      // 1. Check if the user is authenticated
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        logDebug("Authentication check:", { hasSession: !!session });
+      } catch (error) {
+        logDebug("Error checking auth session:", error);
+      }
+      
       setIsAnalyzing(true);
       setAnalysisPhase('saving');
       setAnalysisStage('Starting to save elements directly to database...');
       
-      // First, verify we have extracted elements
+      // 2. Verify extracted elements
       if (!extractedElements) {
         logDebug("No extracted elements found when trying to save");
         throw new Error('No extracted elements found. Please try extracting the data again.');
       }
       
-      // Verify we have valid IDs
-      if (!storyId || !storyWorldId) {
-        logDebug(`Missing IDs: storyId=${storyId}, storyWorldId=${storyWorldId}`);
-        throw new Error('Missing story or story world ID. Please restart the analysis process.');
+      logDebug("Extracted elements are available in state:", {
+        characters: extractedElements.characters?.length || 0,
+        locations: extractedElements.locations?.length || 0
+      });
+      
+      // 3. Get analysis data - use our robust accessor
+      const analysisData = getAnalysisData();
+      
+      // 4. Validate we have necessary data
+      if (!analysisData) {
+        const errorMsg = 'No analysis data found. Please restart the analysis process.';
+        logDebug(errorMsg);
+        throw new Error(errorMsg);
       }
       
-      logDebug(`Starting to save with storyId=${storyId}, storyWorldId=${storyWorldId}`);
+      logDebug("Analysis data for saving:", {
+        storyId: analysisData.storyId,
+        storyWorldId: analysisData.storyWorldId,
+        fileName: analysisData.files?.[0]?.name || 'unknown'
+      });
       
-      // Save extracted elements to database using direct approach
+      // 5. Verify IDs
+      if (!analysisData.storyId || !analysisData.storyWorldId) {
+        const missingFields = [];
+        if (!analysisData.storyId) missingFields.push('storyId');
+        if (!analysisData.storyWorldId) missingFields.push('storyWorldId');
+        
+        const errorMsg = `Missing required fields: ${missingFields.join(', ')}`;
+        logDebug(errorMsg);
+        throw new Error(errorMsg);
+      }
+      
+      // 6. Verify supabase connection
+      try {
+        const { data, error } = await supabase.from('stories').select('id').limit(1);
+        if (error) {
+          logDebug("Database connection test failed:", error);
+          throw new Error(`Database connection error: ${error.message}`);
+        }
+        logDebug("Database connection test successful:", { hasData: !!data });
+      } catch (error) {
+        logDebug("Error testing database connection:", error);
+        throw new Error('Unable to connect to database. Please check your network connection.');
+      }
+      
+      // 7. Now start the actual saving process
+      logDebug(`Starting to save with storyId=${analysisData.storyId}, storyWorldId=${analysisData.storyWorldId}`);
+      
+      // 8. Save extracted elements to database using direct approach
       const results = await saveElementsDirectly();
       
       logDebug("=== Direct save results complete ===");
@@ -1388,6 +1522,7 @@ const StoryAnalysisProgress: React.FC = () => {
           }]
         };
         sessionStorage.setItem('analysisData', JSON.stringify(reconstructedData));
+        analysisDataRef.current = reconstructedData;
         logDebug("Reconstructed analysis data:", reconstructedData);
       }
     }
