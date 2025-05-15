@@ -288,6 +288,108 @@ const exportFountainTool = {
   }
 };
 
+// New tool definitions
+const splitSceneTool = {
+  name: "split_scene",
+  description: "Splits a scene into multiple scenes at specified positions",
+  inputSchema: {
+    type: "object",
+    properties: {
+      scene_id: {
+        type: "string",
+        description: "ID of the scene to split"
+      },
+      split_points: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            content_position: {
+              type: "number",
+              description: "Character position in the scene content where to split"
+            },
+            title: {
+              type: "string",
+              description: "Title for the new scene"
+            }
+          },
+          required: ["content_position", "title"]
+        },
+        description: "Points where to split the scene"
+      }
+    },
+    required: ["scene_id", "split_points"]
+  }
+};
+
+const combineScenesTool = {
+  name: "combine_scenes",
+  description: "Combines multiple scenes into a single scene",
+  inputSchema: {
+    type: "object",
+    properties: {
+      scene_ids: {
+        type: "array",
+        items: {
+          type: "string"
+        },
+        description: "Array of scene IDs to combine, in order"
+      },
+      new_title: {
+        type: "string",
+        description: "Title for the combined scene"
+      }
+    },
+    required: ["scene_ids", "new_title"]
+  }
+};
+
+const sceneToWritingSampleTool = {
+  name: "scene_to_writing_sample",
+  description: "Creates a writing sample from a scene's content",
+  inputSchema: {
+    type: "object",
+    properties: {
+      scene_id: {
+        type: "string",
+        description: "ID of the scene to convert to a sample"
+      },
+      sample_name: {
+        type: "string",
+        description: "Name for the new writing sample"
+      },
+      tags: {
+        type: "array",
+        items: {
+          type: "string"
+        },
+        description: "Tags for categorizing the sample"
+      }
+    },
+    required: ["scene_id", "sample_name"]
+  }
+};
+
+const detectStorylinesTool = {
+  name: "detect_storylines",
+  description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs",
+  inputSchema: {
+    type: "object",
+    properties: {
+      story_id: {
+        type: "string",
+        description: "ID of the story to analyze"
+      },
+      min_confidence: {
+        type: "number",
+        description: "Minimum confidence threshold (0.0-1.0) for storyline detection",
+        default: 0.7
+      }
+    },
+    required: ["story_id"]
+  }
+};
+
 export default {
   importSceneTool,
   importTextTool,
@@ -300,5 +402,9 @@ export default {
   processSceneTool,
   addressSceneCommentsTool,
   exportProjectTool,
-  exportFountainTool
+  exportFountainTool,
+  splitSceneTool,
+  combineScenesTool,
+  sceneToWritingSampleTool,
+  detectStorylinesTool
 };
