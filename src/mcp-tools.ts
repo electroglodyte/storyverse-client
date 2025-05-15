@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.6.0
+ * Version: 0.7.0
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -241,6 +241,15 @@ interface DetectStorylinesTool {
   description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs";
 }
 
+/**
+ * IMPORT TOOLS
+ */
+
+interface AnalyzeImportedStoryTool {
+  name: "analyze_imported_story";
+  description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure";
+}
+
 // Combined type representing all available tools
 type McpTool = 
   | AnalyzeWritingSampleTool
@@ -286,7 +295,8 @@ type McpTool =
   | SplitSceneTool
   | CombineScenesTool
   | SceneToWritingSampleTool
-  | DetectStorylinesTool;
+  | DetectStorylinesTool
+  | AnalyzeImportedStoryTool;
 
 // Export as a constant array of all available tools
 export const MCP_TOOLS: McpTool[] = [
@@ -337,7 +347,10 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "split_scene", description: "Splits a scene into multiple scenes at specified positions" },
   { name: "combine_scenes", description: "Combines multiple scenes into a single scene" },
   { name: "scene_to_writing_sample", description: "Creates a writing sample from a scene's content" },
-  { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" }
+  { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" },
+  
+  // Import Tools
+  { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" }
 ];
 
 // Path to the MCP server code in GitHub
@@ -345,4 +358,13 @@ export const MCP_SERVER_LOCATION = {
   repository: "https://github.com/electroglodyte/storyverse-client/tree/main/mcp-server",
   startCommand: "node index.js", 
   localPath: "/mcp-server/index.js"
+};
+
+// Edge Function locations
+export const EDGE_FUNCTIONS = {
+  analyzeStory: "analyze-story",
+  styleProfileCreator: "style-profile-creator",
+  webApi: "web-api",
+  serveWeb: "serve-web",
+  mcpServer: "mcp-server"
 };
