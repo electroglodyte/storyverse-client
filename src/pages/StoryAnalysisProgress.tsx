@@ -62,37 +62,6 @@ const StoryAnalysisProgress: React.FC = () => {
     console.log("Session storage completely cleared on component mount");
   }, []);
 
-  // Detect suspicious pattern of default values
-  const detectDefaultValues = (elements: any) => {
-    if (!elements) return false;
-    
-    // Log the counts to help debugging
-    const counts = [
-      elements.characters?.length || 0,
-      elements.locations?.length || 0,
-      elements.events?.length || 0,
-      elements.scenes?.length || 0,
-      elements.plotlines?.length || 0
-    ];
-    console.log("Element counts:", counts.join(','));
-    
-    // Check for both old and new suspicious patterns
-    if ((elements.characters?.length === 5 && 
-        elements.locations?.length === 2 && 
-        (elements.events === undefined || elements.events?.length === 0) && 
-        elements.scenes?.length === 3 && 
-        elements.plotlines?.length === 2) ||
-        (elements.characters?.length === 4 &&
-        elements.locations?.length === 3 &&
-        (elements.events === undefined || elements.events?.length === 0) &&
-        elements.scenes?.length === 3 &&
-        elements.plotlines?.length === 2)) {
-      console.error(`SUSPICIOUS: Detected suspicious pattern ${counts.join(',')} which may indicate cached/default data`);
-      return true;
-    }
-    return false;
-  };
-
   // Stage 1: Analyze text and extract narrative elements with special handling
   const analyzeText = async (analysisData: AnalysisData) => {
     try {
@@ -161,11 +130,6 @@ const StoryAnalysisProgress: React.FC = () => {
       const data = response.data;
       
       console.log("Received analysis response:", data);
-
-      // Check if we received the suspicious pattern
-      if (detectDefaultValues(data)) {
-        throw new Error(`Received suspicious default values. Forcing fresh extraction.`);
-      }
       
       // Validate each element type explicitly
       if (!data.characters || !Array.isArray(data.characters)) {
@@ -624,36 +588,6 @@ const StoryAnalysisProgress: React.FC = () => {
     });
   };
 
-  // Validate extraction results
-  const validateExtractionResults = (elements: any): boolean => {
-    if (!elements) return false;
-    
-    // Check if we're getting the suspicious patterns
-    if (detectDefaultValues(elements)) {
-      console.error("VALIDATION FAILED: Detected suspicious pattern");
-      return false;
-    }
-    
-    // Check if we have any elements at all
-    const hasCharacters = elements.characters && Array.isArray(elements.characters) && elements.characters.length > 0;
-    const hasLocations = elements.locations && Array.isArray(elements.locations) && elements.locations.length > 0;
-    const hasScenes = elements.scenes && Array.isArray(elements.scenes) && elements.scenes.length > 0;
-    const hasEvents = elements.events && Array.isArray(elements.events) && elements.events.length > 0;
-    const hasPlotlines = elements.plotlines && Array.isArray(elements.plotlines) && elements.plotlines.length > 0;
-    
-    // Log validation results
-    console.log("Extraction validation:", {
-      hasCharacters,
-      hasLocations,
-      hasScenes,
-      hasEvents,
-      hasPlotlines
-    });
-    
-    // Must have at least one type of element
-    return hasCharacters || hasLocations || hasScenes || hasEvents || hasPlotlines;
-  };
-
   // Extract narrative elements phase
   const processExtraction = async () => {
     // Mark extraction as started
@@ -706,11 +640,6 @@ const StoryAnalysisProgress: React.FC = () => {
           elements = await analyzeText(analysisData);
           
           if (elements) {
-            // Validate the extraction results
-            if (!validateExtractionResults(elements)) {
-              throw new Error('Extraction validation failed - invalid or empty results');
-            }
-            
             // Create extraction timestamp
             const timestamp = new Date().toISOString();
             setExtractionTimestamp(timestamp);
