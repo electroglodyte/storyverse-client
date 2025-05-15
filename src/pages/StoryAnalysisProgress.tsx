@@ -15,11 +15,6 @@ interface AnalysisData {
   }>;
 }
 
-// Map to track which items have been displayed to avoid duplication
-interface DisplayedItems {
-  [key: string]: boolean;
-}
-
 // Enhanced StoryAnalysisProgress component with better error handling and debugging
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
@@ -51,17 +46,40 @@ const StoryAnalysisProgress: React.FC = () => {
     relationships: 0
   });
   const [extractionTimestamp, setExtractionTimestamp] = useState<string>('');
-  const [forceFreshExtraction, setForceFreshExtraction] = useState<boolean>(false);
-  
-  // Use a ref to track displayed items to avoid duplication
-  const displayedItemsRef = useRef<DisplayedItems>({});
-  const extractionStartedRef = useRef<boolean>(false);
+  const [extractedElements, setExtractedElements] = useState<any>(null);
+  const [extractionStarted, setExtractionStarted] = useState<boolean>(false);
   
   const navigate = useNavigate();
 
-  // Stage 1: Analyze text and extract narrative elements
+  // IMPORTANT: Completely clear ALL session storage on component mount
+  useEffect(() => {
+    // Only keep analysisData but remove ALL other items
+    const analysisData = sessionStorage.getItem('analysisData');
+    sessionStorage.clear();
+    if (analysisData) {
+      sessionStorage.setItem('analysisData', analysisData);
+    }
+    console.log("Session storage completely cleared on component mount");
+  }, []);
+
+  // Detect suspicious pattern of default values
+  const detectDefaultValues = (elements: any) => {
+    if (elements && 
+        elements.characters?.length === 5 && 
+        elements.locations?.length === 2 && 
+        (elements.events === undefined || elements.events?.length === 0) && 
+        elements.scenes?.length === 3 && 
+        elements.plotlines?.length === 2) {
+      console.error("SUSPICIOUS: Detected the 5,2,0,3,2 pattern which may indicate cached/default data");
+      return true;
+    }
+    return false;
+  };
+
+  // Stage 1: Analyze text and extract narrative elements with special handling
   const analyzeText = async (analysisData: AnalysisData) => {
     try {
+      console.log("Beginning text analysis with fresh state");
       setAnalysisStage('Extracting narrative elements from text...');
       const file = analysisData.files[0];
       
@@ -69,12 +87,13 @@ const StoryAnalysisProgress: React.FC = () => {
         throw new Error('No file content found for analysis');
       }
       
-      // Call the edge function to analyze the content
-      console.log(`Calling analyze-story edge function for ${file.name}`);
+      // Generate a unique request ID to ensure we're not getting cached results
+      const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      console.log(`Calling analyze-story edge function for ${file.name} with request ID: ${requestId}`);
       await addDetectedItem('System', `Analyzing ${file.name} text...`);
       
       // Setup timeout handling
-      const TIMEOUT_MS = 25000; // 25 seconds
+      const TIMEOUT_MS = 30000; // 30 seconds
       let timeoutId: NodeJS.Timeout;
       
       // Create a promise that will reject after the timeout
@@ -103,6 +122,8 @@ const StoryAnalysisProgress: React.FC = () => {
             extract_arcs: true,
             debug: true,
             retry_attempt: retryAttempt,
+            request_id: requestId, // Add unique request ID
+            bypass_cache: true, // Tell the server to bypass cache
             timestamp: new Date().toISOString() // Add timestamp to ensure unique request
           }
         }
@@ -119,25 +140,62 @@ const StoryAnalysisProgress: React.FC = () => {
         throw new Error(`Analysis error: ${response.error.message || 'Unknown error'}`);
       }
       
+      // Get the actual data
+      const data = response.data;
+      
+      // Check if we received the suspicious pattern
+      if (detectDefaultValues(data)) {
+        throw new Error('Received suspicious default values (5,2,0,3,2). Forcing fresh extraction.');
+      }
+      
+      console.log("Received analysis response:", data);
+      
+      // Validate each element type explicitly
+      if (!data.characters || !Array.isArray(data.characters)) {
+        console.error("Missing or invalid characters array in response");
+        data.characters = [];
+      }
+      
+      if (!data.locations || !Array.isArray(data.locations)) {
+        console.error("Missing or invalid locations array in response");
+        data.locations = [];
+      }
+      
+      if (!data.scenes || !Array.isArray(data.scenes)) {
+        console.error("Missing or invalid scenes array in response");
+        data.scenes = [];
+      }
+      
+      if (!data.events || !Array.isArray(data.events)) {
+        console.error("Missing or invalid events array in response");
+        data.events = [];
+      }
+      
+      if (!data.plotlines || !Array.isArray(data.plotlines)) {
+        console.error("Missing or invalid plotlines array in response");
+        data.plotlines = [];
+      }
+      
+      // Log comprehensive info about what we received
+      console.log(`Analysis returned: ${data.characters.length} characters, ${data.locations.length} locations, ${data.scenes.length} scenes, ${data.events?.length || 0} events, ${data.plotlines?.length || 0} plotlines`);
+      
+      // Log the first item of each type to verify we have real data
+      if (data.characters.length > 0) console.log("First character:", data.characters[0]);
+      if (data.locations.length > 0) console.log("First location:", data.locations[0]);
+      if (data.scenes.length > 0) console.log("First scene:", data.scenes[0]);
+      if (data.events?.length > 0) console.log("First event:", data.events[0]);
+      if (data.plotlines?.length > 0) console.log("First plotline:", data.plotlines[0]);
+      
       await addDetectedItem('System', 'Text analysis complete');
       
-      // Log the complete response for debugging
-      console.log("Complete analysis response:", response.data);
+      // Store directly in component state instead of session storage
+      setExtractedElements(data);
       
-      return response.data;
+      return data;
     } catch (err: any) {
       console.error("Error analyzing text:", err);
       throw err;
     }
-  };
-  
-  // Clear all relevant session storage items for a fresh start
-  const clearSessionStorage = () => {
-    // Keep analysisData but remove anything related to extraction or results
-    sessionStorage.removeItem('extractedElements');
-    sessionStorage.removeItem('analysisResults');
-    sessionStorage.removeItem('extractionTimestamp');
-    console.log("Session storage cleared for fresh extraction");
   };
   
   // Save a single character to the database and return the result
@@ -362,13 +420,12 @@ const StoryAnalysisProgress: React.FC = () => {
   // Save extracted elements to database in small batches with individual tracking
   const saveAnalysisResultsInBatches = async () => {
     try {
-      // Get elements from session storage
-      const extractedElementsStr = sessionStorage.getItem('extractedElements');
-      if (!extractedElementsStr) {
+      // Get elements from component state
+      if (!extractedElements) {
         throw new Error('No extracted elements found');
       }
       
-      const elements = JSON.parse(extractedElementsStr);
+      const elements = extractedElements;
       const analysisData = JSON.parse(sessionStorage.getItem('analysisData')!);
       
       console.log("Starting to save extracted elements:", elements);
@@ -493,9 +550,6 @@ const StoryAnalysisProgress: React.FC = () => {
         await addDetectedItem('System', `Saved ${validRelationships} character relationships`);
       }
       
-      // Process other elements (character arcs, event dependencies, etc.) following the same pattern
-      // ...
-      
       // Finalize
       setAnalysisStage('Finalizing analysis...');
       await addDetectedItem('System', 'Analysis completed successfully');
@@ -557,6 +611,12 @@ const StoryAnalysisProgress: React.FC = () => {
   const validateExtractionResults = (elements: any): boolean => {
     if (!elements) return false;
     
+    // Check if we're getting the suspicious 5,2,0,3,2 pattern
+    if (detectDefaultValues(elements)) {
+      console.error("VALIDATION FAILED: Detected suspicious 5,2,0,3,2 pattern");
+      return false;
+    }
+    
     // Check if we have any elements at all
     const hasCharacters = elements.characters && Array.isArray(elements.characters) && elements.characters.length > 0;
     const hasLocations = elements.locations && Array.isArray(elements.locations) && elements.locations.length > 0;
@@ -579,16 +639,8 @@ const StoryAnalysisProgress: React.FC = () => {
 
   // Extract narrative elements phase
   const processExtraction = async () => {
-    // Check if we need to force a fresh extraction
-    if (forceFreshExtraction) {
-      clearSessionStorage();
-    }
-    
     // Mark extraction as started
-    extractionStartedRef.current = true;
-    
-    // Reset the displayed items tracking
-    displayedItemsRef.current = {};
+    setExtractionStarted(true);
     
     // Get analysis data from session storage
     const analysisDataStr = sessionStorage.getItem('analysisData');
@@ -618,44 +670,7 @@ const StoryAnalysisProgress: React.FC = () => {
         return;
       }
       
-      // Check if we already have extracted elements (if resuming) and aren't forcing fresh extraction
-      const extractedElementsStr = sessionStorage.getItem('extractedElements');
-      const storedTimestamp = sessionStorage.getItem('extractionTimestamp');
-      
-      if (!forceFreshExtraction && extractedElementsStr && storedTimestamp) {
-        // We already have extracted elements, verify they're valid
-        const elements = JSON.parse(extractedElementsStr);
-        
-        console.log("Found existing extraction results:", elements);
-        console.log("Extraction timestamp:", storedTimestamp);
-        
-        // Validate the stored elements
-        if (validateExtractionResults(elements)) {
-          // Set extraction timestamp
-          setExtractionTimestamp(storedTimestamp);
-          
-          // Set extraction summary
-          setExtractionSummary({
-            characters: elements.characters?.length || 0,
-            locations: elements.locations?.length || 0,
-            events: elements.events?.length || 0,
-            scenes: elements.scenes?.length || 0,
-            plotlines: elements.plotlines?.length || 0,
-            relationships: elements.characterRelationships?.length || 0
-          });
-          
-          // Show extraction complete
-          setAnalysisPhase('extracted');
-          setIsAnalyzing(false);
-          return;
-        } else {
-          // Invalid stored elements - clear and re-extract
-          console.log("Stored extraction results are invalid - clearing and re-extracting");
-          clearSessionStorage();
-        }
-      }
-      
-      // Phase 1: Extract narrative elements
+      // ALWAYS perform a fresh extraction - no caching
       let extractAttempts = 0;
       const MAX_EXTRACT_ATTEMPTS = 3;
       let elements = null;
@@ -676,16 +691,12 @@ const StoryAnalysisProgress: React.FC = () => {
           if (elements) {
             // Validate the extraction results
             if (!validateExtractionResults(elements)) {
-              throw new Error('Extraction returned empty or invalid results');
+              throw new Error('Extraction validation failed - invalid or empty results');
             }
             
             // Create extraction timestamp
             const timestamp = new Date().toISOString();
             setExtractionTimestamp(timestamp);
-            sessionStorage.setItem('extractionTimestamp', timestamp);
-            
-            // Store extracted elements in session storage
-            sessionStorage.setItem('extractedElements', JSON.stringify(elements));
             
             // Set extraction summary
             setExtractionSummary({
@@ -696,6 +707,9 @@ const StoryAnalysisProgress: React.FC = () => {
               plotlines: elements.plotlines?.length || 0,
               relationships: elements.characterRelationships?.length || 0
             });
+            
+            // Store in component state
+            setExtractedElements(elements);
             
             // Continue to the saving phase
             setAnalysisPhase('extracted');
@@ -784,11 +798,12 @@ const StoryAnalysisProgress: React.FC = () => {
   };
   
   useEffect(() => {
-    // Start with extraction if no extraction has started yet
-    if (!extractionStartedRef.current) {
+    // Start extraction only if it's not already started
+    if (!extractionStarted) {
+      console.log("Starting initial extraction");
       processExtraction();
     }
-  }, []);
+  }, [extractionStarted]);
   
   const handleViewResults = () => {
     navigate('/analysis-results');
@@ -796,7 +811,7 @@ const StoryAnalysisProgress: React.FC = () => {
 
   const handleRetry = () => {
     // If we have extracted elements but failed to save, retry only the saving phase
-    if (analysisPhase === 'error' && sessionStorage.getItem('extractedElements')) {
+    if (analysisPhase === 'error' && extractedElements) {
       // Reset relevant states
       setError(null);
       setIsAnalyzing(true);
@@ -806,16 +821,11 @@ const StoryAnalysisProgress: React.FC = () => {
     } else {
       // Full retry - Reset everything and reload
       setDetectedItems([]);
+      setExtractedElements(null);
+      setExtractionStarted(false);
       
-      // Force fresh extraction
-      setForceFreshExtraction(true);
-      clearSessionStorage();
-      extractionStartedRef.current = false;
-      
-      // Restart extraction
-      setTimeout(() => {
-        processExtraction();
-      }, 100);
+      // Force page reload to clear any browser cache/state
+      window.location.reload();
     }
   };
 
@@ -824,17 +834,15 @@ const StoryAnalysisProgress: React.FC = () => {
   };
 
   const handleFreshExtraction = () => {
-    // Clear session storage and force fresh extraction
-    setForceFreshExtraction(true);
-    clearSessionStorage();
-    extractionStartedRef.current = false;
-    setIsAnalyzing(true);
+    // Clear state and restart extraction
     setDetectedItems([]);
+    setExtractedElements(null);
+    setExtractionStarted(false);
+    setAnalysisPhase('extracting');
+    setIsAnalyzing(true);
     
-    // Restart extraction
-    setTimeout(() => {
-      processExtraction();
-    }, 100);
+    // Force page reload to clear any browser cache/state
+    window.location.reload();
   };
 
   const getAnalysisPhaseDisplay = () => {
@@ -964,7 +972,7 @@ const StoryAnalysisProgress: React.FC = () => {
                 </div>
               )}
               <button className="retry-button" onClick={handleRetry}>
-                {sessionStorage.getItem('extractedElements') ? 'Retry Saving' : 'Retry Analysis'}
+                {extractedElements ? 'Retry Saving' : 'Retry Analysis'}
               </button>
               <button className="secondary-button" onClick={() => navigate('/import')}>
                 Back to Import
