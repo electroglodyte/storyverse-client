@@ -6,10 +6,11 @@ import { v4 as uuidv4 } from 'uuid';
 import './StoryAnalysisProgress.css';
 
 /**
- * EMERGENCY FIX VERSION - DIRECT DATABASE ACCESS
+ * ENHANCED ROBUST VERSION - DIRECT DATABASE ACCESS WITH IMPROVED DATA PERSISTENCE
  * 
- * This version bypasses the SupabaseService class and communicates directly with
- * the database to ensure entities are properly saved without duplication.
+ * This version has comprehensive error handling, session storage backup strategies,
+ * and improved data persistence mechanisms to ensure analysis data survives through
+ * the entire workflow.
  */
 
 interface AnalysisData {
@@ -22,7 +23,7 @@ interface AnalysisData {
   }>;
 }
 
-// StoryAnalysisProgress component - simplified with direct database access
+// StoryAnalysisProgress component - improved with persistent data management
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   const [analysisPhase, setAnalysisPhase] = useState<'extracting' | 'saving' | 'complete' | 'error' | 'extracted'>('extracting');
@@ -56,13 +57,22 @@ const StoryAnalysisProgress: React.FC = () => {
     plotlines: []
   });
   
-  // Use a ref to store analysisData to avoid losing it during re-renders
+  // Use refs to store critical data to prevent loss during re-renders
   const analysisDataRef = useRef<AnalysisData | null>(null);
   const logHistoryRef = useRef<string[]>([]);
+  const extractedElementsRef = useRef<any>(null);
+  const saveRetryCountRef = useRef<{[key: string]: number}>({
+    characters: 0,
+    locations: 0,
+    events: 0,
+    scenes: 0,
+    plotlines: 0
+  });
+  const MAX_SAVE_RETRIES = 3;
   
   const navigate = useNavigate();
 
-  // Log information to console and update UI
+  // Enhanced logger with timestamp and state backup
   const logDebug = (message: string, data?: any) => {
     try {
       const timestamp = new Date().toISOString();
@@ -92,16 +102,16 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Function to safely access and store analysis data
+  // Improved analysis data access with multiple backups
   const getAnalysisData = (): AnalysisData | null => {
     try {
-      // First try from ref
+      // First try from ref (primary source after initial load)
       if (analysisDataRef.current) {
         logDebug("Getting analysis data from ref");
         return analysisDataRef.current;
       }
       
-      // Then try from session storage
+      // Then try from session storage (primary source on initial load)
       const analysisDataStr = sessionStorage.getItem('analysisData');
       if (analysisDataStr) {
         logDebug("Getting analysis data from sessionStorage");
@@ -123,6 +133,23 @@ const StoryAnalysisProgress: React.FC = () => {
         }
       }
       
+      // Try to recover from localStorage as a backup
+      const backupAnalysisDataStr = localStorage.getItem('analysisDataBackup');
+      if (backupAnalysisDataStr) {
+        logDebug("Attempting to recover analysis data from localStorage backup");
+        try {
+          const parsedData = JSON.parse(backupAnalysisDataStr);
+          if (parsedData.storyId && parsedData.storyWorldId) {
+            // Restore to sessionStorage
+            sessionStorage.setItem('analysisData', backupAnalysisDataStr);
+            analysisDataRef.current = parsedData;
+            return parsedData;
+          }
+        } catch (err) {
+          logDebug("Error parsing backup analysis data:", err);
+        }
+      }
+      
       // Fallback: Try to recreate from component state
       if (storyId && storyWorldId) {
         logDebug("Recreating analysis data from component state");
@@ -139,6 +166,7 @@ const StoryAnalysisProgress: React.FC = () => {
         // Store for future use
         analysisDataRef.current = reconstructedData;
         sessionStorage.setItem('analysisData', JSON.stringify(reconstructedData));
+        localStorage.setItem('analysisDataBackup', JSON.stringify(reconstructedData));
         
         return reconstructedData;
       }
@@ -151,7 +179,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
-  // Initialize and preserve data on mount
+  // Component initialization and data recovery
   useEffect(() => {
     try {
       // Try to get analysis data
@@ -162,6 +190,9 @@ const StoryAnalysisProgress: React.FC = () => {
         try {
           const parsedData = JSON.parse(analysisDataStr);
           analysisDataRef.current = parsedData;
+          
+          // Create a backup in localStorage
+          localStorage.setItem('analysisDataBackup', analysisDataStr);
           
           // Set component state from this data
           if (parsedData.storyId) setStoryId(parsedData.storyId);
@@ -176,13 +207,47 @@ const StoryAnalysisProgress: React.FC = () => {
         }
       } else {
         logDebug("WARNING: No analysis data found in sessionStorage on mount!");
+        
+        // Try to recover from localStorage backup
+        const backupAnalysisDataStr = localStorage.getItem('analysisDataBackup');
+        if (backupAnalysisDataStr) {
+          logDebug("Attempting to recover from localStorage backup");
+          try {
+            const parsedData = JSON.parse(backupAnalysisDataStr);
+            if (parsedData.storyId && parsedData.storyWorldId) {
+              // Restore to sessionStorage
+              sessionStorage.setItem('analysisData', backupAnalysisDataStr);
+              analysisDataRef.current = parsedData;
+              
+              // Set component state
+              setStoryId(parsedData.storyId);
+              setStoryWorldId(parsedData.storyWorldId);
+              if (parsedData.files && parsedData.files[0]) {
+                setCurrentFile(parsedData.files[0].name || '');
+              }
+              
+              logDebug("Successfully recovered analysis data from backup", parsedData);
+            }
+          } catch (err) {
+            logDebug("Error recovering from backup:", err);
+          }
+        }
       }
     } catch (err) {
       logDebug("Unexpected error during initialization:", err);
     }
-  }, []);
+    
+    // Cleanup function to ensure we don't keep stale data
+    return () => {
+      // If we're navigating away after a successful completion, we can clear the backup
+      if (analysisPhase === 'complete') {
+        localStorage.removeItem('analysisDataBackup');
+        logDebug("Cleared analysis data backup after successful completion");
+      }
+    };
+  }, [analysisPhase]);
 
-  // Analyze text and extract narrative elements
+  // Improved text analysis with better error handling and timeout management
   const analyzeText = async (analysisData: AnalysisData) => {
     try {
       logDebug("Beginning text analysis with fresh state");
@@ -199,7 +264,7 @@ const StoryAnalysisProgress: React.FC = () => {
       await addDetectedItem('System', `Analyzing ${file.name} text...`);
       
       // Setup timeout handling
-      const TIMEOUT_MS = 45000; // 45 seconds - increased from 30
+      const TIMEOUT_MS = 60000; // 60 seconds - increased from 45
       let timeoutId: NodeJS.Timeout;
       
       // Create a promise that will reject after the timeout
@@ -317,8 +382,9 @@ const StoryAnalysisProgress: React.FC = () => {
       
       await addDetectedItem('System', 'Text analysis complete');
       
-      // Store directly in component state
+      // Store directly in component state AND in a ref for redundancy
       setExtractedElements(data);
+      extractedElementsRef.current = data;
       
       return data;
     } catch (err: any) {
@@ -327,9 +393,9 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // DIRECT DATABASE OPERATIONS - BYPASSING SUPABASESERVICE CLASS
+  // IMPROVED DIRECT DATABASE OPERATIONS - BYPASSING SUPABASESERVICE CLASS
   
-  // Direct save character
+  // Direct save character with retry logic
   const saveCharacterDirect = async (char: any, storyId: string, storyWorldId: string) => {
     try {
       if (!char.name) {
@@ -423,11 +489,23 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct character save:", errorDetails);
       setFullErrorDetails(`Character save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save character: ${char.name}`);
+      
+      // Check if we should retry
+      const currentRetries = saveRetryCountRef.current.characters || 0;
+      if (currentRetries < MAX_SAVE_RETRIES) {
+        saveRetryCountRef.current.characters = currentRetries + 1;
+        logDebug(`Retrying character save (attempt ${currentRetries + 1}/${MAX_SAVE_RETRIES})...`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return saveCharacterDirect(char, storyId, storyWorldId);
+      }
+      
       return null;
     }
   };
   
-  // Direct save location
+  // Direct save location with retry logic
   const saveLocationDirect = async (loc: any, storyId: string, storyWorldId: string) => {
     try {
       if (!loc.name) {
@@ -518,11 +596,23 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct location save:", errorDetails);
       setFullErrorDetails(`Location save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save location: ${loc.name}`);
+      
+      // Check if we should retry
+      const currentRetries = saveRetryCountRef.current.locations || 0;
+      if (currentRetries < MAX_SAVE_RETRIES) {
+        saveRetryCountRef.current.locations = currentRetries + 1;
+        logDebug(`Retrying location save (attempt ${currentRetries + 1}/${MAX_SAVE_RETRIES})...`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return saveLocationDirect(loc, storyId, storyWorldId);
+      }
+      
       return null;
     }
   };
   
-  // Direct save scene
+  // Direct save scene with retry logic
   const saveSceneDirect = async (scene: any, storyId: string) => {
     try {
       if (!scene.title) {
@@ -616,11 +706,23 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct scene save:", errorDetails);
       setFullErrorDetails(`Scene save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save scene: ${scene.title}`);
+      
+      // Check if we should retry
+      const currentRetries = saveRetryCountRef.current.scenes || 0;
+      if (currentRetries < MAX_SAVE_RETRIES) {
+        saveRetryCountRef.current.scenes = currentRetries + 1;
+        logDebug(`Retrying scene save (attempt ${currentRetries + 1}/${MAX_SAVE_RETRIES})...`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return saveSceneDirect(scene, storyId);
+      }
+      
       return null;
     }
   };
   
-  // Direct save event
+  // Direct save event with retry logic
   const saveEventDirect = async (event: any, storyId: string) => {
     try {
       const eventTitle = event.title || event.name;
@@ -711,11 +813,23 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct event save:", errorDetails);
       setFullErrorDetails(`Event save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save event: ${event.title || event.name}`);
+      
+      // Check if we should retry
+      const currentRetries = saveRetryCountRef.current.events || 0;
+      if (currentRetries < MAX_SAVE_RETRIES) {
+        saveRetryCountRef.current.events = currentRetries + 1;
+        logDebug(`Retrying event save (attempt ${currentRetries + 1}/${MAX_SAVE_RETRIES})...`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return saveEventDirect(event, storyId);
+      }
+      
       return null;
     }
   };
   
-  // Direct save plotline
+  // Direct save plotline with retry logic
   const savePlotlineDirect = async (plotline: any, storyId: string) => {
     try {
       if (!plotline.title) {
@@ -805,11 +919,23 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct plotline save:", errorDetails);
       setFullErrorDetails(`Plotline save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save plotline: ${plotline.title}`);
+      
+      // Check if we should retry
+      const currentRetries = saveRetryCountRef.current.plotlines || 0;
+      if (currentRetries < MAX_SAVE_RETRIES) {
+        saveRetryCountRef.current.plotlines = currentRetries + 1;
+        logDebug(`Retrying plotline save (attempt ${currentRetries + 1}/${MAX_SAVE_RETRIES})...`);
+        
+        // Wait a moment before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return savePlotlineDirect(plotline, storyId);
+      }
+      
       return null;
     }
   };
   
-  // DIRECT save of character relationships
+  // DIRECT save of character relationships with retry logic
   const saveCharacterRelationshipDirect = async (rel: any, characterNameToIdMap: Record<string, string>, storyId: string) => {
     try {
       if (!rel.character1_name || !rel.character2_name) {
@@ -903,23 +1029,42 @@ const StoryAnalysisProgress: React.FC = () => {
       logDebug("Error in direct relationship save:", errorDetails);
       setFullErrorDetails(`Relationship save error: ${errorDetails}`);
       await addDetectedItem('Error', `Failed to save relationship`);
-      return null;
+      
+      // Relationships don't have a specific retry counter, but we can retry a few times
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Simple retry with just one attempt
+      try {
+        return await saveCharacterRelationshipDirect(rel, characterNameToIdMap, storyId);
+      } catch (retryErr) {
+        logDebug("Retry failed for relationship save:", retryErr);
+        return null;
+      }
     }
   };
   
-  // Modified save approach using direct database operations
+  // Enhanced data saving approach using batch processing and error handling
   const saveElementsDirectly = async () => {
     try {
       logDebug("=== Starting direct database save process ===");
       
-      // Get elements from component state
-      if (!extractedElements) {
-        logDebug("No extracted elements found in state");
+      // Reset retry counters
+      saveRetryCountRef.current = {
+        characters: 0,
+        locations: 0,
+        events: 0,
+        scenes: 0,
+        plotlines: 0
+      };
+      
+      // Get elements from component state or ref as backup
+      const elements = extractedElements || extractedElementsRef.current;
+      if (!elements) {
+        logDebug("No extracted elements found in state or ref");
         throw new Error('No extracted elements found in component state');
       }
       
-      const elements = extractedElements;
-      logDebug("Extracted elements from state:", {
+      logDebug("Extracted elements for saving:", {
         characters: elements.characters?.length || 0,
         locations: elements.locations?.length || 0,
         scenes: elements.scenes?.length || 0,
@@ -979,24 +1124,33 @@ const StoryAnalysisProgress: React.FC = () => {
         setAnalysisStage(`Saving characters (${elements.characters.length})...`);
         await addDetectedItem('System', `Saving ${elements.characters.length} characters`);
         
-        // Save each character individually
-        for (let i = 0; i < elements.characters.length; i++) {
-          try {
-            const character = elements.characters[i];
-            logDebug(`Saving character ${i+1}/${elements.characters.length}: ${character.name}`);
-            const savedChar = await saveCharacterDirect(character, analysisData.storyId, analysisData.storyWorldId);
-            if (savedChar) {
-              savedCharacters.push(savedChar);
-            }
-          } catch (err) {
-            logDebug(`Error saving character at index ${i}:`, err);
-            // Continue with next character despite errors
-          }
+        // Parallelize character saves in batches to improve performance
+        const BATCH_SIZE = 5; // Process 5 characters at a time
+        for (let i = 0; i < elements.characters.length; i += BATCH_SIZE) {
+          const batch = elements.characters.slice(i, i + BATCH_SIZE);
+          
+          // Process batch in parallel
+          const batchResults = await Promise.all(
+            batch.map(async (character, idx) => {
+              try {
+                logDebug(`Saving character ${i + idx + 1}/${elements.characters.length}: ${character.name}`);
+                return await saveCharacterDirect(character, analysisData.storyId, analysisData.storyWorldId);
+              } catch (err) {
+                logDebug(`Error saving character at index ${i + idx}:`, err);
+                return null;
+              }
+            })
+          );
+          
+          // Add successful saves to our results
+          savedCharacters = [...savedCharacters, ...batchResults.filter(Boolean)];
           
           // Update progress
-          const characterProgress = (i + 1) / elements.characters.length;
+          const characterProgress = Math.min((i + BATCH_SIZE) / elements.characters.length, 1);
           setSavingProgress((currentStep + characterProgress) / totalSteps * 100);
         }
+        
+        logDebug(`Saved ${savedCharacters.length}/${elements.characters.length} characters`);
       }
       
       currentStep++;
@@ -1007,24 +1161,33 @@ const StoryAnalysisProgress: React.FC = () => {
         setAnalysisStage(`Saving locations (${elements.locations.length})...`);
         await addDetectedItem('System', `Saving ${elements.locations.length} locations`);
         
-        // Save each location individually
-        for (let i = 0; i < elements.locations.length; i++) {
-          try {
-            const location = elements.locations[i];
-            logDebug(`Saving location ${i+1}/${elements.locations.length}: ${location.name}`);
-            const savedLoc = await saveLocationDirect(location, analysisData.storyId, analysisData.storyWorldId);
-            if (savedLoc) {
-              savedLocations.push(savedLoc);
-            }
-          } catch (err) {
-            logDebug(`Error saving location at index ${i}:`, err);
-            // Continue with next location despite errors
-          }
+        // Parallelize location saves in batches
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < elements.locations.length; i += BATCH_SIZE) {
+          const batch = elements.locations.slice(i, i + BATCH_SIZE);
+          
+          // Process batch in parallel
+          const batchResults = await Promise.all(
+            batch.map(async (location, idx) => {
+              try {
+                logDebug(`Saving location ${i + idx + 1}/${elements.locations.length}: ${location.name}`);
+                return await saveLocationDirect(location, analysisData.storyId, analysisData.storyWorldId);
+              } catch (err) {
+                logDebug(`Error saving location at index ${i + idx}:`, err);
+                return null;
+              }
+            })
+          );
+          
+          // Add successful saves to our results
+          savedLocations = [...savedLocations, ...batchResults.filter(Boolean)];
           
           // Update progress
-          const locationProgress = (i + 1) / elements.locations.length;
+          const locationProgress = Math.min((i + BATCH_SIZE) / elements.locations.length, 1);
           setSavingProgress((currentStep + locationProgress) / totalSteps * 100);
         }
+        
+        logDebug(`Saved ${savedLocations.length}/${elements.locations.length} locations`);
       }
       
       currentStep++;
@@ -1035,7 +1198,7 @@ const StoryAnalysisProgress: React.FC = () => {
         setAnalysisStage(`Saving scenes (${elements.scenes.length})...`);
         await addDetectedItem('System', `Saving ${elements.scenes.length} scenes`);
         
-        // Save each scene individually
+        // Save scenes sequentially to maintain sequence integrity
         for (let i = 0; i < elements.scenes.length; i++) {
           try {
             const scene = elements.scenes[i];
@@ -1053,6 +1216,8 @@ const StoryAnalysisProgress: React.FC = () => {
           const sceneProgress = (i + 1) / elements.scenes.length;
           setSavingProgress((currentStep + sceneProgress) / totalSteps * 100);
         }
+        
+        logDebug(`Saved ${savedScenes.length}/${elements.scenes.length} scenes`);
       }
       
       currentStep++;
@@ -1063,7 +1228,7 @@ const StoryAnalysisProgress: React.FC = () => {
         setAnalysisStage(`Saving events (${elements.events.length})...`);
         await addDetectedItem('System', `Saving ${elements.events.length} events`);
         
-        // Save each event individually
+        // Save events sequentially to maintain sequence integrity
         for (let i = 0; i < elements.events.length; i++) {
           try {
             const event = elements.events[i];
@@ -1082,6 +1247,8 @@ const StoryAnalysisProgress: React.FC = () => {
           const eventProgress = (i + 1) / elements.events.length;
           setSavingProgress((currentStep + eventProgress) / totalSteps * 100);
         }
+        
+        logDebug(`Saved ${savedEvents.length}/${elements.events.length} events`);
       }
       
       currentStep++;
@@ -1092,24 +1259,33 @@ const StoryAnalysisProgress: React.FC = () => {
         setAnalysisStage(`Saving plotlines (${elements.plotlines.length})...`);
         await addDetectedItem('System', `Saving ${elements.plotlines.length} plotlines`);
         
-        // Save each plotline individually
-        for (let i = 0; i < elements.plotlines.length; i++) {
-          try {
-            const plotline = elements.plotlines[i];
-            logDebug(`Saving plotline ${i+1}/${elements.plotlines.length}: ${plotline.title}`);
-            const savedPlotline = await savePlotlineDirect(plotline, analysisData.storyId);
-            if (savedPlotline) {
-              savedPlotlines.push(savedPlotline);
-            }
-          } catch (err) {
-            logDebug(`Error saving plotline at index ${i}:`, err);
-            // Continue with next plotline despite errors
-          }
+        // Parallelize plotline saves in batches
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < elements.plotlines.length; i += BATCH_SIZE) {
+          const batch = elements.plotlines.slice(i, i + BATCH_SIZE);
+          
+          // Process batch in parallel
+          const batchResults = await Promise.all(
+            batch.map(async (plotline, idx) => {
+              try {
+                logDebug(`Saving plotline ${i + idx + 1}/${elements.plotlines.length}: ${plotline.title}`);
+                return await savePlotlineDirect(plotline, analysisData.storyId);
+              } catch (err) {
+                logDebug(`Error saving plotline at index ${i + idx}:`, err);
+                return null;
+              }
+            })
+          );
+          
+          // Add successful saves to our results
+          savedPlotlines = [...savedPlotlines, ...batchResults.filter(Boolean)];
           
           // Update progress
-          const plotlineProgress = (i + 1) / elements.plotlines.length;
+          const plotlineProgress = Math.min((i + BATCH_SIZE) / elements.plotlines.length, 1);
           setSavingProgress((currentStep + plotlineProgress) / totalSteps * 100);
         }
+        
+        logDebug(`Saved ${savedPlotlines.length}/${elements.plotlines.length} plotlines`);
       }
       
       currentStep++;
@@ -1135,26 +1311,29 @@ const StoryAnalysisProgress: React.FC = () => {
         let validRelationships = 0;
         let failedRelationships = 0;
         
-        for (let i = 0; i < elements.characterRelationships.length; i++) {
-          try {
-            const relationship = elements.characterRelationships[i];
-            logDebug(`Saving relationship ${i+1}/${elements.characterRelationships.length}: ${relationship.character1_name} - ${relationship.character2_name}`);
-            const result = await saveCharacterRelationshipDirect(
-              relationship, 
-              characterNameToIdMap, 
-              analysisData.storyId
-            );
-            
-            if (result) {
-              validRelationships++;
-            } else {
-              failedRelationships++;
-            }
-          } catch (err) {
-            failedRelationships++;
-            logDebug(`Error saving relationship at index ${i}:`, err);
-            // Continue with next relationship despite errors
-          }
+        // Use batching for relationships too
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < elements.characterRelationships.length; i += BATCH_SIZE) {
+          const batch = elements.characterRelationships.slice(i, i + BATCH_SIZE);
+          
+          const batchResults = await Promise.all(
+            batch.map(async (relationship, idx) => {
+              try {
+                logDebug(`Saving relationship ${i + idx + 1}/${elements.characterRelationships.length}: ${relationship.character1_name} - ${relationship.character2_name}`);
+                return await saveCharacterRelationshipDirect(
+                  relationship, 
+                  characterNameToIdMap, 
+                  analysisData.storyId
+                );
+              } catch (err) {
+                logDebug(`Error saving relationship at index ${i + idx}:`, err);
+                return null;
+              }
+            })
+          );
+          
+          validRelationships += batchResults.filter(Boolean).length;
+          failedRelationships += batchResults.filter(r => r === null).length;
         }
         
         await addDetectedItem('System', `Saved ${validRelationships} character relationships, ${failedRelationships} failed`);
@@ -1187,6 +1366,10 @@ const StoryAnalysisProgress: React.FC = () => {
       // Save analysis results to session storage for the results page
       logDebug("Saving analysis results to session storage:", analysisResults);
       sessionStorage.setItem('analysisResults', JSON.stringify(analysisResults));
+      
+      // Also make a backup in localStorage
+      localStorage.setItem('analysisResultsBackup', JSON.stringify(analysisResults));
+      
       logDebug("=== Direct database save process completed successfully ===");
       
       return finalResults;
@@ -1203,7 +1386,7 @@ const StoryAnalysisProgress: React.FC = () => {
 
   // Utility function to generate a unique ID for detected items
   const generateUniqueId = (type: string, name: string): string => {
-    return `${type}-${name}-${Date.now()}`;
+    return `${type}-${name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
   };
 
   // Add a detected item with a small delay to create visual feedback
@@ -1217,16 +1400,16 @@ const StoryAnalysisProgress: React.FC = () => {
     });
   };
 
-  // Extract narrative elements phase
+  // Extract narrative elements phase with improved resilience
   const processExtraction = async () => {
     // Mark extraction as started
     setExtractionStarted(true);
     
-    // Get analysis data from session storage
-    const analysisDataStr = sessionStorage.getItem('analysisData');
+    // Get analysis data from session storage or backup sources
+    const analysisData = getAnalysisData();
     
-    if (!analysisDataStr) {
-      logDebug("No analysis data found in session storage during extraction phase");
+    if (!analysisData) {
+      logDebug("No analysis data found during extraction phase");
       setError('No analysis data found. Please return to the import screen.');
       setIsAnalyzing(false);
       setAnalysisPhase('error');
@@ -1234,17 +1417,13 @@ const StoryAnalysisProgress: React.FC = () => {
     }
     
     try {
-      const analysisData: AnalysisData = JSON.parse(analysisDataStr);
-      
-      // Store in ref for future use
-      analysisDataRef.current = analysisData;
-      
+      // Store in component state for UI
       setCurrentFile(analysisData.files[0]?.name || '');
       setStoryId(analysisData.storyId);
       setStoryWorldId(analysisData.storyWorldId);
       
       // Debug the stored analysis data
-      logDebug('Analysis data from session storage:', analysisData);
+      logDebug('Analysis data for extraction:', analysisData);
       setDebugInfo(`Story ID: ${analysisData.storyId}, Files: ${analysisData.files.length}`);
       
       // Check if there are any files to analyze
@@ -1289,8 +1468,9 @@ const StoryAnalysisProgress: React.FC = () => {
               relationships: elements.characterRelationships?.length || 0
             });
             
-            // Store in component state
+            // Store in component state AND in ref for redundancy
             setExtractedElements(elements);
+            extractedElementsRef.current = elements;
             
             // Continue to the saving phase
             setAnalysisPhase('extracted');
@@ -1356,7 +1536,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
-  // Direct database save phase with tracing
+  // Improved direct database save phase with comprehensive checking and setup
   const processSavingDirectly = async () => {
     try {
       logDebug("=== Starting processSavingDirectly ===");
@@ -1373,15 +1553,16 @@ const StoryAnalysisProgress: React.FC = () => {
       setAnalysisPhase('saving');
       setAnalysisStage('Starting to save elements directly to database...');
       
-      // 2. Verify extracted elements
-      if (!extractedElements) {
+      // 2. Verify extracted elements - try multiple sources
+      let elements = extractedElements || extractedElementsRef.current;
+      if (!elements) {
         logDebug("No extracted elements found when trying to save");
         throw new Error('No extracted elements found. Please try extracting the data again.');
       }
       
-      logDebug("Extracted elements are available in state:", {
-        characters: extractedElements.characters?.length || 0,
-        locations: extractedElements.locations?.length || 0
+      logDebug("Extracted elements available for saving:", {
+        characters: elements.characters?.length || 0,
+        locations: elements.locations?.length || 0
       });
       
       // 3. Get analysis data - use our robust accessor
@@ -1424,10 +1605,19 @@ const StoryAnalysisProgress: React.FC = () => {
         throw new Error('Unable to connect to database. Please check your network connection.');
       }
       
-      // 7. Now start the actual saving process
+      // 7. Reset retry counters before starting
+      saveRetryCountRef.current = {
+        characters: 0,
+        locations: 0,
+        events: 0,
+        scenes: 0,
+        plotlines: 0
+      };
+      
+      // 8. Now start the actual saving process
       logDebug(`Starting to save with storyId=${analysisData.storyId}, storyWorldId=${analysisData.storyWorldId}`);
       
-      // 8. Save extracted elements to database using direct approach
+      // 9. Save extracted elements to database using improved direct approach
       const results = await saveElementsDirectly();
       
       logDebug("=== Direct save results complete ===");
@@ -1451,6 +1641,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
+  // Start extraction when component mounts
   useEffect(() => {
     // Start extraction only if it's not already started
     if (!extractionStarted) {
@@ -1459,10 +1650,11 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   }, [extractionStarted]);
   
+  // Navigation handler with improved data persistence
   const handleViewResults = () => {
     logDebug("Navigating to analysis results page");
     
-    // Store a flag before navigation to ensure session storage persists
+    // Verify we have the necessary data in session storage
     const analysisDataStr = sessionStorage.getItem('analysisData');
     const analysisResultsStr = sessionStorage.getItem('analysisResults');
     
@@ -1471,12 +1663,35 @@ const StoryAnalysisProgress: React.FC = () => {
       hasAnalysisResults: !!analysisResultsStr
     });
     
+    // If either is missing, try to recover from backup
+    if (!analysisDataStr || !analysisResultsStr) {
+      logDebug("Missing critical data in session storage, attempting recovery");
+      
+      if (!analysisDataStr) {
+        const backupDataStr = localStorage.getItem('analysisDataBackup');
+        if (backupDataStr) {
+          sessionStorage.setItem('analysisData', backupDataStr);
+          logDebug("Restored analysis data from backup");
+        }
+      }
+      
+      if (!analysisResultsStr) {
+        const backupResultsStr = localStorage.getItem('analysisResultsBackup');
+        if (backupResultsStr) {
+          sessionStorage.setItem('analysisResults', backupResultsStr);
+          logDebug("Restored analysis results from backup");
+        }
+      }
+    }
+    
+    // Now navigate
     navigate('/analysis-results');
   };
 
+  // Enhanced retry logic to handle different failure modes
   const handleRetry = () => {
     // If we have extracted elements but failed to save, retry only the saving phase
-    if (analysisPhase === 'error' && extractedElements) {
+    if (analysisPhase === 'error' && (extractedElements || extractedElementsRef.current)) {
       logDebug("Retrying saving phase only");
       // Reset relevant states
       setError(null);
@@ -1490,6 +1705,7 @@ const StoryAnalysisProgress: React.FC = () => {
       // Full retry - Reset everything and reload
       setDetectedItems([]);
       setExtractedElements(null);
+      extractedElementsRef.current = null;
       setExtractionStarted(false);
       setFullErrorDetails(null);
       
@@ -1498,6 +1714,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
+  // Continue to saving handler with improved data integrity checks
   const handleContinueToSaving = () => {
     logDebug("User clicked 'Continue to Save Elements'");
     
@@ -1510,7 +1727,7 @@ const StoryAnalysisProgress: React.FC = () => {
     if (!analysisDataStr) {
       logDebug("WARNING: No analysis data in session storage before saving phase!");
       // Try to recreate it from component state
-      if (storyId && storyWorldId && extractedElements) {
+      if (storyId && storyWorldId && (extractedElements || extractedElementsRef.current)) {
         logDebug("Recreating analysis data from component state");
         const reconstructedData = {
           storyId,
@@ -1522,19 +1739,29 @@ const StoryAnalysisProgress: React.FC = () => {
           }]
         };
         sessionStorage.setItem('analysisData', JSON.stringify(reconstructedData));
+        localStorage.setItem('analysisDataBackup', JSON.stringify(reconstructedData));
         analysisDataRef.current = reconstructedData;
         logDebug("Reconstructed analysis data:", reconstructedData);
       }
     }
     
+    // Verify we have the extracted data before proceeding
+    if (!extractedElements && !extractedElementsRef.current) {
+      logDebug("ERROR: Extracted elements missing before save phase");
+      setError("Missing extracted elements data. Please try extracting again.");
+      return;
+    }
+    
     processSavingDirectly();
   };
 
+  // Force new extraction with complete reset
   const handleFreshExtraction = () => {
     logDebug("Forcing new extraction");
     // Clear state and restart extraction
     setDetectedItems([]);
     setExtractedElements(null);
+    extractedElementsRef.current = null;
     setExtractionStarted(false);
     setAnalysisPhase('extracting');
     setIsAnalyzing(true);
@@ -1544,6 +1771,7 @@ const StoryAnalysisProgress: React.FC = () => {
     window.location.reload();
   };
 
+  // Helper function for analysis phase display
   const getAnalysisPhaseDisplay = () => {
     switch (analysisPhase) {
       case 'extracting':
@@ -1677,7 +1905,7 @@ const StoryAnalysisProgress: React.FC = () => {
                 </div>
               )}
               <button className="retry-button" onClick={handleRetry}>
-                {extractedElements ? 'Retry Saving' : 'Retry Analysis'}
+                {extractedElements || extractedElementsRef.current ? 'Retry Saving' : 'Retry Analysis'}
               </button>
               <button className="secondary-button" onClick={() => navigate('/import')}>
                 Back to Import
