@@ -1,1 +1,419 @@
-import React, { useState } from 'react';\nimport { useDropzone } from 'react-dropzone';\nimport { \n  Typography, \n  Box, \n  Paper, \n  Button, \n  CircularProgress,\n  Alert,\n  Divider,\n  LinearProgress,\n  Chip,\n  Grid\n} from '@mui/material';\nimport { supabase } from '../../services/supabase';\n\nconst ImportAnalyzer = () => {\n  const [file, setFile] = useState<File | null>(null);\n  const [extractedText, setExtractedText] = useState('');\n  const [isExtracting, setIsExtracting] = useState(false);\n  const [isAnalyzing, setIsAnalyzing] = useState(false);\n  const [analysisResults, setAnalysisResults] = useState(null);\n  const [error, setError] = useState<string | null>(null);\n  const [analysisProgress, setAnalysisProgress] = useState(0);\n\n  const onDrop = async (acceptedFiles: File[]) => {\n    if (acceptedFiles.length === 0) return;\n    \n    setFile(acceptedFiles[0]);\n    setError(null);\n    setAnalysisResults(null);\n    await extractTextFromFile(acceptedFiles[0]);\n  };\n\n  const { getRootProps, getInputProps } = useDropzone({\n    onDrop,\n    accept: {\n      'application/pdf': ['.pdf'],\n      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],\n      'application/epub+zip': ['.epub'],\n      'text/plain': ['.txt'],\n      'text/markdown': ['.md'],\n      'text/rtf': ['.rtf'],\n      'application/x-fountain': ['.fountain'],\n    },\n    multiple: false,\n  });\n\n  const extractTextFromFile = async (file: File) => {\n    setIsExtracting(true);\n    setExtractedText('');\n    setError(null);\n    \n    try {\n      let text = '';\n      \n      // For now, just read as text - specialized parsers will be added in future updates\n      text = await readAsText(file);\n      \n      // Basic format detection and cleanup\n      if (file.name.endsWith('.fountain') || detectFountainFormat(text)) {\n        // Clean up fountain format\n        text = cleanFountainFormat(text);\n      } else if (file.name.endsWith('.md')) {\n        // Simple markdown cleanup\n        text = cleanMarkdown(text);\n      }\n      \n      setExtractedText(text);\n    } catch (err: any) {\n      console.error('Error extracting text:', err);\n      setError(`Error extracting text: ${err.message}`);\n    } finally {\n      setIsExtracting(false);\n    }\n  };\n\n  const readAsText = (file: File): Promise<string> => {\n    return new Promise((resolve, reject) => {\n      const reader = new FileReader();\n      reader.onload = () => resolve(reader.result as string);\n      reader.onerror = reject;\n      reader.readAsText(file);\n    });\n  };\n\n  const detectFountainFormat = (text: string): boolean => {\n    // Simple heuristic for Fountain screenplay format\n    const fountainPatterns = [\n      /^INT\\.\\s.+/m,\n      /^EXT\\.\\s.+/m,\n      /^INT\\/EXT\\.\\s.+/m,\n      /^[A-Z\\s]+$/m\n    ];\n    \n    return fountainPatterns.some(pattern => pattern.test(text));\n  };\n\n  const cleanFountainFormat = (text: string): string => {\n    // Basic cleanup for Fountain format\n    return text\n      .replace(/^#.*$/gm, '') // Remove comments\n      .replace(/^\\[\\[.*\\]\\]$/gm, '') // Remove notes\n      .replace(/\\n{3,}/g, '\\n\\n'); // Normalize spacing\n  };\n\n  const cleanMarkdown = (text: string): string => {\n    // Basic cleanup for Markdown\n    return text\n      .replace(/#{1,6}\\s/g, '') // Remove headings\n      .replace(/\\*\\*/g, '') // Remove bold\n      .replace(/\\*/g, '') // Remove italic\n      .replace(/\\n{3,}/g, '\\n\\n'); // Normalize spacing\n  };\n\n  const analyzeText = async () => {\n    if (!extractedText) return;\n    \n    setIsAnalyzing(true);\n    setError(null);\n    setAnalysisProgress(0);\n    \n    try {\n      // Simulate progress updates\n      const progressInterval = setInterval(() => {\n        setAnalysisProgress(prev => {\n          const newProgress = prev + Math.random() * 10;\n          return newProgress >= 100 ? 99 : newProgress;\n        });\n      }, 1000);\n      \n      // Create a story title from the filename\n      const fileNameWithoutExt = file ? file.name.replace(/\\.[^/.]+$/, \"\") : \"Untitled\";\n      const storyTitle = fileNameWithoutExt\n        .split(/[-_\\s]/)\n        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())\n        .join(' ');\n      \n      // Call the Supabase Edge Function to analyze the story\n      const { data, error } = await supabase.functions.invoke('analyze-story', {\n        body: {\n          story_text: extractedText,\n          story_title: storyTitle,\n          options: {\n            create_project: true,\n            extract_characters: true,\n            extract_locations: true,\n            extract_events: true,\n            extract_relationships: true,\n            interactive_mode: false\n          }\n        }\n      });\n\n      if (error) {\n        throw new Error(`Analysis failed: ${error.message || 'Unknown error'}`);\n      }\n\n      setAnalysisResults(data);\n      setAnalysisProgress(100);\n      clearInterval(progressInterval);\n    } catch (err: any) {\n      console.error('Error analyzing text:', err);\n      setError(`Error analyzing text: ${err.message}`);\n      setAnalysisProgress(0);\n    } finally {\n      setIsAnalyzing(false);\n    }\n  };\n\n  return (\n    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>\n      <Paper sx={{ p: 4, mb: 4 }}>\n        <Typography variant=\"h4\" gutterBottom>\n          Import and Analyze Story\n        </Typography>\n        <Typography variant=\"body1\" sx={{ mb: 3 }}>\n          Upload a file to extract narrative elements like characters, locations, events, and plot structure.\n          The system will analyze the content and organize it within StoryVerse.\n        </Typography>\n        \n        {!file && (\n          <Paper {...getRootProps()} sx={{ \n            p: 5, \n            textAlign: 'center',\n            border: '2px dashed #aaa',\n            borderRadius: 2,\n            my: 3,\n            cursor: 'pointer',\n            backgroundColor: '#f8f9fa'\n          }}>\n            <input {...getInputProps()} />\n            <Typography variant=\"h6\">\n              Drag & drop a file here, or click to select\n            </Typography>\n            <Typography variant=\"body2\" color=\"textSecondary\" sx={{ mt: 1 }}>\n              Supported formats: TXT, Markdown, Fountain, PDF*, DOCX*, EPUB* \n            </Typography>\n            <Typography variant=\"caption\" color=\"textSecondary\" sx={{ mt: 1, display: 'block' }}>\n              * Advanced format support coming soon\n            </Typography>\n          </Paper>\n        )}\n      </Paper>\n      \n      {isExtracting && (\n        <Paper sx={{ p: 4, my: 4, textAlign: 'center' }}>\n          <CircularProgress size={40} />\n          <Typography variant=\"body1\" sx={{ mt: 2 }}>\n            Extracting text from {file?.name}...\n          </Typography>\n        </Paper>\n      )}\n      \n      {file && extractedText && !isExtracting && (\n        <Paper sx={{ p: 4, my: 4 }}>\n          <Typography variant=\"h5\" gutterBottom>\n            Content from: {file.name}\n          </Typography>\n          \n          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>\n            <Typography variant=\"body2\" color=\"textSecondary\">\n              {extractedText.split(/\\s+/).length.toLocaleString()} words • {extractedText.length.toLocaleString()} characters\n            </Typography>\n            <Box sx={{ ml: 'auto' }}>\n              <Button \n                onClick={() => {\n                  setFile(null);\n                  setExtractedText('');\n                  setAnalysisResults(null);\n                }}\n                color=\"secondary\"\n                sx={{ mr: 1 }}\n              >\n                Change File\n              </Button>\n              <Button \n                variant=\"contained\" \n                color=\"primary\" \n                onClick={analyzeText}\n                disabled={isAnalyzing}\n              >\n                {isAnalyzing ? 'Analyzing...' : 'Analyze Content'}\n              </Button>\n            </Box>\n          </Box>\n          \n          <Divider sx={{ my: 2 }} />\n          \n          {isAnalyzing && (\n            <Box sx={{ my: 4 }}>\n              <Typography variant=\"body2\" color=\"textSecondary\" gutterBottom>\n                Analysis in progress... This may take a few minutes for large texts.\n              </Typography>\n              <LinearProgress \n                variant=\"determinate\" \n                value={analysisProgress} \n                sx={{ height: 10, borderRadius: 1 }}\n              />\n              <Typography variant=\"caption\" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>\n                {Math.round(analysisProgress)}%\n              </Typography>\n            </Box>\n          )}\n          \n          <Box sx={{ \n            maxHeight: 300, \n            overflowY: 'auto', \n            p: 3, \n            backgroundColor: '#f8f9fa',\n            borderRadius: 1,\n            my: 2,\n            border: '1px solid #e0e0e0'\n          }}>\n            <Typography variant=\"body2\" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>\n              {extractedText.length > 2000 \n                ? extractedText.substring(0, 2000) + '...\\n\\n[Content truncated for preview]' \n                : extractedText}\n            </Typography>\n          </Box>\n        </Paper>\n      )}\n      \n      {analysisResults && (\n        <Paper sx={{ p: 4, my: 4 }}>\n          <Typography variant=\"h5\" gutterBottom>\n            Analysis Results\n          </Typography>\n          \n          <Grid container spacing={3} sx={{ mb: 3 }}>\n            <Grid item xs={12} md={6}>\n              <Paper sx={{ p: 2, backgroundColor: '#f0f7ff', height: '100%' }}>\n                <Typography variant=\"h6\" gutterBottom>\n                  Overview\n                </Typography>\n                <Typography variant=\"body1\">\n                  Story ID: {analysisResults.story_id}\n                </Typography>\n                <Typography variant=\"body1\">\n                  Title: {analysisResults.title}\n                </Typography>\n                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>\n                  <Chip \n                    label={`${analysisResults.characters?.length || 0} Characters`} \n                    color=\"primary\" \n                    variant=\"outlined\"\n                  />\n                  <Chip \n                    label={`${analysisResults.locations?.length || 0} Locations`} \n                    color=\"secondary\" \n                    variant=\"outlined\"\n                  />\n                  <Chip \n                    label={`${analysisResults.events?.length || 0} Events`} \n                    color=\"success\" \n                    variant=\"outlined\"\n                  />\n                  <Chip \n                    label={`${analysisResults.plotlines?.length || 0} Plotlines`} \n                    color=\"info\" \n                    variant=\"outlined\"\n                  />\n                </Box>\n              </Paper>\n            </Grid>\n            \n            <Grid item xs={12} md={6}>\n              <Paper sx={{ p: 2, backgroundColor: '#fff9f0', height: '100%' }}>\n                <Typography variant=\"h6\" gutterBottom>\n                  Key Elements\n                </Typography>\n                {analysisResults.characters?.length > 0 && (\n                  <Typography variant=\"body2\">\n                    <strong>Main Characters:</strong>{' '}\n                    {analysisResults.characters\n                      .filter(c => c.role === 'protagonist' || c.confidence > 0.8)\n                      .slice(0, 5)\n                      .map(c => c.name)\n                      .join(', ')}\n                    {analysisResults.characters.length > 5 && ' and others...'}\n                  </Typography>\n                )}\n                {analysisResults.locations?.length > 0 && (\n                  <Typography variant=\"body2\" sx={{ mt: 1 }}>\n                    <strong>Key Locations:</strong>{' '}\n                    {analysisResults.locations\n                      .filter(l => l.confidence > 0.7)\n                      .slice(0, 5)\n                      .map(l => l.name)\n                      .join(', ')}\n                    {analysisResults.locations.length > 5 && ' and others...'}\n                  </Typography>\n                )}\n                {analysisResults.plotlines?.length > 0 && (\n                  <Typography variant=\"body2\" sx={{ mt: 1 }}>\n                    <strong>Plotlines:</strong>{' '}\n                    {analysisResults.plotlines\n                      .slice(0, 3)\n                      .map(p => p.title)\n                      .join(', ')}\n                    {analysisResults.plotlines.length > 3 && ' and others...'}\n                  </Typography>\n                )}\n              </Paper>\n            </Grid>\n            \n            <Grid item xs={12}>\n              <Button \n                variant=\"contained\" \n                color=\"primary\"\n                href={`/stories/${analysisResults.story_id}`}\n                fullWidth\n              >\n                View Full Story Details\n              </Button>\n            </Grid>\n          </Grid>\n          \n          <Divider sx={{ my: 3 }} />\n          \n          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>\n            <Button \n              variant=\"outlined\" \n              href={`/characters?story_id=${analysisResults.story_id}`}\n            >\n              View Characters\n            </Button>\n            <Button \n              variant=\"outlined\" \n              href={`/locations?story_id=${analysisResults.story_id}`}\n            >\n              View Locations\n            </Button>\n            <Button \n              variant=\"outlined\" \n              href={`/timeline/${analysisResults.story_id}`}\n            >\n              View Timeline\n            </Button>\n            <Button \n              variant=\"outlined\" \n              href={`/scenes?story_id=${analysisResults.story_id}`}\n            >\n              View Scenes\n            </Button>\n          </Box>\n        </Paper>\n      )}\n      \n      {error && (\n        <Alert severity=\"error\" sx={{ my: 3 }}>\n          {error}\n        </Alert>\n      )}\n    </Box>\n  );\n};\n\nexport default ImportAnalyzer;
+import React, { useState } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { 
+  Typography, 
+  Box, 
+  Paper, 
+  Button, 
+  CircularProgress,
+  Alert,
+  Divider,
+  LinearProgress,
+  Chip,
+  Grid
+} from '@mui/material';
+import { supabase } from '../../services/supabase';
+
+const ImportAnalyzer = () => {
+  const [file, setFile] = useState<File | null>(null);
+  const [extractedText, setExtractedText] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+
+  const onDrop = async (acceptedFiles: File[]) => {
+    if (acceptedFiles.length === 0) return;
+    
+    setFile(acceptedFiles[0]);
+    setError(null);
+    setAnalysisResults(null);
+    await extractTextFromFile(acceptedFiles[0]);
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/epub+zip': ['.epub'],
+      'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
+      'text/rtf': ['.rtf'],
+      'application/x-fountain': ['.fountain'],
+    },
+    multiple: false,
+  });
+
+  const extractTextFromFile = async (file: File) => {
+    setIsExtracting(true);
+    setExtractedText('');
+    setError(null);
+    
+    try {
+      let text = '';
+      
+      // For now, just read as text - specialized parsers will be added in future updates
+      text = await readAsText(file);
+      
+      // Basic format detection and cleanup
+      if (file.name.endsWith('.fountain') || detectFountainFormat(text)) {
+        // Clean up fountain format
+        text = cleanFountainFormat(text);
+      } else if (file.name.endsWith('.md')) {
+        // Simple markdown cleanup
+        text = cleanMarkdown(text);
+      }
+      
+      setExtractedText(text);
+    } catch (err: any) {
+      console.error('Error extracting text:', err);
+      setError(`Error extracting text: ${err.message}`);
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const readAsText = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
+
+  const detectFountainFormat = (text: string): boolean => {
+    // Simple heuristic for Fountain screenplay format
+    const fountainPatterns = [
+      /^INT\.\s.+/m,
+      /^EXT\.\s.+/m,
+      /^INT\/EXT\.\s.+/m,
+      /^[A-Z\s]+$/m
+    ];
+    
+    return fountainPatterns.some(pattern => pattern.test(text));
+  };
+
+  const cleanFountainFormat = (text: string): string => {
+    // Basic cleanup for Fountain format
+    return text
+      .replace(/^#.*$/gm, '') // Remove comments
+      .replace(/^\[\[.*\]\]$/gm, '') // Remove notes
+      .replace(/\n{3,}/g, '\n\n'); // Normalize spacing
+  };
+
+  const cleanMarkdown = (text: string): string => {
+    // Basic cleanup for Markdown
+    return text
+      .replace(/#{1,6}\s/g, '') // Remove headings
+      .replace(/\*\*/g, '') // Remove bold
+      .replace(/\*/g, '') // Remove italic
+      .replace(/\n{3,}/g, '\n\n'); // Normalize spacing
+  };
+
+  const analyzeText = async () => {
+    if (!extractedText) return;
+    
+    setIsAnalyzing(true);
+    setError(null);
+    setAnalysisProgress(0);
+    
+    try {
+      // Simulate progress updates
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          const newProgress = prev + Math.random() * 10;
+          return newProgress >= 100 ? 99 : newProgress;
+        });
+      }, 1000);
+      
+      // Create a story title from the filename
+      const fileNameWithoutExt = file ? file.name.replace(/\.[^/.]+$/, "") : "Untitled";
+      const storyTitle = fileNameWithoutExt
+        .split(/[-_\s]/)
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+      
+      // Call the Supabase Edge Function to analyze the story
+      const { data, error } = await supabase.functions.invoke('analyze-story', {
+        body: {
+          story_text: extractedText,
+          story_title: storyTitle,
+          options: {
+            create_project: true,
+            extract_characters: true,
+            extract_locations: true,
+            extract_events: true,
+            extract_relationships: true,
+            interactive_mode: false
+          }
+        }
+      });
+
+      if (error) {
+        throw new Error(`Analysis failed: ${error.message || 'Unknown error'}`);
+      }
+
+      setAnalysisResults(data);
+      setAnalysisProgress(100);
+      clearInterval(progressInterval);
+    } catch (err: any) {
+      console.error('Error analyzing text:', err);
+      setError(`Error analyzing text: ${err.message}`);
+      setAnalysisProgress(0);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  return (
+    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
+      <Paper sx={{ p: 4, mb: 4 }}>
+        <Typography variant="h4" gutterBottom>
+          Import and Analyze Story
+        </Typography>
+        <Typography variant="body1" sx={{ mb: 3 }}>
+          Upload a file to extract narrative elements like characters, locations, events, and plot structure.
+          The system will analyze the content and organize it within StoryVerse.
+        </Typography>
+        
+        {!file && (
+          <Paper {...getRootProps()} sx={{ 
+            p: 5, 
+            textAlign: 'center',
+            border: '2px dashed #aaa',
+            borderRadius: 2,
+            my: 3,
+            cursor: 'pointer',
+            backgroundColor: '#f8f9fa'
+          }}>
+            <input {...getInputProps()} />
+            <Typography variant="h6">
+              Drag & drop a file here, or click to select
+            </Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+              Supported formats: TXT, Markdown, Fountain, PDF*, DOCX*, EPUB* 
+            </Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+              * Advanced format support coming soon
+            </Typography>
+          </Paper>
+        )}
+      </Paper>
+      
+      {isExtracting && (
+        <Paper sx={{ p: 4, my: 4, textAlign: 'center' }}>
+          <CircularProgress size={40} />
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            Extracting text from {file?.name}...
+          </Typography>
+        </Paper>
+      )}
+      
+      {file && extractedText && !isExtracting && (
+        <Paper sx={{ p: 4, my: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Content from: {file.name}
+          </Typography>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="textSecondary">
+              {extractedText.split(/\s+/).length.toLocaleString()} words • {extractedText.length.toLocaleString()} characters
+            </Typography>
+            <Box sx={{ ml: 'auto' }}>
+              <Button 
+                onClick={() => {
+                  setFile(null);
+                  setExtractedText('');
+                  setAnalysisResults(null);
+                }}
+                color="secondary"
+                sx={{ mr: 1 }}
+              >
+                Change File
+              </Button>
+              <Button 
+                variant="contained" 
+                color="primary" 
+                onClick={analyzeText}
+                disabled={isAnalyzing}
+              >
+                {isAnalyzing ? 'Analyzing...' : 'Analyze Content'}
+              </Button>
+            </Box>
+          </Box>
+          
+          <Divider sx={{ my: 2 }} />
+          
+          {isAnalyzing && (
+            <Box sx={{ my: 4 }}>
+              <Typography variant="body2" color="textSecondary" gutterBottom>
+                Analysis in progress... This may take a few minutes for large texts.
+              </Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={analysisProgress} 
+                sx={{ height: 10, borderRadius: 1 }}
+              />
+              <Typography variant="caption" sx={{ mt: 1, display: 'block', textAlign: 'right' }}>
+                {Math.round(analysisProgress)}%
+              </Typography>
+            </Box>
+          )}
+          
+          <Box sx={{ 
+            maxHeight: 300, 
+            overflowY: 'auto', 
+            p: 3, 
+            backgroundColor: '#f8f9fa',
+            borderRadius: 1,
+            my: 2,
+            border: '1px solid #e0e0e0'
+          }}>
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+              {extractedText.length > 2000 
+                ? extractedText.substring(0, 2000) + '...\n\n[Content truncated for preview]' 
+                : extractedText}
+            </Typography>
+          </Box>
+        </Paper>
+      )}
+      
+      {analysisResults && (
+        <Paper sx={{ p: 4, my: 4 }}>
+          <Typography variant="h5" gutterBottom>
+            Analysis Results
+          </Typography>
+          
+          <Grid container spacing={3} sx={{ mb: 3 }}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, backgroundColor: '#f0f7ff', height: '100%' }}>
+                <Typography variant="h6" gutterBottom>
+                  Overview
+                </Typography>
+                <Typography variant="body1">
+                  Story ID: {analysisResults.story_id}
+                </Typography>
+                <Typography variant="body1">
+                  Title: {analysisResults.title}
+                </Typography>
+                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Chip 
+                    label={`${analysisResults.characters?.length || 0} Characters`} 
+                    color="primary" 
+                    variant="outlined"
+                  />
+                  <Chip 
+                    label={`${analysisResults.locations?.length || 0} Locations`} 
+                    color="secondary" 
+                    variant="outlined"
+                  />
+                  <Chip 
+                    label={`${analysisResults.events?.length || 0} Events`} 
+                    color="success" 
+                    variant="outlined"
+                  />
+                  <Chip 
+                    label={`${analysisResults.plotlines?.length || 0} Plotlines`} 
+                    color="info" 
+                    variant="outlined"
+                  />
+                </Box>
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, backgroundColor: '#fff9f0', height: '100%' }}>
+                <Typography variant="h6" gutterBottom>
+                  Key Elements
+                </Typography>
+                {analysisResults.characters?.length > 0 && (
+                  <Typography variant="body2">
+                    <strong>Main Characters:</strong>{' '}
+                    {analysisResults.characters
+                      .filter(c => c.role === 'protagonist' || c.confidence > 0.8)
+                      .slice(0, 5)
+                      .map(c => c.name)
+                      .join(', ')}
+                    {analysisResults.characters.length > 5 && ' and others...'}
+                  </Typography>
+                )}
+                {analysisResults.locations?.length > 0 && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Key Locations:</strong>{' '}
+                    {analysisResults.locations
+                      .filter(l => l.confidence > 0.7)
+                      .slice(0, 5)
+                      .map(l => l.name)
+                      .join(', ')}
+                    {analysisResults.locations.length > 5 && ' and others...'}
+                  </Typography>
+                )}
+                {analysisResults.plotlines?.length > 0 && (
+                  <Typography variant="body2" sx={{ mt: 1 }}>
+                    <strong>Plotlines:</strong>{' '}
+                    {analysisResults.plotlines
+                      .slice(0, 3)
+                      .map(p => p.title)
+                      .join(', ')}
+                    {analysisResults.plotlines.length > 3 && ' and others...'}
+                  </Typography>
+                )}
+              </Paper>
+            </Grid>
+            
+            <Grid item xs={12}>
+              <Button 
+                variant="contained" 
+                color="primary"
+                href={`/stories/${analysisResults.story_id}`}
+                fullWidth
+              >
+                View Full Story Details
+              </Button>
+            </Grid>
+          </Grid>
+          
+          <Divider sx={{ my: 3 }} />
+          
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              href={`/characters?story_id=${analysisResults.story_id}`}
+            >
+              View Characters
+            </Button>
+            <Button 
+              variant="outlined" 
+              href={`/locations?story_id=${analysisResults.story_id}`}
+            >
+              View Locations
+            </Button>
+            <Button 
+              variant="outlined" 
+              href={`/timeline/${analysisResults.story_id}`}
+            >
+              View Timeline
+            </Button>
+            <Button 
+              variant="outlined" 
+              href={`/scenes?story_id=${analysisResults.story_id}`}
+            >
+              View Scenes
+            </Button>
+          </Box>
+        </Paper>
+      )}
+      
+      {error && (
+        <Alert severity="error" sx={{ my: 3 }}>
+          {error}
+        </Alert>
+      )}
+    </Box>
+  );
+};
+
+export default ImportAnalyzer;
