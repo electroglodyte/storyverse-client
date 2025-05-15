@@ -14,6 +14,7 @@ interface AnalysisData {
   }>;
 }
 
+// Updated StoryAnalysisProgress component (May 15, 2025)
 const StoryAnalysisProgress: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(true);
   const [currentFile, setCurrentFile] = useState<string>('');
