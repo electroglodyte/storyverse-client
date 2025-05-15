@@ -16,15 +16,15 @@ import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 const ImportAnalyzer = () => {
-  const [file, setFile] = useState(null);
+  const [file, setFile] = useState<File | null>(null);
   const [extractedText, setExtractedText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [analysisProgress, setAnalysisProgress] = useState(0);
 
-  const onDrop = async (acceptedFiles) => {
+  const onDrop = async (acceptedFiles: File[]) => {
     if (acceptedFiles.length === 0) return;
     
     setFile(acceptedFiles[0]);
@@ -47,7 +47,7 @@ const ImportAnalyzer = () => {
     multiple: false,
   });
 
-  const extractTextFromFile = async (file) => {
+  const extractTextFromFile = async (file: File) => {
     setIsExtracting(true);
     setExtractedText('');
     setError(null);
@@ -68,7 +68,7 @@ const ImportAnalyzer = () => {
       }
       
       setExtractedText(text);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error extracting text:', err);
       setError(`Error extracting text: ${err.message}`);
     } finally {
@@ -76,42 +76,42 @@ const ImportAnalyzer = () => {
     }
   };
 
-  const readAsText = (file) => {
+  const readAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
       reader.readAsText(file);
     });
   };
 
-  const detectFountainFormat = (text) => {
+  const detectFountainFormat = (text: string): boolean => {
     // Simple heuristic for Fountain screenplay format
     const fountainPatterns = [
-      /^INT\.\s.+/m,
-      /^EXT\.\s.+/m,
-      /^INT\/EXT\.\s.+/m,
-      /^[A-Z\s]+$/m
+      /^INT\.\\s.+/m,
+      /^EXT\.\\s.+/m,
+      /^INT\/EXT\.\\s.+/m,
+      /^[A-Z\\s]+$/m
     ];
     
     return fountainPatterns.some(pattern => pattern.test(text));
   };
 
-  const cleanFountainFormat = (text) => {
+  const cleanFountainFormat = (text: string): string => {
     // Basic cleanup for Fountain format
     return text
       .replace(/^#.*$/gm, '') // Remove comments
-      .replace(/^\[\[.*\]\]$/gm, '') // Remove notes
-      .replace(/\n{3,}/g, '\n\n'); // Normalize spacing
+      .replace(/^\\[\\[.*\\]\\]$/gm, '') // Remove notes
+      .replace(/\\n{3,}/g, '\\n\\n'); // Normalize spacing
   };
 
-  const cleanMarkdown = (text) => {
+  const cleanMarkdown = (text: string): string => {
     // Basic cleanup for Markdown
     return text
-      .replace(/#{1,6}\s/g, '') // Remove headings
-      .replace(/\*\*/g, '') // Remove bold
-      .replace(/\*/g, '') // Remove italic
-      .replace(/\n{3,}/g, '\n\n'); // Normalize spacing
+      .replace(/#{1,6}\\s/g, '') // Remove headings
+      .replace(/\\*\\*/g, '') // Remove bold
+      .replace(/\\*/g, '') // Remove italic
+      .replace(/\\n{3,}/g, '\\n\\n'); // Normalize spacing
   };
 
   const analyzeText = async () => {
@@ -131,9 +131,9 @@ const ImportAnalyzer = () => {
       }, 1000);
       
       // Create a story title from the filename
-      const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+      const fileNameWithoutExt = file ? file.name.replace(/\\.[^/.]+$/, "") : "Untitled";
       const storyTitle = fileNameWithoutExt
-        .split(/[-_\s]/)
+        .split(/[-_\\s]/)
         .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
         .join(' ');
       
@@ -167,7 +167,7 @@ const ImportAnalyzer = () => {
       setAnalysisResults(data);
       setAnalysisProgress(100);
       clearInterval(progressInterval);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error analyzing text:', err);
       setError(`Error analyzing text: ${err.message}`);
       setAnalysisProgress(0);
@@ -228,7 +228,7 @@ const ImportAnalyzer = () => {
           
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
             <Typography variant="body2" color="textSecondary">
-              {extractedText.split(/\s+/).length.toLocaleString()} words • {extractedText.length.toLocaleString()} characters
+              {extractedText.split(/\\s+/).length.toLocaleString()} words • {extractedText.length.toLocaleString()} characters
             </Typography>
             <Box sx={{ ml: 'auto' }}>
               <Button 
@@ -282,7 +282,7 @@ const ImportAnalyzer = () => {
           }}>
             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
               {extractedText.length > 2000 
-                ? extractedText.substring(0, 2000) + '...\n\n[Content truncated for preview]' 
+                ? extractedText.substring(0, 2000) + '...\\n\\n[Content truncated for preview]' 
                 : extractedText}
             </Typography>
           </Box>
