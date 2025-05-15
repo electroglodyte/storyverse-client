@@ -1,12 +1,10 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
-import Navigation from './components/Navigation'; // Import your navigation component if you have one
 
 const AppRouter = () => {
   return (
     <div className="app-container">
-      {/* Your app header or navigation here */}
-      <Navigation />
+      {/* Your app header or navigation would go here */}
       
       {/* This renders the matched child route */}
       <main className="content-container">
