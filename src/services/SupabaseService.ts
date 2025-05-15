@@ -106,11 +106,14 @@ export const SupabaseService = {
   async createStory(storyData: Partial<Story>): Promise<Story | null> {
     console.log('Creating story with data:', storyData);
     
-    // Ensure both name and title are set
+    // IMPORTANT: Do not include 'title' field as it's a generated column derived from 'name'
+    // We remove it here to avoid the error "cannot insert a non-DEFAULT value into column 'title'"
+    const { title, ...dataWithoutTitle } = storyData;
+    
+    // Ensure 'name' is set as it's required and 'title' is derived from it
     const storyToCreate = {
-      ...storyData,
-      name: storyData.title || storyData.name, // Ensure name is set
-      title: storyData.title || storyData.name, // Ensure title is set
+      ...dataWithoutTitle,
+      name: storyData.name || title || '', // Use title as fallback for name if needed
       storyworld_id: storyData.story_world_id, // Add alias for compatibility
     };
     
