@@ -158,6 +158,12 @@
   font-weight: bold;
 }
 
+.item-type.warning {
+  background-color: #fff8e1;
+  color: #ff8f00;
+  font-weight: bold;
+}
+
 .item-name {
   font-size: 1rem;
   color: #333;
@@ -183,6 +189,19 @@
   margin-bottom: 20px;
 }
 
+.error-icon {
+  width: 70px;
+  height: 70px;
+  background-color: #F44336;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+}
+
 .analysis-complete h2 {
   color: #333;
   margin-bottom: 10px;
@@ -191,6 +210,44 @@
 .analysis-complete p {
   color: #666;
   margin-bottom: 25px;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 25px;
+  font-weight: 500;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.debug-info {
+  background-color: #f5f5f5;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 25px;
+  text-align: left;
+  width: 100%;
+  max-width: 100%;
+}
+
+.debug-info h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  color: #555;
+}
+
+.debug-info pre {
+  background-color: #eee;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  color: #333;
+  white-space: pre-wrap;
 }
 
 .summary {
@@ -230,6 +287,12 @@
   color: #451D18;
 }
 
+.actions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
 .view-results-button {
   padding: 12px 30px;
   background-color: #451D18;
@@ -238,9 +301,44 @@
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.3s;
+  transition: all 0.3s;
 }
 
 .view-results-button:hover {
   background-color: #2e130f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.retry-button {
+  padding: 12px 30px;
+  background-color: #FFC107;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.retry-button:hover {
+  background-color: #FFA000;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.secondary-button {
+  padding: 10px 20px;
+  background-color: #f0f0f0;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s;
+}
+
+.secondary-button:hover {
+  background-color: #e0e0e0;
+  transform: translateY(-2px);
 }
