@@ -45,15 +45,14 @@ import SceneExportPage from './pages/scenes/SceneExportPage';
 // Import and Analysis Pages
 import ImportAnalyzer from './pages/import/ImportAnalyzer';
 
-// Layout component with Navigation and outlet for nested routes
-const Layout = () => {
-  return <App />;
-};
+// Import error boundary
+import { ErrorBoundary, NotFound } from './components/ErrorBoundary';
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Layout />,
+    element: <App />,
+    errorElement: <ErrorBoundary error={new Error('An unexpected error occurred')} />,
     children: [
       {
         index: true,
@@ -305,6 +304,11 @@ const router = createBrowserRouter([
         path: 'scenes/export',
         element: <SceneExportPage />,
       },
+      // 404 Not Found route - must be last
+      {
+        path: '*',
+        element: <NotFound />
+      }
     ],
   },
 ]);
