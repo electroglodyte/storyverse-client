@@ -39,6 +39,36 @@
   margin-bottom: 5px;
 }
 
+/* Progress bar styling */
+.progress-bar-container {
+  width: 100%;
+  max-width: 400px;
+  height: 20px;
+  background-color: #f3f3f3;
+  border-radius: 10px;
+  margin: 15px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background-color: #451D18;
+  border-radius: 10px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #333;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-shadow: 0 0 3px rgba(255, 255, 255, 0.7);
+}
+
 /* Phase indicator styling */
 .analysis-phase {
   font-size: 1rem;
@@ -188,7 +218,7 @@
   color: #333;
 }
 
-.analysis-complete {
+.analysis-complete, .extraction-complete {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -221,12 +251,12 @@
   margin-bottom: 20px;
 }
 
-.analysis-complete h2 {
+.analysis-complete h2, .extraction-complete h2 {
   color: #333;
   margin-bottom: 10px;
 }
 
-.analysis-complete p {
+.analysis-complete p, .extraction-complete p {
   color: #666;
   margin-bottom: 25px;
 }
@@ -267,6 +297,12 @@
   font-size: 0.9rem;
   color: #333;
   white-space: pre-wrap;
+}
+
+.extraction-summary {
+  margin: 20px 0;
+  text-align: left;
+  width: 100%;
 }
 
 .summary {
@@ -312,7 +348,7 @@
   gap: 15px;
 }
 
-.view-results-button {
+.view-results-button, .continue-button {
   padding: 12px 30px;
   background-color: #451D18;
   color: white;
@@ -323,7 +359,7 @@
   transition: all 0.3s;
 }
 
-.view-results-button:hover {
+.view-results-button:hover, .continue-button:hover {
   background-color: #2e130f;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0,0,0,0.1);
