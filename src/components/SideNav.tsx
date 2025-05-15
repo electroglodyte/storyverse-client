@@ -294,13 +294,13 @@ export const SideNav: React.FC = () => {
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>TOOLS</h3>
         <ul>
-          {/* Add Import & Analyze link */}
+          {/* Add Import & Analyze link - Fix: Ensure this path works correctly by checking with the routes.tsx config */}
           <li>
             <Link
               to="/import"
-              style={isActive('/import') ? activeStyle : navItemStyle}
+              style={isActive('/import') || isActive('/analyze-progress') || isActive('/analysis-results') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/import')) e.currentTarget.style.backgroundColor = 'transparent'}}
+              onMouseOut={(e) => {if (!isActive('/import') && !isActive('/analyze-progress') && !isActive('/analysis-results')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
               <FaFileImport style={{ marginRight: '0.5rem' }} />
               <span>Import & Analyze</span>
