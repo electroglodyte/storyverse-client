@@ -42,6 +42,9 @@ import SceneVersionCompare from './pages/scenes/SceneVersionCompare';
 import SceneImportPage from './pages/scenes/SceneImportPage';
 import SceneExportPage from './pages/scenes/SceneExportPage';
 
+// Import and Analysis Pages
+import ImportAnalyzer from './pages/import/ImportAnalyzer';
+
 // Layout component with Navigation and outlet for nested routes
 const Layout = () => {
   return <App />;
@@ -64,6 +67,11 @@ const router = createBrowserRouter([
       {
         path: 'database-setup',
         element: <DirectDatabaseSetupPage />,
+      },
+      // Import and Analysis Routes
+      {
+        path: 'import',
+        element: <ImportAnalyzer />,
       },
       // Story World routes - handle both 'storyworlds' and 'story-worlds' for backwards compatibility
       {
