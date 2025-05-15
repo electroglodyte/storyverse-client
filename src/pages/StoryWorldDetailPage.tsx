@@ -37,14 +37,33 @@ const StoryWorldDetailPage: React.FC = () => {
       try {
         setLoading(true);
         
-        // Fetch the story world
-        const { data: storyWorldData, error: storyWorldError } = await supabase
-          .from('storyworlds')
+        // First try 'story_worlds' table
+        let { data: storyWorldData, error: storyWorldError } = await supabase
+          .from('story_worlds')
           .select('*')
           .eq('id', id)
-          .single();
-
-        if (storyWorldError) throw storyWorldError;
+          .maybeSingle(); // Use maybeSingle instead of single to prevent errors
+        
+        // If not found in 'story_worlds', try 'storyworlds' table
+        if (!storyWorldData && storyWorldError) {
+          const { data: storyWorldsData, error: storyWorldsError } = await supabase
+            .from('storyworlds')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+          
+          if (storyWorldsError) {
+            console.error('Error fetching from storyworlds:', storyWorldsError);
+            throw new Error('Story world not found in either table');
+          }
+          
+          storyWorldData = storyWorldsData;
+        }
+        
+        if (!storyWorldData) {
+          throw new Error('Story world not found');
+        }
+        
         setStoryWorld(storyWorldData);
 
         // Try to fetch stories with both storyworld_id and story_world_id fields
@@ -146,7 +165,7 @@ const StoryWorldDetailPage: React.FC = () => {
     try {
       setLoading(true);
       
-      // Create the new story world
+      // Create the new story world in the story_worlds table (primary table)
       const { data, error } = await supabase
         .from('story_worlds')
         .insert([
@@ -186,12 +205,18 @@ const StoryWorldDetailPage: React.FC = () => {
 
     if (confirmed) {
       try {
-        const { error } = await supabase
+        // Try to delete from both tables to ensure it's removed
+        // First try storyworlds
+        await supabase
           .from('storyworlds')
           .delete()
           .eq('id', storyWorld.id);
-
-        if (error) throw error;
+        
+        // Then try story_worlds
+        await supabase
+          .from('story_worlds')
+          .delete()
+          .eq('id', storyWorld.id);
 
         toast.success('Story world deleted successfully');
         navigate('/story-worlds');
