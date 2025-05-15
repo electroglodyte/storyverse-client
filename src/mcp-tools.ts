@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.5.1
+ * Version: 0.6.0
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -217,6 +217,30 @@ interface ExportFountainTool {
   description: "Exports scenes in Fountain format, with proper screenplay formatting";
 }
 
+/**
+ * NEW SCENE TOOLS
+ */
+
+interface SplitSceneTool {
+  name: "split_scene";
+  description: "Splits a scene into multiple scenes at specified positions";
+}
+
+interface CombineScenesTool {
+  name: "combine_scenes";
+  description: "Combines multiple scenes into a single scene";
+}
+
+interface SceneToWritingSampleTool {
+  name: "scene_to_writing_sample";
+  description: "Creates a writing sample from a scene's content";
+}
+
+interface DetectStorylinesTool {
+  name: "detect_storylines";
+  description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs";
+}
+
 // Combined type representing all available tools
 type McpTool = 
   | AnalyzeWritingSampleTool
@@ -258,7 +282,11 @@ type McpTool =
   | ProcessSceneTool
   | AddressSceneCommentsTool
   | ExportProjectTool
-  | ExportFountainTool;
+  | ExportFountainTool
+  | SplitSceneTool
+  | CombineScenesTool
+  | SceneToWritingSampleTool
+  | DetectStorylinesTool;
 
 // Export as a constant array of all available tools
 export const MCP_TOOLS: McpTool[] = [
@@ -303,7 +331,13 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "process_scene", description: "Processes a scene according to instructions, creating a new version" },
   { name: "address_scene_comments", description: "Creates a new scene version that addresses specified comments" },
   { name: "export_project", description: "Exports a complete project as a single document" },
-  { name: "export_fountain", description: "Exports scenes in Fountain format, with proper screenplay formatting" }
+  { name: "export_fountain", description: "Exports scenes in Fountain format, with proper screenplay formatting" },
+  
+  // New Scene Tools
+  { name: "split_scene", description: "Splits a scene into multiple scenes at specified positions" },
+  { name: "combine_scenes", description: "Combines multiple scenes into a single scene" },
+  { name: "scene_to_writing_sample", description: "Creates a writing sample from a scene's content" },
+  { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" }
 ];
 
 // Path to the MCP server code in GitHub
