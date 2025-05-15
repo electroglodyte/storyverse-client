@@ -1,291 +1,20 @@
-// handlers/scene-handlers.js
-import { supabase } from '../config.js';
+// scene-handlers.js
+/**
+ * Handler implementations for scene management tools
+ */
 
-// Helper functions
-function splitTextIntoScenes(text, delimiter) {
-  const sections = [];
-  
-  if (delimiter) {
-    // Split by custom delimiter
-    const parts = text.split(new RegExp(delimiter, 'g'));
-    
-    parts.forEach((part, index) => {
-      if (part.trim().length === 0) return;
-      
-      // Extract title from first line if it looks like a title
-      const lines = part.trim().split('\n');
-      let title = `Scene ${index + 1}`;
-      let content = part.trim();
-      
-      // If first line is short and doesn't end with punctuation, it's likely a title
-      if (lines[0].length < 50 && !lines[0].match(/[.!?:;,]$/)) {
-        title = lines[0].trim();
-        content = lines.slice(1).join('\n').trim();
-      }
-      
-      sections.push({ title, content });
-    });
-  } else {
-    // Detect scenes based on patterns:
-    
-    // 1. Look for scene headers in screenplay format (e.g., "INT. BEDROOM - DAY")
-    const screenplayPattern = /^(INT|EXT|INT\/EXT|EXT\/INT|I\/E|E\/I)[. ].+?(-|–|—)[ ]?.+$/gm;
-    
-    // 2. Look for chapter/scene markers like "Chapter 1", "Scene 3", etc.
-    const chapterPattern = /^(Chapter|CHAPTER|Scene|SCENE)[ \t]*[\d\w]+.*$/gm;
-    
-    // 3. Look for markdown-style headers (e.g., "# Scene Title")
-    const markdownPattern = /^#{1,3}[ \t]*.+$/gm;
-    
-    // 4. Look for line breaks with symbols (e.g., "* * *" or "---")
-    const breakPattern = /^[ \t]*([*\-=#_~+]{3,})[ \t]*$/gm;
-    
-    // Find all potential scene breaks
-    const matches = [];
-    let match;
-    
-    // Collect all potential break points
-    [screenplayPattern, chapterPattern, markdownPattern, breakPattern].forEach(pattern => {
-      while ((match = pattern.exec(text)) !== null) {
-        matches.push({
-          index: match.index,
-          text: match[0]
-        });
-      }
-    });
-    
-    // Sort by position in text
-    matches.sort((a, b) => a.index - b.index);
-    
-    // Split text at each break point
-    if (matches.length > 0) {
-      let lastIndex = 0;
-      
-      matches.forEach((match, index) => {
-        if (match.index > lastIndex) {
-          const sectionText = text.substring(lastIndex, match.index).trim();
-          if (sectionText.length > 0) {
-            sections.push({
-              title: `Scene ${sections.length + 1}`,
-              content: sectionText
-            });
-          }
-        }
-        
-        // The matched header becomes the title for the next section
-        const nextContent = index < matches.length - 1
-          ? text.substring(match.index, matches[index + 1].index)
-          : text.substring(match.index);
-        
-        if (nextContent.trim().length > 0) {
-          // Extract title from the header line
-          const headerLine = match.text.trim();
-          let title = headerLine;
-          
-          // Clean up title
-          title = title.replace(/^#{1,3}[ \t]*/, ''); // Remove markdown header markers
-          title = title.replace(/^(Chapter|CHAPTER|Scene|SCENE)[ \t]*[\d\w]+[ \t]*[:.]/i, '').trim(); // Clean chapter/scene prefixes
-          
-          if (title.length > 50) {
-            title = title.substring(0, 47) + '...';
-          }
-          
-          sections.push({
-            title: title || `Scene ${sections.length + 1}`,
-            content: nextContent.trim()
-          });
-        }
-        
-        lastIndex = match.index + match.text.length;
-      });
-      
-      // Add final section if needed
-      if (lastIndex < text.length) {
-        const finalText = text.substring(lastIndex).trim();
-        if (finalText.length > 0) {
-          sections.push({
-            title: `Scene ${sections.length + 1}`,
-            content: finalText
-          });
-        }
-      }
-    } else {
-      // No scene breaks found, treat as one scene
-      sections.push({
-        title: 'Scene 1',
-        content: text.trim()
-      });
-    }
-  }
-  
-  return sections;
-}
+// Import common dependencies
+import { supabase } from '../database.js';
 
-function detectFormat(content) {
-  // Check for Fountain format markers
-  const fountainPatterns = [
-    /^(INT|EXT|INT\/EXT|EXT\/INT|I\/E|E\/I)[. ].+?(-|–|—)[ ]?.+$/m, // Scene headers
-    /^[A-Z][A-Z\s]+$/m, // Character names
-    /^\([^)]+\)$/m, // Parentheticals
-    /^\.[\w\s]+/m, // Scene action starting with a dot
-  ];
-  
-  const hasFountainSyntax = fountainPatterns.some(pattern => pattern.test(content));
-  
-  if (hasFountainSyntax) return 'fountain';
-  
-  // Check for Markdown syntax
-  const markdownPatterns = [
-    /^#{1,6}\s+.+$/m, // Headers
-    /^\*\*.+\*\*$/m, // Bold
-    /^\*.+\*$/m, // Italic
-    /^>\s+.+$/m, // Blockquotes
-    /^-\s+.+$/m, // Unordered lists
-    /^\d+\.\s+.+$/m, // Ordered lists
-    /^```[\s\S]+```$/m, // Code blocks
-  ];
-  
-  const hasMarkdownSyntax = markdownPatterns.some(pattern => pattern.test(content));
-  
-  if (hasMarkdownSyntax) return 'markdown';
-  
-  // Default to plain text
-  return 'plain';
-}
-
-function generateDiff(oldText, newText, format) {
-  // Simple character-by-character diff for demonstration
-  // In a real implementation, you'd use a diff library like 'diff' or 'jsdiff'
-  
-  const oldLines = oldText.split('\n');
-  const newLines = newText.split('\n');
-  
-  // Track additions, deletions and unchanged lines
-  const changes = [];
-  
-  // Find the maximum length
-  const maxLen = Math.max(oldLines.length, newLines.length);
-  
-  for (let i = 0; i < maxLen; i++) {
-    const oldLine = i < oldLines.length ? oldLines[i] : null;
-    const newLine = i < newLines.length ? newLines[i] : null;
-    
-    if (oldLine === null) {
-      // Line added
-      changes.push({ type: 'addition', content: newLine });
-    } else if (newLine === null) {
-      // Line removed
-      changes.push({ type: 'deletion', content: oldLine });
-    } else if (oldLine !== newLine) {
-      // Line changed
-      changes.push({ type: 'deletion', content: oldLine });
-      changes.push({ type: 'addition', content: newLine });
-    } else {
-      // Line unchanged
-      changes.push({ type: 'unchanged', content: oldLine });
-    }
-  }
-  
-  // Format the output according to requested format
-  if (format === 'html') {
-    let html = '<div class="diff">';
-    changes.forEach(change => {
-      if (change.type === 'addition') {
-        html += `<div class="addition">${escapeHtml(change.content)}</div>`;
-      } else if (change.type === 'deletion') {
-        html += `<div class="deletion">${escapeHtml(change.content)}</div>`;
-      } else {
-        html += `<div class="unchanged">${escapeHtml(change.content)}</div>`;
-      }
-    });
-    html += '</div>';
-    return html;
-  } else if (format === 'text') {
-    let text = '';
-    changes.forEach(change => {
-      if (change.type === 'addition') {
-        text += `+ ${change.content}\n`;
-      } else if (change.type === 'deletion') {
-        text += `- ${change.content}\n`;
-      } else {
-        text += `  ${change.content}\n`;
-      }
-    });
-    return text;
-  } else {
-    // JSON format
-    return changes;
-  }
-}
-
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-}
-
-function convertToFountain(scene) {
-  let fountain = '';
-  
-  // Add scene heading if it doesn't exist
-  if (!scene.content.match(/^(INT|EXT|INT\.\/EXT\.|INT\/EXT|I\/E)[. ]/m)) {
-    fountain += `\n\n# ${scene.title}\n\n`;
-    fountain += 'INT. UNSPECIFIED LOCATION - DAY\n\n';
-  }
-  
-  // Basic conversion of content
-  const lines = scene.content.split('\n');
-  let inDialogue = false;
-  let inAction = true;
-  
-  lines.forEach(line => {
-    line = line.trim();
-    
-    // Skip empty lines
-    if (line === '') {
-      fountain += '\n';
-      inAction = true;
-      inDialogue = false;
-      return;
-    }
-    
-    // Check for character cues (all caps lines)
-    if (line === line.toUpperCase() && line.length > 1 && line.length < 50 && !line.startsWith('INT') && !line.startsWith('EXT')) {
-      fountain += `\n${line}\n`;
-      inDialogue = true;
-      inAction = false;
-    }
-    // Check for parentheticals
-    else if (line.startsWith('(') && line.endsWith(')') && line.length < 50) {
-      fountain += `${line}\n`;
-    }
-    // Handle dialogue or action
-    else {
-      if (inDialogue) {
-        fountain += `${line}\n`;
-      } else {
-        if (!inAction) {
-          fountain += '\n';
-        }
-        fountain += `${line}\n`;
-        inAction = true;
-      }
-    }
-  });
-  
-  return fountain;
-}
-
-// Handler implementations
-const importScene = async (args) => {
+/**
+ * Imports a new scene into the system
+ */
+export async function import_scene(args) {
   try {
     const {
       content,
       title,
-      project_id, // Note: StoryVerse uses story_id, not project_id
+      project_id, // Note: StoryVerse uses story_id
       type = 'scene',
       format = 'plain',
       sequence_number = null
@@ -368,18 +97,31 @@ const importScene = async (args) => {
     }
     
     return {
-      success: true,
-      scene,
-      version: version || null,
-      message: `Successfully imported scene "${sceneTitle}" into "${story.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully imported scene "${sceneTitle}" into "${story.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene,
+            version: version || null
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in import_scene:', error);
     throw error;
   }
-};
+}
 
-const importText = async (args) => {
+/**
+ * Imports and parses a full text into multiple scenes
+ */
+export async function import_text(args) {
   try {
     const {
       content,
@@ -468,7 +210,7 @@ const importText = async (args) => {
       }
     } else {
       // Import as a single scene
-      const result = await importScene({
+      const result = await import_scene({
         content,
         title: 'Imported Text',
         project_id: story_id,
@@ -480,18 +222,189 @@ const importText = async (args) => {
     }
     
     return {
-      success: true,
-      scenes,
-      scene_count: scenes.length,
-      message: `Successfully imported text as ${scenes.length} scene(s) into "${story.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully imported text as ${scenes.length} scene(s) into "${story.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scenes,
+            scene_count: scenes.length
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in import_text:', error);
     throw error;
   }
-};
+}
 
-const createSceneVersion = async (args) => {
+/**
+ * Helper function to split text into scenes based on delimiter or heuristics
+ */
+function splitTextIntoScenes(text, delimiter) {
+  const sections = [];
+  
+  if (delimiter) {
+    // Split by custom delimiter
+    const parts = text.split(new RegExp(delimiter, 'g'));
+    
+    parts.forEach((part, index) => {
+      if (part.trim().length === 0) return;
+      
+      // Extract title from first line if it looks like a title
+      const lines = part.trim().split('\n');
+      let title = `Scene ${index + 1}`;
+      let content = part.trim();
+      
+      // If first line is short and doesn't end with punctuation, it's likely a title
+      if (lines[0].length < 50 && !lines[0].match(/[.!?:;,]$/)) {
+        title = lines[0].trim();
+        content = lines.slice(1).join('\n').trim();
+      }
+      
+      sections.push({ title, content });
+    });
+  } else {
+    // Detect scenes based on patterns:
+    
+    // 1. Look for scene headers in screenplay format (e.g., "INT. BEDROOM - DAY")
+    const screenplayPattern = /^(INT|EXT|INT\/EXT|EXT\/INT|I\/E|E\/I)[. ].+?(-|–|—)[ ]?.+$/gm;
+    
+    // 2. Look for chapter/scene markers like "Chapter 1", "Scene 3", etc.
+    const chapterPattern = /^(Chapter|CHAPTER|Scene|SCENE)[ \t]*[\d\w]+.*$/gm;
+    
+    // 3. Look for markdown-style headers (e.g., "# Scene Title")
+    const markdownPattern = /^#{1,3}[ \t]*.+$/gm;
+    
+    // 4. Look for line breaks with symbols (e.g., "* * *" or "---")
+    const breakPattern = /^[ \t]*([*\-=#_~+]{3,})[ \t]*$/gm;
+    
+    // Find all potential scene breaks
+    const matches = [];
+    let match;
+    
+    // Collect all potential break points
+    [screenplayPattern, chapterPattern, markdownPattern, breakPattern].forEach(pattern => {
+      const regex = new RegExp(pattern); // Create a new regex to reset lastIndex
+      while ((match = regex.exec(text)) !== null) {
+        matches.push({
+          index: match.index,
+          text: match[0]
+        });
+      }
+    });
+    
+    // Sort by position in text
+    matches.sort((a, b) => a.index - b.index);
+    
+    // Split text at each break point
+    if (matches.length > 0) {
+      let lastIndex = 0;
+      
+      matches.forEach((match, index) => {
+        if (match.index > lastIndex) {
+          const sectionText = text.substring(lastIndex, match.index).trim();
+          if (sectionText.length > 0) {
+            sections.push({
+              title: `Scene ${sections.length + 1}`,
+              content: sectionText
+            });
+          }
+        }
+        
+        // The matched header becomes the title for the next section
+        const nextContent = index < matches.length - 1
+          ? text.substring(match.index, matches[index + 1].index)
+          : text.substring(match.index);
+        
+        if (nextContent.trim().length > 0) {
+          // Extract title from the header line
+          const headerLine = match.text.trim();
+          let title = headerLine;
+          
+          // Clean up title
+          title = title.replace(/^#{1,3}[ \t]*/, ''); // Remove markdown header markers
+          title = title.replace(/^(Chapter|CHAPTER|Scene|SCENE)[ \t]*[\d\w]+[ \t]*[:\.]/i, '').trim(); // Clean chapter/scene prefixes
+          
+          if (title.length > 50) {
+            title = title.substring(0, 47) + '...';
+          }
+          
+          sections.push({
+            title: title || `Scene ${sections.length + 1}`,
+            content: nextContent.trim()
+          });
+        }
+        
+        lastIndex = match.index + match.text.length;
+      });
+      
+      // Add final section if needed
+      if (lastIndex < text.length) {
+        const finalText = text.substring(lastIndex).trim();
+        if (finalText.length > 0) {
+          sections.push({
+            title: `Scene ${sections.length + 1}`,
+            content: finalText
+          });
+        }
+      }
+    } else {
+      // No scene breaks found, treat as one scene
+      sections.push({
+        title: 'Scene 1',
+        content: text.trim()
+      });
+    }
+  }
+  
+  return sections;
+}
+
+/**
+ * Helper function to detect the format of content
+ */
+function detectFormat(content) {
+  // Check for Fountain format markers
+  const fountainPatterns = [
+    /^(INT|EXT|INT\/EXT|EXT\/INT|I\/E|E\/I)[. ].+?(-|–|—)[ ]?.+$/m, // Scene headers
+    /^[A-Z][A-Z\s]+$/m, // Character names
+    /^\([^)]+\)$/m, // Parentheticals
+    /^\.[\w\s]+/m, // Scene action starting with a dot
+  ];
+  
+  const hasFountainSyntax = fountainPatterns.some(pattern => pattern.test(content));
+  
+  if (hasFountainSyntax) return 'fountain';
+  
+  // Check for Markdown syntax
+  const markdownPatterns = [
+    /^#{1,6}\s+.+$/m, // Headers
+    /^\*\*.+\*\*$/m, // Bold
+    /^\*.+\*$/m, // Italic
+    /^>\s+.+$/m, // Blockquotes
+    /^-\s+.+$/m, // Unordered lists
+    /^\d+\.\s+.+$/m, // Ordered lists
+    /^```[\s\S]+```$/m, // Code blocks
+  ];
+  
+  const hasMarkdownSyntax = markdownPatterns.some(pattern => pattern.test(content));
+  
+  if (hasMarkdownSyntax) return 'markdown';
+  
+  // Default to plain text
+  return 'plain';
+}
+
+/**
+ * Creates a new version of an existing scene
+ */
+export async function create_scene_version(args) {
   try {
     const {
       scene_id,
@@ -555,19 +468,32 @@ const createSceneVersion = async (args) => {
     if (updateError) throw updateError;
     
     return {
-      success: true,
-      scene: updatedScene,
-      version,
-      previous_version: versions.length > 0 ? versions[0].version_number : null,
-      message: `Successfully created version ${nextVersionNumber} of scene "${scene.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully created version ${nextVersionNumber} of scene "${scene.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene: updatedScene,
+            version,
+            previous_version: versions.length > 0 ? versions[0].version_number : null
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in create_scene_version:', error);
     throw error;
   }
-};
+}
 
-const getSceneVersions = async (args) => {
+/**
+ * Retrieves version history for a scene
+ */
+export async function get_scene_versions(args) {
   try {
     const { scene_id } = args;
     
@@ -597,20 +523,33 @@ const getSceneVersions = async (args) => {
     if (versionsError) throw versionsError;
     
     return {
-      success: true,
-      scene,
-      versions,
-      version_count: versions.length,
-      current_content: scene.content,
-      message: `Retrieved ${versions.length} versions for scene "${scene.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Retrieved ${versions.length} versions for scene "${scene.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene,
+            versions,
+            version_count: versions.length,
+            current_content: scene.content
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in get_scene_versions:', error);
     throw error;
   }
-};
+}
 
-const restoreSceneVersion = async (args) => {
+/**
+ * Restores a scene to a previous version
+ */
+export async function restore_scene_version(args) {
   try {
     const { version_id } = args;
     
@@ -677,18 +616,31 @@ const restoreSceneVersion = async (args) => {
     if (updateError) throw updateError;
     
     return {
-      success: true,
-      scene: updatedScene,
-      restored_version: version,
-      message: `Successfully restored scene "${scene.title}" to version ${version.version_number}`
+      content: [
+        {
+          type: "text",
+          text: `Successfully restored scene "${scene.title}" to version ${version.version_number}`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene: updatedScene,
+            restored_version: version
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in restore_scene_version:', error);
     throw error;
   }
-};
+}
 
-const compareSceneVersions = async (args) => {
+/**
+ * Creates a detailed comparison between two scene versions
+ */
+export async function compare_scene_versions(args) {
   try {
     const {
       scene_id,
@@ -754,28 +706,123 @@ const compareSceneVersions = async (args) => {
     );
     
     return {
-      success: true,
-      scene_title: scene.title,
-      old_version: {
-        number: oldVersion.version_number,
-        created_at: oldVersion.created_at,
-        notes: oldVersion.notes
-      },
-      new_version: {
-        number: newVersion.version_number,
-        created_at: newVersion.created_at,
-        notes: newVersion.notes
-      },
-      comparison: diff,
-      format
+      content: [
+        {
+          type: "text",
+          text: `Comparison of versions ${oldVersion.version_number} and ${newVersion.version_number} of scene "${scene.title}"`
+        },
+        {
+          type: format === 'html' ? "html" : "text",
+          [format === 'html' ? "html" : "text"]: format === 'json' ? JSON.stringify(diff, null, 2) : diff
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene_title: scene.title,
+            old_version: {
+              number: oldVersion.version_number,
+              created_at: oldVersion.created_at,
+              notes: oldVersion.notes
+            },
+            new_version: {
+              number: newVersion.version_number,
+              created_at: newVersion.created_at,
+              notes: newVersion.notes
+            },
+            format
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in compare_scene_versions:', error);
     throw error;
   }
-};
+}
 
-const addSceneComment = async (args) => {
+/**
+ * Helper function to generate text diff
+ */
+function generateDiff(oldText, newText, format) {
+  // Simple line-by-line diff for demonstration
+  // In a real implementation, you'd use a diff library
+  
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+  
+  // Track additions, deletions and unchanged lines
+  const changes = [];
+  
+  // Find the maximum length
+  const maxLen = Math.max(oldLines.length, newLines.length);
+  
+  for (let i = 0; i < maxLen; i++) {
+    const oldLine = i < oldLines.length ? oldLines[i] : null;
+    const newLine = i < newLines.length ? newLines[i] : null;
+    
+    if (oldLine === null) {
+      // Line added
+      changes.push({ type: 'addition', content: newLine });
+    } else if (newLine === null) {
+      // Line removed
+      changes.push({ type: 'deletion', content: oldLine });
+    } else if (oldLine !== newLine) {
+      // Line changed
+      changes.push({ type: 'deletion', content: oldLine });
+      changes.push({ type: 'addition', content: newLine });
+    } else {
+      // Line unchanged
+      changes.push({ type: 'unchanged', content: oldLine });
+    }
+  }
+  
+  // Format the output according to requested format
+  if (format === 'html') {
+    let html = '<div class="diff">';
+    changes.forEach(change => {
+      if (change.type === 'addition') {
+        html += `<div class="addition">${escapeHtml(change.content)}</div>`;
+      } else if (change.type === 'deletion') {
+        html += `<div class="deletion">${escapeHtml(change.content)}</div>`;
+      } else {
+        html += `<div class="unchanged">${escapeHtml(change.content)}</div>`;
+      }
+    });
+    html += '</div>';
+    return html;
+  } else if (format === 'text') {
+    let text = '';
+    changes.forEach(change => {
+      if (change.type === 'addition') {
+        text += `+ ${change.content}\n`;
+      } else if (change.type === 'deletion') {
+        text += `- ${change.content}\n`;
+      } else {
+        text += `  ${change.content}\n`;
+      }
+    });
+    return text;
+  } else {
+    // JSON format
+    return changes;
+  }
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
+ * Adds a comment to a scene
+ */
+export async function add_scene_comment(args) {
   try {
     const {
       scene_id,
@@ -816,21 +863,34 @@ const addSceneComment = async (args) => {
     if (error) throw error;
     
     return {
-      success: true,
-      comment,
-      message: `Successfully added ${type} to scene "${scene.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully added ${type} to scene "${scene.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            comment
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in add_scene_comment:', error);
     throw error;
   }
-};
+}
 
-const resolveSceneComment = async (args) => {
+/**
+ * Marks a comment as resolved or unresolved
+ */
+export async function resolve_scene_comment(args) {
   try {
     const {
       comment_id,
-      resolved
+      resolved = true
     } = args;
     
     // Validate required fields
@@ -860,17 +920,30 @@ const resolveSceneComment = async (args) => {
     const sceneName = !sceneError ? scene.title : 'the scene';
     
     return {
-      success: true,
-      comment,
-      message: `Successfully marked comment as ${resolved ? 'resolved' : 'unresolved'} in "${sceneName}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully marked comment as ${resolved ? 'resolved' : 'unresolved'} in "${sceneName}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            comment
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in resolve_scene_comment:', error);
     throw error;
   }
-};
+}
 
-const processScene = async (args) => {
+/**
+ * Processes a scene according to instructions, creating a new version
+ */
+export async function process_scene(args) {
   try {
     const {
       scene_id,
@@ -903,26 +976,39 @@ const processScene = async (args) => {
       ' */';
     
     // Create a new version with the processed content
-    const result = await createSceneVersion({
+    const result = await create_scene_version({
       scene_id,
       content: processedContent,
       notes: `Processed with instructions: ${instructions}`
     });
     
     return {
-      success: result.success,
-      scene: result.scene,
-      version: result.version,
-      instructions,
-      message: `Successfully processed scene "${scene.title}" according to instructions`
+      content: [
+        {
+          type: "text",
+          text: `Successfully processed scene "${scene.title}" according to instructions`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene: result.content[1].json.scene,
+            version: result.content[1].json.version,
+            instructions
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in process_scene:', error);
     throw error;
   }
-};
+}
 
-const addressSceneComments = async (args) => {
+/**
+ * Creates a new scene version that addresses specified comments
+ */
+export async function address_scene_comments(args) {
   try {
     const {
       scene_id,
@@ -962,8 +1048,19 @@ const addressSceneComments = async (args) => {
     
     if (comments.length === 0) {
       return {
-        success: false,
-        message: "No unresolved comments found to address"
+        content: [
+          {
+            type: "text",
+            text: "No unresolved comments found to address"
+          },
+          {
+            type: "json",
+            json: {
+              success: false,
+              message: "No unresolved comments found to address"
+            }
+          }
+        ]
       };
     }
     
@@ -981,7 +1078,7 @@ const addressSceneComments = async (args) => {
     });
     
     // Create a new version with the processed content
-    const result = await createSceneVersion({
+    const result = await create_scene_version({
       scene_id,
       content: processedContent,
       notes: `Addressed ${comments.length} comment(s)`
@@ -996,20 +1093,33 @@ const addressSceneComments = async (args) => {
     }
     
     return {
-      success: result.success,
-      scene: result.scene,
-      version: result.version,
-      addressed_comments: comments.length,
-      comment_ids: addressedComments,
-      message: `Successfully addressed ${comments.length} comment(s) in scene "${scene.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully addressed ${comments.length} comment(s) in scene "${scene.title}"`
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            scene: result.content[1].json.scene,
+            version: result.content[1].json.version,
+            addressed_comments: comments.length,
+            comment_ids: addressedComments
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in address_scene_comments:', error);
     throw error;
   }
-};
+}
 
-const exportProject = async (args) => {
+/**
+ * Exports a complete project as a single document
+ */
+export async function export_project(args) {
   try {
     const {
       project_id, // StoryVerse uses story_id
@@ -1124,24 +1234,40 @@ const exportProject = async (args) => {
     }
     
     return {
-      success: true,
-      story: {
-        id: story.id,
-        title: story.title
-      },
-      scenes: scenes.map(s => ({ id: s.id, title: s.title })),
-      scene_count: scenes.length,
-      format,
-      content,
-      message: `Successfully exported ${scenes.length} scenes from "${story.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully exported ${scenes.length} scenes from "${story.title}"`
+        },
+        {
+          type: "text",
+          text: content
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            story: {
+              id: story.id,
+              title: story.title
+            },
+            scenes: scenes.map(s => ({ id: s.id, title: s.title })),
+            scene_count: scenes.length,
+            format
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in export_project:', error);
     throw error;
   }
-};
+}
 
-const exportFountain = async (args) => {
+/**
+ * Exports scenes in Fountain format for screenplay formatting
+ */
+export async function export_fountain(args) {
   try {
     const {
       project_id, // StoryVerse uses story_id
@@ -1218,41 +1344,86 @@ const exportFountain = async (args) => {
     });
     
     return {
-      success: true,
-      story: {
-        id: story.id,
-        title: story.title
-      },
-      scenes: scenes.map(s => ({ id: s.id, title: s.title })),
-      scene_count: scenes.length,
-      content,
-      message: `Successfully exported ${scenes.length} scenes in Fountain format from "${story.title}"`
+      content: [
+        {
+          type: "text",
+          text: `Successfully exported ${scenes.length} scenes in Fountain format from "${story.title}"`
+        },
+        {
+          type: "text",
+          text: content
+        },
+        {
+          type: "json",
+          json: {
+            success: true,
+            story: {
+              id: story.id,
+              title: story.title
+            },
+            scenes: scenes.map(s => ({ id: s.id, title: s.title })),
+            scene_count: scenes.length
+          }
+        }
+      ]
     };
   } catch (error) {
     console.error('Error in export_fountain:', error);
     throw error;
   }
-};
+}
 
-export default {
-  // Helper functions
-  splitTextIntoScenes,
-  detectFormat,
-  generateDiff,
-  escapeHtml,
-  convertToFountain,
+/**
+ * Helper function to convert scene content to Fountain format
+ */
+function convertToFountain(scene) {
+  let fountain = '';
   
-  // Handler implementations
-  importScene,
-  importText,
-  createSceneVersion,
-  getSceneVersions,
-  restoreSceneVersion,
-  compareSceneVersions,
-  addSceneComment,
-  resolveSceneComment,
-  processScene,
-  addressSceneComments,
-  exportProject,
-  exportFountain
-};
+  // Add scene heading if it doesn't exist
+  if (!scene.content.match(/^(INT|EXT|INT\.\/EXT\.|INT\/EXT|I\/E)[. ]/m)) {
+    fountain += `\n\n# ${scene.title}\n\n`;
+    fountain += 'INT. UNSPECIFIED LOCATION - DAY\n\n';
+  }
+  
+  // Basic conversion of content
+  const lines = scene.content.split('\n');
+  let inDialogue = false;
+  let inAction = true;
+  
+  lines.forEach(line => {
+    line = line.trim();
+    
+    // Skip empty lines
+    if (line === '') {
+      fountain += '\n';
+      inAction = true;
+      inDialogue = false;
+      return;
+    }
+    
+    // Check for character cues (all caps lines)
+    if (line === line.toUpperCase() && line.length > 1 && line.length < 50 && !line.startsWith('INT') && !line.startsWith('EXT')) {
+      fountain += `\n${line}\n`;
+      inDialogue = true;
+      inAction = false;
+    }
+    // Check for parentheticals
+    else if (line.startsWith('(') && line.endsWith(')') && line.length < 50) {
+      fountain += `${line}\n`;
+    }
+    // Handle dialogue or action
+    else {
+      if (inDialogue) {
+        fountain += `${line}\n`;
+      } else {
+        if (!inAction) {
+          fountain += '\n';
+        }
+        fountain += `${line}\n`;
+        inAction = true;
+      }
+    }
+  });
+  
+  return fountain;
+}
