@@ -132,9 +132,9 @@ const StoryAnalysisProgress: React.FC = () => {
           await SupabaseService.saveAnalysisResults(
             analysisData.storyId,
             analysisData.storyWorldId,
-            chars || [],
-            locs || [],
-            evts || []
+            characters,
+            locations,
+            events
           );
           
         } catch (err) {
