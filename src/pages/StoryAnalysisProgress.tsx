@@ -50,9 +50,12 @@ const StoryAnalysisProgress: React.FC = () => {
     plotlines: 0,
     relationships: 0
   });
+  const [extractionTimestamp, setExtractionTimestamp] = useState<string>('');
+  const [forceFreshExtraction, setForceFreshExtraction] = useState<boolean>(false);
   
   // Use a ref to track displayed items to avoid duplication
   const displayedItemsRef = useRef<DisplayedItems>({});
+  const extractionStartedRef = useRef<boolean>(false);
   
   const navigate = useNavigate();
 
@@ -99,7 +102,8 @@ const StoryAnalysisProgress: React.FC = () => {
             extract_plotlines: true,
             extract_arcs: true,
             debug: true,
-            retry_attempt: retryAttempt
+            retry_attempt: retryAttempt,
+            timestamp: new Date().toISOString() // Add timestamp to ensure unique request
           }
         }
       });
@@ -127,8 +131,18 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
   
+  // Clear all relevant session storage items for a fresh start
+  const clearSessionStorage = () => {
+    // Keep analysisData but remove anything related to extraction or results
+    sessionStorage.removeItem('extractedElements');
+    sessionStorage.removeItem('analysisResults');
+    sessionStorage.removeItem('extractionTimestamp');
+    console.log("Session storage cleared for fresh extraction");
+  };
+  
   // Save a single character to the database and return the result
   const saveCharacter = async (char: any, storyId: string, storyWorldId: string) => {
+    console.log("Saving character:", char.name);
     const charData = {
       name: char.name,
       role: char.role || 'supporting',
@@ -154,6 +168,7 @@ const StoryAnalysisProgress: React.FC = () => {
           characters: prev.characters + 1
         }));
         
+        console.log(`Character ${result[0].name} saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -165,6 +180,7 @@ const StoryAnalysisProgress: React.FC = () => {
   
   // Save a single location to the database
   const saveLocation = async (loc: any, storyId: string, storyWorldId: string) => {
+    console.log("Saving location:", loc.name);
     const locData = {
       name: loc.name,
       location_type: loc.location_type || 'other',
@@ -187,6 +203,7 @@ const StoryAnalysisProgress: React.FC = () => {
           locations: prev.locations + 1
         }));
         
+        console.log(`Location ${result[0].name} saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -198,6 +215,7 @@ const StoryAnalysisProgress: React.FC = () => {
   
   // Save a single scene to the database
   const saveScene = async (scene: any, storyId: string) => {
+    console.log("Saving scene:", scene.title);
     const sceneData = {
       title: scene.title,
       content: scene.content,
@@ -221,6 +239,7 @@ const StoryAnalysisProgress: React.FC = () => {
           scenes: prev.scenes + 1
         }));
         
+        console.log(`Scene ${result[0].title} saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -232,6 +251,7 @@ const StoryAnalysisProgress: React.FC = () => {
   
   // Save a single event to the database
   const saveEvent = async (evt: any, storyId: string) => {
+    console.log("Saving event:", evt.title || evt.name);
     const eventData = {
       title: evt.title || evt.name,
       story_id: storyId,
@@ -253,6 +273,7 @@ const StoryAnalysisProgress: React.FC = () => {
           events: prev.events + 1
         }));
         
+        console.log(`Event ${result[0].title} saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -264,6 +285,7 @@ const StoryAnalysisProgress: React.FC = () => {
   
   // Save a single plotline to the database
   const savePlotline = async (plot: any, storyId: string) => {
+    console.log("Saving plotline:", plot.title);
     const plotlineData = {
       title: plot.title,
       description: plot.description || '',
@@ -283,6 +305,7 @@ const StoryAnalysisProgress: React.FC = () => {
           plotlines: prev.plotlines + 1
         }));
         
+        console.log(`Plotline ${result[0].title} saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -298,6 +321,8 @@ const StoryAnalysisProgress: React.FC = () => {
         !characterMap[rel.character1_name] || !characterMap[rel.character2_name]) {
       return null;
     }
+    
+    console.log(`Saving relationship: ${rel.character1_name} - ${rel.character2_name}`);
     
     const relationshipData = {
       character1_id: characterMap[rel.character1_name],
@@ -324,6 +349,7 @@ const StoryAnalysisProgress: React.FC = () => {
           relationships: prev.relationships + 1
         }));
         
+        console.log(`Relationship saved successfully`);
         return result[0];
       }
     } catch (err) {
@@ -344,6 +370,9 @@ const StoryAnalysisProgress: React.FC = () => {
       
       const elements = JSON.parse(extractedElementsStr);
       const analysisData = JSON.parse(sessionStorage.getItem('analysisData')!);
+      
+      console.log("Starting to save extracted elements:", elements);
+      console.log(`Characters: ${elements.characters?.length || 0}, Locations: ${elements.locations?.length || 0}, Scenes: ${elements.scenes?.length || 0}`);
       
       // Reset save results counters
       setSaveResults({
@@ -471,6 +500,18 @@ const StoryAnalysisProgress: React.FC = () => {
       setAnalysisStage('Finalizing analysis...');
       await addDetectedItem('System', 'Analysis completed successfully');
       
+      // Get final save counts
+      const finalResults = {
+        characters: saveResults.characters,
+        locations: saveResults.locations,
+        events: saveResults.events,
+        scenes: saveResults.scenes,
+        plotlines: saveResults.plotlines,
+        relationships: saveResults.relationships
+      };
+      
+      console.log("Final save results:", finalResults);
+      
       // Store comprehensive results for the results page
       const analysisResults = {
         characters: characters,
@@ -484,26 +525,12 @@ const StoryAnalysisProgress: React.FC = () => {
         storyId: analysisData.storyId,
         storyWorldId: analysisData.storyWorldId,
         // Include actual counts from database
-        counts: {
-          characters: saveResults.characters,
-          locations: saveResults.locations,
-          events: saveResults.events,
-          scenes: saveResults.scenes,
-          plotlines: saveResults.plotlines,
-          relationships: saveResults.relationships
-        }
+        counts: finalResults
       };
       
       sessionStorage.setItem('analysisResults', JSON.stringify(analysisResults));
       
-      return {
-        characters: saveResults.characters,
-        locations: saveResults.locations,
-        events: saveResults.events,
-        scenes: saveResults.scenes,
-        plotlines: saveResults.plotlines,
-        relationships: saveResults.relationships
-      };
+      return finalResults;
     } catch (err: any) {
       console.error("Error saving analysis results:", err);
       throw err;
@@ -526,8 +553,40 @@ const StoryAnalysisProgress: React.FC = () => {
     });
   };
 
+  // Validate extraction results
+  const validateExtractionResults = (elements: any): boolean => {
+    if (!elements) return false;
+    
+    // Check if we have any elements at all
+    const hasCharacters = elements.characters && Array.isArray(elements.characters) && elements.characters.length > 0;
+    const hasLocations = elements.locations && Array.isArray(elements.locations) && elements.locations.length > 0;
+    const hasScenes = elements.scenes && Array.isArray(elements.scenes) && elements.scenes.length > 0;
+    const hasEvents = elements.events && Array.isArray(elements.events) && elements.events.length > 0;
+    const hasPlotlines = elements.plotlines && Array.isArray(elements.plotlines) && elements.plotlines.length > 0;
+    
+    // Log validation results
+    console.log("Extraction validation:", {
+      hasCharacters,
+      hasLocations,
+      hasScenes,
+      hasEvents,
+      hasPlotlines
+    });
+    
+    // Must have at least one type of element
+    return hasCharacters || hasLocations || hasScenes || hasEvents || hasPlotlines;
+  };
+
   // Extract narrative elements phase
   const processExtraction = async () => {
+    // Check if we need to force a fresh extraction
+    if (forceFreshExtraction) {
+      clearSessionStorage();
+    }
+    
+    // Mark extraction as started
+    extractionStartedRef.current = true;
+    
     // Reset the displayed items tracking
     displayedItemsRef.current = {};
     
@@ -559,24 +618,41 @@ const StoryAnalysisProgress: React.FC = () => {
         return;
       }
       
-      // Check if we already have extracted elements (if resuming)
+      // Check if we already have extracted elements (if resuming) and aren't forcing fresh extraction
       const extractedElementsStr = sessionStorage.getItem('extractedElements');
-      if (extractedElementsStr) {
-        // We already have extracted elements, so we can skip to saving
+      const storedTimestamp = sessionStorage.getItem('extractionTimestamp');
+      
+      if (!forceFreshExtraction && extractedElementsStr && storedTimestamp) {
+        // We already have extracted elements, verify they're valid
         const elements = JSON.parse(extractedElementsStr);
         
-        // Set extraction summary
-        setExtractionSummary({
-          characters: elements.characters?.length || 0,
-          locations: elements.locations?.length || 0,
-          events: elements.events?.length || 0,
-          scenes: elements.scenes?.length || 0,
-          plotlines: elements.plotlines?.length || 0,
-          relationships: elements.characterRelationships?.length || 0
-        });
+        console.log("Found existing extraction results:", elements);
+        console.log("Extraction timestamp:", storedTimestamp);
         
-        setAnalysisPhase('extracted');
-        return;
+        // Validate the stored elements
+        if (validateExtractionResults(elements)) {
+          // Set extraction timestamp
+          setExtractionTimestamp(storedTimestamp);
+          
+          // Set extraction summary
+          setExtractionSummary({
+            characters: elements.characters?.length || 0,
+            locations: elements.locations?.length || 0,
+            events: elements.events?.length || 0,
+            scenes: elements.scenes?.length || 0,
+            plotlines: elements.plotlines?.length || 0,
+            relationships: elements.characterRelationships?.length || 0
+          });
+          
+          // Show extraction complete
+          setAnalysisPhase('extracted');
+          setIsAnalyzing(false);
+          return;
+        } else {
+          // Invalid stored elements - clear and re-extract
+          console.log("Stored extraction results are invalid - clearing and re-extracting");
+          clearSessionStorage();
+        }
       }
       
       // Phase 1: Extract narrative elements
@@ -598,11 +674,15 @@ const StoryAnalysisProgress: React.FC = () => {
           elements = await analyzeText(analysisData);
           
           if (elements) {
-            // Check if elements is valid
-            if (!elements.characters && !elements.locations && !elements.scenes && 
-                !elements.events && !elements.plotlines) {
+            // Validate the extraction results
+            if (!validateExtractionResults(elements)) {
               throw new Error('Extraction returned empty or invalid results');
             }
+            
+            // Create extraction timestamp
+            const timestamp = new Date().toISOString();
+            setExtractionTimestamp(timestamp);
+            sessionStorage.setItem('extractionTimestamp', timestamp);
             
             // Store extracted elements in session storage
             sessionStorage.setItem('extractedElements', JSON.stringify(elements));
@@ -619,6 +699,7 @@ const StoryAnalysisProgress: React.FC = () => {
             
             // Continue to the saving phase
             setAnalysisPhase('extracted');
+            setIsAnalyzing(false);
             
             // Display a sample of the extracted elements in the UI
             await addDetectedItem('System', 'Processing extracted elements...');
@@ -682,6 +763,7 @@ const StoryAnalysisProgress: React.FC = () => {
   // Save extracted elements phase
   const processSaving = async () => {
     try {
+      setIsAnalyzing(true);
       setAnalysisPhase('saving');
       setAnalysisStage('Starting to save elements...');
       
@@ -702,18 +784,12 @@ const StoryAnalysisProgress: React.FC = () => {
   };
   
   useEffect(() => {
-    // Start with extraction
-    processExtraction();
+    // Start with extraction if no extraction has started yet
+    if (!extractionStartedRef.current) {
+      processExtraction();
+    }
   }, []);
   
-  // Effect for handling phase changes
-  useEffect(() => {
-    if (analysisPhase === 'extracted') {
-      // We've reached the extraction complete phase
-      setIsAnalyzing(false);
-    }
-  }, [analysisPhase]);
-
   const handleViewResults = () => {
     navigate('/analysis-results');
   };
@@ -731,17 +807,34 @@ const StoryAnalysisProgress: React.FC = () => {
       // Full retry - Reset everything and reload
       setDetectedItems([]);
       
-      // Remove extracted elements from session storage to force a new extraction
-      sessionStorage.removeItem('extractedElements');
+      // Force fresh extraction
+      setForceFreshExtraction(true);
+      clearSessionStorage();
+      extractionStartedRef.current = false;
       
-      // Reload the page
-      window.location.reload();
+      // Restart extraction
+      setTimeout(() => {
+        processExtraction();
+      }, 100);
     }
   };
 
   const handleContinueToSaving = () => {
-    setIsAnalyzing(true);
     processSaving();
+  };
+
+  const handleFreshExtraction = () => {
+    // Clear session storage and force fresh extraction
+    setForceFreshExtraction(true);
+    clearSessionStorage();
+    extractionStartedRef.current = false;
+    setIsAnalyzing(true);
+    setDetectedItems([]);
+    
+    // Restart extraction
+    setTimeout(() => {
+      processExtraction();
+    }, 100);
   };
 
   const getAnalysisPhaseDisplay = () => {
@@ -834,6 +927,12 @@ const StoryAnalysisProgress: React.FC = () => {
               </div>
             )}
             
+            {extractionTimestamp && (
+              <div className="extraction-timestamp">
+                Extracted at: {new Date(extractionTimestamp).toLocaleString()}
+              </div>
+            )}
+            
             {debugInfo && (
               <div className="debug-info">
                 <h3>Debug Information</h3>
@@ -842,9 +941,14 @@ const StoryAnalysisProgress: React.FC = () => {
             )}
           </div>
           
-          <button className="continue-button" onClick={handleContinueToSaving}>
-            Continue to Save Elements
-          </button>
+          <div className="actions-container">
+            <button className="continue-button" onClick={handleContinueToSaving}>
+              Continue to Save Elements
+            </button>
+            <button className="retry-button" onClick={handleFreshExtraction}>
+              Force New Extraction
+            </button>
+          </div>
         </div>
       ) : (
         <div className="analysis-complete">
