@@ -138,11 +138,11 @@ const ImportAndAnalyzeStory: React.FC = () => {
     setError(null);
     
     try {
-      console.log('Creating new story with title:', newStoryTitle);
+      console.log('Creating new story with name:', newStoryTitle);
       console.log('Story world ID:', selectedStoryWorldId);
       
+      // IMPORTANT: Only set the 'name' field, not 'title' as it's a generated column
       const newStory = await SupabaseService.createStory({
-        title: newStoryTitle,
         name: newStoryTitle,
         story_world_id: selectedStoryWorldId,
         storyworld_id: selectedStoryWorldId
