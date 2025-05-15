@@ -132,30 +132,224 @@ serve(async (req) => {
         if (debugMode) console.log(`Using provided story ID: ${storyId}`);
       }
       
-      // Store extracted elements in database
-      if (options.extract_characters !== false && extractedElements.characters.length > 0) {
-        await storeCharacters(supabaseClient, storyId, extractedElements.characters);
-        if (debugMode) console.log(`Stored ${extractedElements.characters.length} characters`);
-      }
+      // Process extraction options
+      const shouldExtractCharacters = options.extract_characters !== false;
+      const shouldExtractLocations = options.extract_locations !== false;
+      const shouldExtractEvents = options.extract_events !== false;
+      const shouldExtractScenes = options.extract_scenes !== false;
+      const shouldExtractPlotlines = options.extract_plotlines !== false;
+      const shouldExtractRelationships = options.extract_relationships !== false;
+      const shouldExtractDependencies = options.extract_dependencies !== false;
+      const shouldExtractArcs = options.extract_arcs !== false;
       
-      if (options.extract_locations !== false && extractedElements.locations.length > 0) {
-        await storeLocations(supabaseClient, storyId, extractedElements.locations);
-        if (debugMode) console.log(`Stored ${extractedElements.locations.length} locations`);
-      }
+      // Store extracted elements in database - record results in debug
+      const dbResults = {
+        characters: 0,
+        locations: 0,
+        events: 0,
+        scenes: 0,
+        plotlines: 0,
+        relationships: 0,
+        dependencies: 0,
+        arcs: 0
+      };
       
-      if (options.extract_events !== false && extractedElements.events.length > 0) {
-        await storeEvents(supabaseClient, storyId, extractedElements.events);
-        if (debugMode) console.log(`Stored ${extractedElements.events.length} events`);
-      }
-      
-      if (options.extract_scenes !== false && extractedElements.scenes && extractedElements.scenes.length > 0) {
-        await storeScenes(supabaseClient, storyId, extractedElements.scenes);
-        if (debugMode) console.log(`Stored ${extractedElements.scenes.length} scenes`);
-      }
-      
-      if (options.extract_plotlines !== false && extractedElements.plotlines && extractedElements.plotlines.length > 0) {
-        await storePlotlines(supabaseClient, storyId, extractedElements.plotlines);
-        if (debugMode) console.log(`Stored ${extractedElements.plotlines.length} plotlines`);
+      try {
+        // Store characters
+        if (shouldExtractCharacters && extractedElements.characters.length > 0) {
+          const { data, error } = await storeCharacters(supabaseClient, storyId, extractedElements.characters);
+          if (error) {
+            console.error(`Error storing characters:`, error);
+            if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, characters: error.message };
+          } else {
+            dbResults.characters = data?.length || 0;
+            if (debugMode) console.log(`Stored ${data?.length || 0} characters`);
+          }
+        }
+        
+        // Store locations
+        if (shouldExtractLocations && extractedElements.locations.length > 0) {
+          const { data, error } = await storeLocations(supabaseClient, storyId, extractedElements.locations);
+          if (error) {
+            console.error(`Error storing locations:`, error);
+            if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, locations: error.message };
+          } else {
+            dbResults.locations = data?.length || 0;
+            if (debugMode) console.log(`Stored ${data?.length || 0} locations`);
+          }
+        }
+        
+        // Store events
+        if (shouldExtractEvents && extractedElements.events.length > 0) {
+          const { data, error } = await storeEvents(supabaseClient, storyId, extractedElements.events);
+          if (error) {
+            console.error(`Error storing events:`, error);
+            if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, events: error.message };
+          } else {
+            dbResults.events = data?.length || 0;
+            if (debugMode) console.log(`Stored ${data?.length || 0} events`);
+          }
+        }
+        
+        // Store scenes
+        if (shouldExtractScenes && extractedElements.scenes && extractedElements.scenes.length > 0) {
+          const { data, error } = await storeScenes(supabaseClient, storyId, extractedElements.scenes);
+          if (error) {
+            console.error(`Error storing scenes:`, error);
+            if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, scenes: error.message };
+          } else {
+            dbResults.scenes = data?.length || 0;
+            if (debugMode) console.log(`Stored ${data?.length || 0} scenes`);
+          }
+        }
+        
+        // Store plotlines
+        if (shouldExtractPlotlines && extractedElements.plotlines && extractedElements.plotlines.length > 0) {
+          const { data, error } = await storePlotlines(supabaseClient, storyId, extractedElements.plotlines);
+          if (error) {
+            console.error(`Error storing plotlines:`, error);
+            if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, plotlines: error.message };
+          } else {
+            dbResults.plotlines = data?.length || 0;
+            if (debugMode) console.log(`Stored ${data?.length || 0} plotlines`);
+          }
+        }
+        
+        // Store character relationships
+        if (shouldExtractRelationships && extractedElements.characterRelationships && extractedElements.characterRelationships.length > 0) {
+          // We need to fetch character IDs to map names to IDs
+          const { data: characterData } = await supabaseClient
+            .from('characters')
+            .select('id, name')
+            .eq('story_id', storyId);
+          
+          if (characterData && characterData.length > 0) {
+            const characterMap = {};
+            characterData.forEach(char => {
+              characterMap[char.name] = char.id;
+            });
+            
+            const relationshipsToInsert = extractedElements.characterRelationships.filter(rel => 
+              rel.character1_name && rel.character2_name && 
+              characterMap[rel.character1_name] && characterMap[rel.character2_name]
+            ).map(rel => ({
+              character1_id: characterMap[rel.character1_name],
+              character2_id: characterMap[rel.character2_name],
+              relationship_type: rel.relationship_type || 'other',
+              description: rel.description || '',
+              intensity: rel.intensity || 5,
+              story_id: storyId
+            }));
+            
+            if (relationshipsToInsert.length > 0) {
+              const { data, error } = await supabaseClient
+                .from('character_relationships')
+                .insert(relationshipsToInsert)
+                .select();
+              
+              if (error) {
+                console.error(`Error storing character relationships:`, error);
+                if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, relationships: error.message };
+              } else {
+                dbResults.relationships = data?.length || 0;
+                if (debugMode) console.log(`Stored ${data?.length || 0} character relationships`);
+              }
+            }
+          }
+        }
+        
+        // Store event dependencies
+        if (shouldExtractDependencies && extractedElements.eventDependencies && extractedElements.eventDependencies.length > 0) {
+          // We need to fetch event IDs to map sequence numbers to IDs
+          const { data: eventData } = await supabaseClient
+            .from('events')
+            .select('id, sequence_number')
+            .eq('story_id', storyId);
+          
+          if (eventData && eventData.length > 0) {
+            const eventMap = {};
+            eventData.forEach(evt => {
+              if (evt.sequence_number) {
+                eventMap[evt.sequence_number] = evt.id;
+              }
+            });
+            
+            const dependenciesToInsert = extractedElements.eventDependencies.filter(dep => 
+              dep.predecessor_sequence && dep.successor_sequence && 
+              eventMap[dep.predecessor_sequence] && eventMap[dep.successor_sequence]
+            ).map(dep => ({
+              predecessor_event_id: eventMap[dep.predecessor_sequence],
+              successor_event_id: eventMap[dep.successor_sequence],
+              dependency_type: dep.dependency_type || 'chronological',
+              strength: dep.strength || 5,
+              notes: dep.notes || ''
+            }));
+            
+            if (dependenciesToInsert.length > 0) {
+              const { data, error } = await supabaseClient
+                .from('event_dependencies')
+                .insert(dependenciesToInsert)
+                .select();
+              
+              if (error) {
+                console.error(`Error storing event dependencies:`, error);
+                if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, dependencies: error.message };
+              } else {
+                dbResults.dependencies = data?.length || 0;
+                if (debugMode) console.log(`Stored ${data?.length || 0} event dependencies`);
+              }
+            }
+          }
+        }
+        
+        // Store character arcs
+        if (shouldExtractArcs && extractedElements.characterArcs && extractedElements.characterArcs.length > 0) {
+          // We need to fetch character IDs to map names to IDs
+          const { data: characterData } = await supabaseClient
+            .from('characters')
+            .select('id, name')
+            .eq('story_id', storyId);
+          
+          if (characterData && characterData.length > 0) {
+            const characterMap = {};
+            characterData.forEach(char => {
+              characterMap[char.name] = char.id;
+            });
+            
+            const arcsToInsert = extractedElements.characterArcs.filter(arc => 
+              arc.character_name && characterMap[arc.character_name]
+            ).map(arc => ({
+              character_id: characterMap[arc.character_name],
+              story_id: storyId,
+              title: arc.title || `${arc.character_name}'s Arc`,
+              description: arc.description || '',
+              starting_state: arc.starting_state || '',
+              ending_state: arc.ending_state || ''
+            }));
+            
+            if (arcsToInsert.length > 0) {
+              const { data, error } = await supabaseClient
+                .from('character_arcs')
+                .insert(arcsToInsert)
+                .select();
+              
+              if (error) {
+                console.error(`Error storing character arcs:`, error);
+                if (debugMode) debugInfo.dbErrors = { ...debugInfo.dbErrors, arcs: error.message };
+              } else {
+                dbResults.arcs = data?.length || 0;
+                if (debugMode) console.log(`Stored ${data?.length || 0} character arcs`);
+              }
+            }
+          }
+        }
+        
+        // Add database results to debug info
+        if (debugMode) debugInfo.dbResults = dbResults;
+        
+      } catch (dbError) {
+        console.error("Error storing elements in database:", dbError);
+        if (debugMode) debugInfo.dbError = dbError.message;
       }
     }
     
@@ -352,7 +546,7 @@ function detectTextFormat(text) {
   // Check for novel format patterns
   const novelIndicators = [
     /Chapter \d+/i,           // Chapter headings
-    /["'].*?["'].*?said/,     // Dialogue attribution
+    /[\"'].*?[\"'].*?said/,     // Dialogue attribution
     /\n\n/g,                  // Multiple paragraph breaks
   ];
   
@@ -437,7 +631,7 @@ function extractScreenplayCharacters(text, potentialCharacters) {
     const line = lines[i].trim();
     
     // Character name pattern: ALL CAPS line by itself, possibly with (O.S.) or (V.O.)
-    if (/^[A-Z][A-Z\s',.]+(\([A-Z.]+\))?$/.test(line) && line.length < 50) {
+    if (/^[A-Z][A-Z\s',.]+(\\([A-Z.]+\\))?$/.test(line) && line.length < 50) {
       const name = line.split('(')[0].trim();
       
       // Verify it's likely a character by checking if next line could be dialogue
@@ -470,7 +664,7 @@ function extractScreenplayCharacters(text, potentialCharacters) {
 // Extract characters from novel format
 function extractNovelCharacters(text, potentialCharacters) {
   // 1. Look for names in dialogue attribution
-  const dialoguePattern = /["'].*?["'].*?(said|asked|replied|shouted|whispered|murmured|exclaimed) ([A-Z][a-z]+)/g;
+  const dialoguePattern = /[\"'].*?[\"'].*?(said|asked|replied|shouted|whispered|murmured|exclaimed) ([A-Z][a-z]+)/g;
   let match;
   
   while ((match = dialoguePattern.exec(text)) !== null) {
@@ -691,7 +885,7 @@ function extractLocations(text, format) {
 // Extract locations from screenplay format
 function extractScreenplayLocations(text, potentialLocations) {
   // Look for scene headings (INT./EXT.)
-  const sceneHeadingPattern = /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)(.+?)(-|--|\.|$)/gmi;
+  const sceneHeadingPattern = /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)(.+?)(-|--|\.|\$)/gmi;
   let match;
   
   while ((match = sceneHeadingPattern.exec(text)) !== null) {
@@ -1338,71 +1532,101 @@ function getShortSynopsis(text) {
   return firstParagraph.length > 200 ? firstParagraph.substring(0, 200) + '...' : firstParagraph;
 }
 
-// Database storage functions
+// Enhanced database storage functions that return data and error
 async function storeCharacters(supabase, storyId, characters) {
-  for (const character of characters) {
-    await supabase.from('characters').insert({
-      name: character.name,
-      story_id: storyId,
-      role: character.role || 'supporting',
-      description: character.description || '',
-      attributes: { 
-        confidence: character.confidence || 0.5,
-        appearances: character.appearances || 0
-      }
-    });
+  try {
+    const { data, error } = await supabase.from('characters').insert(
+      characters.map(character => ({
+        name: character.name,
+        story_id: storyId,
+        role: character.role || 'supporting',
+        description: character.description || '',
+        attributes: { 
+          confidence: character.confidence || 0.5,
+          appearances: character.appearances || 0
+        }
+      }))
+    ).select();
+    
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
   }
 }
 
 async function storeLocations(supabase, storyId, locations) {
-  for (const location of locations) {
-    await supabase.from('locations').insert({
-      name: location.name,
-      story_id: storyId,
-      location_type: location.location_type || 'other',
-      description: location.description || '',
-      attributes: { 
-        confidence: location.confidence || 0.5,
-        appearances: location.appearances || 0
-      }
-    });
+  try {
+    const { data, error } = await supabase.from('locations').insert(
+      locations.map(location => ({
+        name: location.name,
+        story_id: storyId,
+        location_type: location.location_type || 'other',
+        description: location.description || '',
+        attributes: { 
+          confidence: location.confidence || 0.5,
+          appearances: location.appearances || 0
+        }
+      }))
+    ).select();
+    
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
   }
 }
 
 async function storeEvents(supabase, storyId, events) {
-  for (const event of events) {
-    await supabase.from('events').insert({
-      title: event.title,
-      story_id: storyId,
-      description: event.description || '',
-      sequence_number: event.sequence_number || 0,
-      visible: true
-    });
+  try {
+    const { data, error } = await supabase.from('events').insert(
+      events.map(event => ({
+        title: event.title,
+        story_id: storyId,
+        description: event.description || '',
+        sequence_number: event.sequence_number || 0,
+        visible: true
+      }))
+    ).select();
+    
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
   }
 }
 
 async function storeScenes(supabase, storyId, scenes) {
-  for (const scene of scenes) {
-    await supabase.from('scenes').insert({
-      title: scene.title,
-      story_id: storyId,
-      content: scene.content || '',
-      description: scene.content ? (scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content) : '',
-      sequence_number: scene.sequence_number || 0,
-      type: scene.type || 'scene',
-      status: 'finished',
-      is_visible: true
-    });
+  try {
+    const { data, error } = await supabase.from('scenes').insert(
+      scenes.map(scene => ({
+        title: scene.title,
+        story_id: storyId,
+        content: scene.content || '',
+        description: scene.content ? (scene.content.length > 200 ? scene.content.substring(0, 200) + '...' : scene.content) : '',
+        sequence_number: scene.sequence_number || 0,
+        type: scene.type || 'scene',
+        status: 'finished',
+        is_visible: true
+      }))
+    ).select();
+    
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
   }
 }
 
 async function storePlotlines(supabase, storyId, plotlines) {
-  for (const plotline of plotlines) {
-    await supabase.from('plotlines').insert({
-      title: plotline.title,
-      story_id: storyId,
-      description: plotline.description || '',
-      plotline_type: plotline.plotline_type || 'main'
-    });
+  try {
+    const { data, error } = await supabase.from('plotlines').insert(
+      plotlines.map(plotline => ({
+        title: plotline.title,
+        story_id: storyId,
+        description: plotline.description || '',
+        plotline_type: plotline.plotline_type || 'main'
+      }))
+    ).select();
+    
+    return { data, error };
+  } catch (err) {
+    return { data: null, error: err };
   }
 }
