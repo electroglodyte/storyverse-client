@@ -1,7 +1,4 @@
-/**
- * Exports all tools from the various tool module files
- */
-
+// tools/index.js
 const styleTool = require('./style-tools');
 const narrativeTools = require('./narrative-tools');
 const entityTools = require('./entity-tools');
