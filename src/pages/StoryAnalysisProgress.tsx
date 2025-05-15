@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
-import * as ReactDOM from 'react-dom';
 
 import './StoryAnalysisProgress.css';
 
@@ -31,125 +30,6 @@ const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
 const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
 const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
 const EXTRACTION_REVIEW_CONTAINER_ID = 'storyverse-extraction-review-container';
-
-// Create a dedicated container for the extraction review screen that exists outside the React reconciliation
-const createExtractionReviewContainer = () => {
-  // Check if the container already exists
-  let container = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-  
-  // If not, create it
-  if (!container) {
-    container = document.createElement('div');
-    container.id = EXTRACTION_REVIEW_CONTAINER_ID;
-    container.className = 'extraction-review-container';
-    document.body.appendChild(container);
-  }
-  
-  return container;
-};
-
-// A dedicated component for the extraction review screen
-// This component is completely isolated from the parent's state management
-const ExtractionReviewScreen = ({ 
-  extractionSummary, 
-  timestamp, 
-  onContinue, 
-  onReset,
-  debugInfo 
-}) => {
-  // Execute continue action with confirmation
-  const handleContinue = () => {
-    console.log("USER EXPLICITLY CLICKED 'Continue to Save Elements'");
-    // Clear the extraction complete flag before continuing
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-    // Call parent handler
-    onContinue();
-  };
-
-  return (
-    <div className="extraction-complete">
-      <div className="success-icon">✓</div>
-      <h2>Extraction Complete!</h2>
-      <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
-      
-      <div className="extraction-summary">
-        {extractionSummary && (
-          <div className="summary">
-            <div className="summary-item">
-              <h3>Characters</h3>
-              <span className="count">{extractionSummary.characters}</span>
-            </div>
-            <div className="summary-item">
-              <h3>Locations</h3>
-              <span className="count">{extractionSummary.locations}</span>
-            </div>
-            <div className="summary-item">
-              <h3>Events</h3>
-              <span className="count">{extractionSummary.events}</span>
-            </div>
-            <div className="summary-item">
-              <h3>Scenes</h3>
-              <span className="count">{extractionSummary.scenes}</span>
-            </div>
-            <div className="summary-item">
-              <h3>Plotlines</h3>
-              <span className="count">{extractionSummary.plotlines}</span>
-            </div>
-          </div>
-        )}
-        
-        {timestamp && (
-          <div className="extraction-timestamp">
-            Extracted at: {new Date(timestamp).toLocaleString()}
-          </div>
-        )}
-        
-        {debugInfo && (
-          <div className="debug-info">
-            <h3>Debug Information</h3>
-            <pre>{debugInfo}</pre>
-          </div>
-        )}
-      </div>
-      
-      <div className="actions-container">
-        <button className="continue-button" onClick={handleContinue}>
-          Continue to Save Elements
-        </button>
-        <button className="retry-button" onClick={onReset}>
-          Force New Extraction
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// Render the extraction review outside of the regular React component hierarchy
-// This ensures it won't be affected by state changes or reconciliation
-const renderExtractionReview = (props) => {
-  const container = createExtractionReviewContainer();
-  
-  // Make the container visible
-  container.style.display = 'block';
-  
-  // Render the extraction review component into this container
-  ReactDOM.render(
-    <div className="analysis-progress-container">
-      <h1>Analyzing Story</h1>
-      <ExtractionReviewScreen {...props} />
-    </div>,
-    container
-  );
-};
-
-// Remove the extraction review from the DOM
-const removeExtractionReview = () => {
-  const container = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-  if (container) {
-    ReactDOM.unmountComponentAtNode(container);
-    container.style.display = 'none';
-  }
-};
 
 // StoryAnalysisProgress component - improved with persistent data management
 const StoryAnalysisProgress: React.FC = () => {
@@ -244,6 +124,141 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
+  // Function to directly display the extraction review screen - SIMPLIFIED approach
+  const showExtractionReviewScreen = () => {
+    logDebug("*** SHOWING EXTRACTION REVIEW SCREEN DIRECTLY IN DOM ***");
+    
+    // First, make sure we have summary data
+    if (!extractionSummary && localStorage.getItem(EXTRACTION_SUMMARY_KEY)) {
+      try {
+        const savedSummary = JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || '{}');
+        setExtractionSummary(savedSummary);
+      } catch (err) {
+        logDebug("Error parsing extraction summary:", err);
+      }
+    }
+    
+    // Get timestamp if available
+    const timestamp = extractionTimestamp || 
+                      localStorage.getItem(EXTRACTION_TIMESTAMP_KEY) || 
+                      new Date().toISOString();
+    
+    // Check if overlay already exists
+    let overlayContainer = document.getElementById('extraction-review-overlay');
+    
+    // If not, create it
+    if (!overlayContainer) {
+      overlayContainer = document.createElement('div');
+      overlayContainer.id = 'extraction-review-overlay';
+      overlayContainer.className = 'extraction-review-overlay';
+      document.body.appendChild(overlayContainer);
+    }
+    
+    // Generate HTML for the extraction review
+    const summaryItems = extractionSummary || JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
+    
+    // Create the HTML content
+    const htmlContent = `
+      <div class="extraction-review-content">
+        <div class="analysis-progress-container">
+          <h1>Analyzing Story</h1>
+          <div class="extraction-complete">
+            <div class="success-icon">✓</div>
+            <h2>Extraction Complete!</h2>
+            <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
+            
+            <div class="extraction-summary">
+              <div class="summary">
+                <div class="summary-item">
+                  <h3>Characters</h3>
+                  <span class="count">${summaryItems.characters || 0}</span>
+                </div>
+                <div class="summary-item">
+                  <h3>Locations</h3>
+                  <span class="count">${summaryItems.locations || 0}</span>
+                </div>
+                <div class="summary-item">
+                  <h3>Events</h3>
+                  <span class="count">${summaryItems.events || 0}</span>
+                </div>
+                <div class="summary-item">
+                  <h3>Scenes</h3>
+                  <span class="count">${summaryItems.scenes || 0}</span>
+                </div>
+                <div class="summary-item">
+                  <h3>Plotlines</h3>
+                  <span class="count">${summaryItems.plotlines || 0}</span>
+                </div>
+              </div>
+              
+              <div class="extraction-timestamp">
+                Extracted at: ${new Date(timestamp).toLocaleString()}
+              </div>
+              
+              ${debugInfo ? `
+                <div class="debug-info">
+                  <h3>Debug Information</h3>
+                  <pre>${debugInfo}</pre>
+                </div>
+              ` : ''}
+            </div>
+            
+            <div class="actions-container">
+              <button id="continue-to-save-btn" class="continue-button">
+                Continue to Save Elements
+              </button>
+              <button id="force-new-extraction-btn" class="retry-button">
+                Force New Extraction
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    // Set the HTML
+    overlayContainer.innerHTML = htmlContent;
+    overlayContainer.style.display = 'block';
+    
+    // Add event listeners
+    const continueBtn = document.getElementById('continue-to-save-btn');
+    const resetBtn = document.getElementById('force-new-extraction-btn');
+    
+    if (continueBtn) {
+      continueBtn.addEventListener('click', () => {
+        handleContinueToSaving();
+      });
+    }
+    
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        handleFreshExtraction();
+      });
+    }
+    
+    // Force the overlay to be visible by adding it to the document again
+    if (!document.body.contains(overlayContainer)) {
+      document.body.appendChild(overlayContainer);
+    }
+    
+    // Log successful display
+    logDebug("Extraction review overlay displayed directly in DOM");
+  };
+  
+  // Hide the extraction review overlay
+  const hideExtractionReviewScreen = () => {
+    const overlayContainer = document.getElementById('extraction-review-overlay');
+    if (overlayContainer) {
+      overlayContainer.style.display = 'none';
+      
+      // Remove event listeners by cloning and replacing
+      const newContainer = overlayContainer.cloneNode(false);
+      if (overlayContainer.parentNode) {
+        overlayContainer.parentNode.replaceChild(newContainer, overlayContainer);
+      }
+    }
+  };
+
   // Function to forcibly set the component to extraction review mode
   const forceExtractionReviewScreen = () => {
     logDebug("*** FORCING EXTRACTION REVIEW SCREEN ***");
@@ -265,16 +280,8 @@ const StoryAnalysisProgress: React.FC = () => {
     extractionCompleteRef.current = true;
     forceExtractionReviewRef.current = true;
     
-    // IMPROVED: Render the extraction review screen outside of the regular component hierarchy
-    if (extractionSummary) {
-      renderExtractionReview({
-        extractionSummary,
-        timestamp: extractionTimestamp || new Date().toISOString(),
-        onContinue: handleContinueToSaving,
-        onReset: handleFreshExtraction,
-        debugInfo,
-      });
-    }
+    // DIRECT DOM MANIPULATION: Show extraction review
+    showExtractionReviewScreen();
     
     // Schedule this again in 100ms to ensure it sticks
     timerRef.current = setTimeout(() => {
@@ -283,16 +290,8 @@ const StoryAnalysisProgress: React.FC = () => {
       setIsAnalyzing(false);
       setMustShowExtractionReview(true);
       
-      // Re-render the extraction review screen to ensure it's visible
-      if (extractionSummary) {
-        renderExtractionReview({
-          extractionSummary,
-          timestamp: extractionTimestamp || new Date().toISOString(),
-          onContinue: handleContinueToSaving,
-          onReset: handleFreshExtraction,
-          debugInfo,
-        });
-      }
+      // Show again to ensure it's visible
+      showExtractionReviewScreen();
     }, 100);
   };
   
@@ -375,14 +374,13 @@ const StoryAnalysisProgress: React.FC = () => {
 
   // Check for extraction complete status on component mount
   useEffect(() => {
-    // IMPROVED: Create the extraction review container for future use
-    createExtractionReviewContainer();
-    
     // Check if extraction was previously completed
     const wasExtractionComplete = localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true';
     const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
     const extractionSummaryStr = localStorage.getItem(EXTRACTION_SUMMARY_KEY);
     const extractionTimestampStr = localStorage.getItem(EXTRACTION_TIMESTAMP_KEY);
+    
+    logDebug(`Component mount - extraction complete: ${wasExtractionComplete}`);
     
     if (wasExtractionComplete) {
       logDebug("Found extraction complete flag in localStorage, forcing review screen");
@@ -422,14 +420,10 @@ const StoryAnalysisProgress: React.FC = () => {
           const timestamp = extractionTimestampStr || new Date().toISOString();
           setExtractionTimestamp(timestamp);
           
-          // IMPROVED: Render extraction review screen outside normal React flow
-          renderExtractionReview({
-            extractionSummary: summary,
-            timestamp,
-            onContinue: handleContinueToSaving,
-            onReset: handleFreshExtraction,
-            debugInfo,
-          });
+          // DIRECT DOM APPROACH: Show extraction review screen
+          setTimeout(() => {
+            showExtractionReviewScreen();
+          }, 100);
           
           logDebug("Successfully restored extraction complete state");
         } catch (err) {
@@ -444,9 +438,33 @@ const StoryAnalysisProgress: React.FC = () => {
       extractionCompleteRef.current = false;
       setMustShowExtractionReview(false);
       
-      // IMPROVED: Make sure the extraction review screen is removed
-      removeExtractionReview();
+      // Hide the extraction review screen if visible
+      hideExtractionReviewScreen();
     }
+    
+    // Add custom CSS to ensure overlay is visible
+    const style = document.createElement('style');
+    style.id = 'extraction-review-style';
+    style.textContent = `
+      .extraction-review-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(255, 255, 255, 0.97);
+        z-index: 10000;
+        display: none;
+        overflow-y: auto;
+      }
+      .extraction-review-content {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+    `;
+    document.head.appendChild(style);
     
     // Clean up timers and DOM elements on unmount
     return () => {
@@ -454,8 +472,14 @@ const StoryAnalysisProgress: React.FC = () => {
         clearTimeout(timerRef.current);
       }
       
-      // IMPROVED: Remove the extraction review screen on unmount
-      removeExtractionReview();
+      // Remove the extraction review screen
+      hideExtractionReviewScreen();
+      
+      // Remove the custom style
+      const styleElement = document.getElementById('extraction-review-style');
+      if (styleElement) {
+        styleElement.remove();
+      }
     };
   }, []);
 
@@ -528,9 +552,6 @@ const StoryAnalysisProgress: React.FC = () => {
         localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
         localStorage.removeItem(EXTRACTION_STAGE_KEY);
         logDebug("Cleared analysis data backup after successful completion");
-        
-        // IMPROVED: Make sure the extraction review is removed
-        removeExtractionReview();
       }
     };
   }, [analysisPhase]);
@@ -1689,8 +1710,8 @@ const StoryAnalysisProgress: React.FC = () => {
       localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
       localStorage.removeItem(EXTRACTION_STAGE_KEY);
       
-      // IMPROVED: Remove the extraction review container
-      removeExtractionReview();
+      // Hide the extraction review screen
+      hideExtractionReviewScreen();
       
       logDebug("=== Direct database save process completed successfully ===");
       
@@ -1816,14 +1837,8 @@ const StoryAnalysisProgress: React.FC = () => {
             // Add artificial delay to ensure user sees the extraction results
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // IMPROVED: Render the extraction review screen outside of React's reconciliation
-            renderExtractionReview({
-              extractionSummary,
-              timestamp: extractionTimestamp || new Date().toISOString(),
-              onContinue: handleContinueToSaving,
-              onReset: handleFreshExtraction,
-              debugInfo,
-            });
+            // IMPROVED: Show extraction review screen using direct DOM approach
+            showExtractionReviewScreen();
           }
           
           break;
@@ -1863,8 +1878,8 @@ const StoryAnalysisProgress: React.FC = () => {
       localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
       setMustShowExtractionReview(false);
       
-      // IMPROVED: Remove the extraction review UI
-      removeExtractionReview();
+      // Hide the extraction review screen
+      hideExtractionReviewScreen();
       
       // 1. Check if the user is authenticated
       try {
@@ -2058,8 +2073,8 @@ const StoryAnalysisProgress: React.FC = () => {
       localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
       localStorage.removeItem(EXTRACTION_STAGE_KEY);
       
-      // IMPROVED: Remove the extraction review UI
-      removeExtractionReview();
+      // Hide the extraction review screen
+      hideExtractionReviewScreen();
       
       // Force page reload to clear any browser cache/state
       window.location.reload();
@@ -2074,8 +2089,8 @@ const StoryAnalysisProgress: React.FC = () => {
     localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
     setMustShowExtractionReview(false);
     
-    // IMPROVED: Remove the extraction review UI
-    removeExtractionReview();
+    // Hide the extraction review screen
+    hideExtractionReviewScreen();
     
     // Backup session storage data before continuing
     const analysisDataStr = sessionStorage.getItem('analysisData');
@@ -2154,8 +2169,8 @@ const StoryAnalysisProgress: React.FC = () => {
     localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
     localStorage.removeItem(EXTRACTION_STAGE_KEY);
     
-    // IMPROVED: Remove the extraction review UI
-    removeExtractionReview();
+    // Hide the extraction review screen
+    hideExtractionReviewScreen();
     
     // Force page reload to clear any browser cache/state
     window.location.reload();
@@ -2179,7 +2194,7 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
-  // Regular component rendering (the extraction review is now handled separately via ReactDOM.render)
+  // Regular component rendering
   return (
     <div className="analysis-progress-container">
       <h1>Analyzing Story</h1>
