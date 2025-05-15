@@ -69,6 +69,8 @@ const StoryAnalysisProgress: React.FC = () => {
     plotlines: 0
   });
   const MAX_SAVE_RETRIES = 3;
+  // New ref to force extraction review screen
+  const forceExtractionReviewRef = useRef<boolean>(true);
   
   const navigate = useNavigate();
 
@@ -182,6 +184,9 @@ const StoryAnalysisProgress: React.FC = () => {
   // Component initialization and data recovery
   useEffect(() => {
     try {
+      // Reset forceExtractionReview flag on component mount
+      forceExtractionReviewRef.current = true;
+      
       // Try to get analysis data
       const analysisDataStr = sessionStorage.getItem('analysisData');
       
@@ -1472,9 +1477,11 @@ const StoryAnalysisProgress: React.FC = () => {
             setExtractedElements(elements);
             extractedElementsRef.current = elements;
             
-            // Continue to the saving phase
+            // IMPORTANT FIX: Always force showing the extraction review screen 
+            // by explicitly setting these states here
             setAnalysisPhase('extracted');
             setIsAnalyzing(false);
+            forceExtractionReviewRef.current = true;
             
             // Display a sample of the extracted elements in the UI
             await addDetectedItem('System', 'Processing extracted elements...');
@@ -1506,6 +1513,9 @@ const StoryAnalysisProgress: React.FC = () => {
                 await addDetectedItem('Plotline', plot.title);
               }
             }
+            
+            // Add artificial delay to ensure user sees the extraction results
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
           
           break;
@@ -1752,6 +1762,8 @@ const StoryAnalysisProgress: React.FC = () => {
       return;
     }
     
+    // Allow saving to proceed
+    forceExtractionReviewRef.current = false;
     processSavingDirectly();
   };
 
