@@ -107,7 +107,7 @@ const Importer: React.FC = () => {
       const response = await supabase.functions.invoke('analyze-story', {
         body: {
           story_text: fileContent,
-          story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
+          story_title: files[0].file.name.replace(/\.[^/.]+$/, ""),
           story_world_id: DEFAULT_STORYWORLD_ID,
           options: {
             create_project: false,
@@ -234,6 +234,41 @@ const Importer: React.FC = () => {
     });
   };
 
+  // Check if an element already exists in the database
+  const checkDuplicates = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events', elements: any[]) => {
+    // Define the name field based on the type
+    const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
+    
+    // Extract all names to check
+    const namesToCheck = elements.map(elem => elem[nameField]);
+    
+    if (namesToCheck.length === 0) return [];
+    
+    // Query the database for any matching names
+    const { data, error } = await supabase
+      .from(type)
+      .select('id, ' + nameField)
+      .in(nameField, namesToCheck);
+    
+    if (error) {
+      console.error(`Error checking for duplicates in ${type}:`, error);
+      throw error;
+    }
+    
+    // Create a map of existing names to their IDs
+    const existingNamesMap = new Map();
+    if (data) {
+      data.forEach(item => {
+        existingNamesMap.set(item[nameField].toLowerCase(), item.id);
+      });
+    }
+    
+    // Return a list of elements that are duplicate (already exist in the database)
+    return elements.filter(elem => 
+      existingNamesMap.has(elem[nameField].toLowerCase())
+    );
+  };
+
   // Save the selected elements to the database
   const saveElementsToDatabase = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events') => {
     if (!extractedElements) return;
@@ -252,8 +287,30 @@ const Importer: React.FC = () => {
         return;
       }
       
+      // Check for duplicates in the database
+      const duplicateElements = await checkDuplicates(type, elementsToSave);
+      
+      // Filter out duplicate elements
+      const newElements = elementsToSave.filter(elem => {
+        const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
+        return !duplicateElements.some(dupElem => 
+          dupElem[nameField].toLowerCase() === elem[nameField].toLowerCase()
+        );
+      });
+      
+      if (duplicateElements.length > 0) {
+        console.log(`Found ${duplicateElements.length} existing ${type} that will be skipped:`, 
+          duplicateElements.map(elem => elem.name || elem.title));
+      }
+      
+      if (newElements.length === 0) {
+        console.log(`All ${type} already exist in the database. Skipping.`);
+        moveToNextStep();
+        return;
+      }
+      
       // Prepare elements for saving based on type
-      const preparedElements = elementsToSave.map((elem: any) => {
+      const preparedElements = newElements.map((elem: any) => {
         // Common fields for all element types
         const commonFields = {
           id: elem.id, // Now using UUID
@@ -332,6 +389,12 @@ const Importer: React.FC = () => {
       }
       
       console.log(`Saved ${data.length} ${type}:`, data);
+      
+      // If some duplicates were skipped, show a message
+      if (duplicateElements.length > 0) {
+        setError(`Note: ${duplicateElements.length} ${type} already existed and were skipped.`);
+        setTimeout(() => setError(null), 5000); // Clear message after 5 seconds
+      }
       
       // Move to the next step automatically
       moveToNextStep();
