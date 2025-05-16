@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Faction, StoryWorld, Character } from '../supabase-tables';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaPlus, FaUsers, FaEdit, FaTrash } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -13,6 +13,7 @@ const FactionsListPage: React.FC = () => {
   const [factionCharacterCounts, setFactionCharacterCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch story worlds for the dropdown filter
   useEffect(() => {
@@ -28,8 +29,17 @@ const FactionsListPage: React.FC = () => {
         }
 
         setStoryWorlds(data || []);
-        // If there's at least one story world, select it by default
-        if (data && data.length > 0) {
+        
+        // Get storyWorldId from URL if present
+        const searchParams = new URLSearchParams(location.search);
+        const storyWorldId = searchParams.get('storyWorldId');
+        
+        // If a storyWorldId is in the URL, use it
+        if (storyWorldId && data && data.some(world => world.id === storyWorldId)) {
+          setSelectedStoryWorld(storyWorldId);
+        } 
+        // Otherwise, if there's at least one story world, select it by default
+        else if (data && data.length > 0) {
           setSelectedStoryWorld(data[0].id);
         }
       } catch (error: any) {
@@ -39,7 +49,7 @@ const FactionsListPage: React.FC = () => {
     };
 
     fetchStoryWorlds();
-  }, []);
+  }, [location.search]);
 
   // Fetch factions based on selected story world
   useEffect(() => {
@@ -75,6 +85,13 @@ const FactionsListPage: React.FC = () => {
 
     fetchFactions();
   }, [selectedStoryWorld]);
+
+  // Update URL when story world selection changes
+  const handleStoryWorldChange = (id: string) => {
+    setSelectedStoryWorld(id);
+    // Update the URL to include the selected story world
+    navigate(`/factions?storyWorldId=${id}`, { replace: true });
+  };
 
   // Fetch character counts for each faction
   const fetchCharacterCounts = async (factionIds: string[]) => {
@@ -170,7 +187,7 @@ const FactionsListPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Factions</h1>
         <Link
-          to="/factions/new"
+          to={`/factions/new?storyWorldId=${selectedStoryWorld}`}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
         >
           <FaPlus className="mr-2" />
@@ -186,7 +203,7 @@ const FactionsListPage: React.FC = () => {
         <select
           className="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           value={selectedStoryWorld}
-          onChange={(e) => setSelectedStoryWorld(e.target.value)}
+          onChange={(e) => handleStoryWorldChange(e.target.value)}
         >
           {storyWorlds.map((world) => (
             <option key={world.id} value={world.id}>
@@ -208,7 +225,7 @@ const FactionsListPage: React.FC = () => {
             Create your first faction to start organizing the groups and allegiances in your story world.
           </p>
           <Link
-            to="/factions/new"
+            to={`/factions/new?storyWorldId=${selectedStoryWorld}`}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
           >
             <FaPlus className="mr-2" />
@@ -270,7 +287,7 @@ const FactionsListPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2">
                       <button 
-                        onClick={() => navigate(`/factions/${faction.id}`)}
+                        onClick={() => navigate(`/factions/${faction.id}?storyWorldId=${selectedStoryWorld}`)}
                         className="text-blue-600 hover:text-blue-900"
                       >
                         <FaEdit />
