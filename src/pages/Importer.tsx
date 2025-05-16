@@ -134,12 +134,35 @@ const Importer: React.FC = () => {
       // Call the analyze-story edge function with a unique request ID to avoid caching
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
+      // Create a data structure with all our extracted entities
+      const processedData = {
+        characters: characterObjects,
+        locations: locationObjects,
+        plotlines: plotlineObjects,
+        scenes: sceneObjects,
+        events: eventObjects,
+        objects: objectObjects
+      };
+      
+      // Store the extracted elements and move to the first review step
+      setExtractedElements(processedData);
+      
+      // Initialize selected elements with all the IDs (by default all are selected)
+      setSelectedElements({
+        characters: processedData.characters?.map((c: any) => c.id) || [],
+        locations: processedData.locations?.map((l: any) => l.id) || [],
+        plotlines: processedData.plotlines?.map((p: any) => p.id) || [],
+        scenes: processedData.scenes?.map((s: any) => s.id) || [],
+        events: processedData.events?.map((e: any) => e.id) || [],
+        objects: processedData.objects?.map((o: any) => o.id) || []
+      });
+      
       try {
         // Call API in parallel, but don't wait for it
         supabase.functions.invoke('analyze-story', {
           body: {
             story_text: fileContent,
-            story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
+            story_title: files[0].file.name.replace(/\.[^/.]+$/, ""),
             story_world_id: DEFAULT_STORYWORLD_ID,
             options: {
               create_project: false,
@@ -164,6 +187,42 @@ const Importer: React.FC = () => {
             setDebugInfo(prev => `${prev}\nAPI warning: ${response.error.message}`);
           } else {
             console.log('API results:', response.data);
+            const apiCharacters = response.data?.characters || [];
+            if (apiCharacters.length > 0) {
+              // Merge API characters with already extracted ones
+              // Create a set of existing names to avoid duplicates
+              const existingNames = new Set(processedData.characters.map((c: any) => c.name.toLowerCase()));
+              
+              // Process and filter API characters
+              const newApiCharacters = apiCharacters
+                .filter((c: any) => c.name && !existingNames.has(c.name.toLowerCase()))
+                .map((c: any) => ({
+                  ...c,
+                  id: c.id || uuidv4(),
+                  story_id: DEFAULT_STORY_ID,
+                  confidence: c.confidence || 0.7
+                }));
+              
+              // Add new characters to the extracted elements
+              if (newApiCharacters.length > 0) {
+                // Update the characters array with the combined results
+                const updatedCharacters = [...processedData.characters, ...newApiCharacters];
+                
+                // Update the extracted elements state
+                setExtractedElements(prev => ({
+                  ...prev,
+                  characters: updatedCharacters
+                }));
+                
+                // Update the selected characters
+                setSelectedElements(prev => ({
+                  ...prev,
+                  characters: [...prev.characters, ...newApiCharacters.map((c: any) => c.id)]
+                }));
+                
+                console.log(`Added ${newApiCharacters.length} additional characters from API`);
+              }
+            }
             setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
           }
         }).catch(apiErr => {
@@ -174,29 +233,6 @@ const Importer: React.FC = () => {
         console.warn('Failed to call API, using direct extraction only:', apiErr);
         setDebugInfo(prev => `${prev}\nAPI call failed: ${apiErr.message}`);
       }
-
-      // Create a data structure with all our extracted entities
-      const processedData = {
-        characters: characterObjects,
-        locations: locationObjects,
-        plotlines: plotlineObjects,
-        scenes: sceneObjects,
-        events: eventObjects,
-        objects: objectObjects
-      };
-      
-      // Store the extracted elements and move to the first review step
-      setExtractedElements(processedData);
-      
-      // Initialize selected elements with all the IDs (by default all are selected)
-      setSelectedElements({
-        characters: processedData.characters?.map((c: any) => c.id) || [],
-        locations: processedData.locations?.map((l: any) => l.id) || [],
-        plotlines: processedData.plotlines?.map((p: any) => p.id) || [],
-        scenes: processedData.scenes?.map((s: any) => s.id) || [],
-        events: processedData.events?.map((e: any) => e.id) || [],
-        objects: processedData.objects?.map((o: any) => o.id) || []
-      });
 
       // Move to the first review step
       setCurrentStep('characters');
