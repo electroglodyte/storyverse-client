@@ -428,7 +428,8 @@ const Importer: React.FC = () => {
       moveToNextStep();
     } catch (err: any) {
       console.error(`Error saving ${type}:`, err);
-      setError(`Error saving ${type}: ${err.message}`);
+      const errorMessage = err.message || 'Unknown error';
+      setError(`Error saving ${type}: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
