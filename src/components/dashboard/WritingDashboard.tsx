@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { DailyProgress, WritingGoal, WritingSession } from '../supabase-tables';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { DailyProgress, WritingGoal, WritingSession } from '../../supabase-tables';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import DailyProgressChart from './DailyProgressChart';
 import GoalTracker from './GoalTracker';
 import SessionHistory from './SessionHistory';
 import NewSessionForm from './NewSessionForm';
 import NewGoalForm from './NewGoalForm';
-import { Button } from '../components/ui/button';
+import { Button } from '../ui/button';
 
 export default function WritingDashboard() {
   const [activeTab, setActiveTab] = useState('summary');
