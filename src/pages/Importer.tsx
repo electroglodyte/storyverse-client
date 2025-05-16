@@ -67,6 +67,11 @@ function getErrorMessage(error: any): string {
   return 'An error occurred';
 }
 
+// Return empty array when data is missing to avoid null errors
+function safeArray<T>(array: T[] | null | undefined): T[] {
+  return Array.isArray(array) ? array : [];
+}
+
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -251,9 +256,10 @@ const Importer: React.FC = () => {
             }
           }
         }).then(response => {
-          if (response.error) {
-            console.warn('API warning:', response.error.message);
-            setDebugInfo(prev => `${prev}\nAPI warning: ${getErrorMessage(response.error)}`);
+          const responseError = response.error;
+          if (responseError) {
+            console.warn('API warning:', getErrorMessage(responseError));
+            setDebugInfo(prev => `${prev}\nAPI warning: ${getErrorMessage(responseError)}`);
           } else {
             console.log('API results:', response.data);
             const apiCharacters = response.data?.characters || [];
@@ -342,25 +348,33 @@ const Importer: React.FC = () => {
         const safeId = getSafeId(element);
         
         // First check for exact matches
-        const { data: exactMatches, error: exactError } = await supabase
+        const exactResult = await supabase
           .from(tableName)
           .select('id, ' + nameField)
           .eq(nameField, elementName);
-          
+        
+        // Use our safe accessor pattern - no direct property access
+        const exactError = exactResult.error;
+        const exactMatches = safeArray(exactResult.data);
+        
         if (exactError) {
-          console.error(`Error checking for exact duplicates:`, exactError);
+          console.error(`Error checking for exact duplicates:`, getErrorMessage(exactError));
           continue;
         }
         
         // Then check for similar matches (case insensitive)
-        const { data: similarMatches, error: similarError } = await supabase
+        const similarResult = await supabase
           .from(tableName)
           .select('id, ' + nameField)
           .neq('id', safeId)
           .ilike(nameField, `%${elementName}%`);
-          
+        
+        // Use our safe accessor pattern - no direct property access
+        const similarError = similarResult.error;
+        const similarMatches = safeArray(similarResult.data);
+        
         if (similarError) {
-          console.error(`Error checking for similar duplicates:`, similarError);
+          console.error(`Error checking for similar duplicates:`, getErrorMessage(similarError));
           continue;
         }
         
@@ -368,7 +382,7 @@ const Importer: React.FC = () => {
         const allMatches: DuplicateInfo[] = [];
         
         // Process exact matches
-        if (exactMatches && Array.isArray(exactMatches) && exactMatches.length > 0) {
+        if (exactMatches.length > 0) {
           exactMatches.forEach(match => {
             if (match && typeof match.id === 'string' && typeof match[nameField] === 'string') {
               allMatches.push({
@@ -382,7 +396,7 @@ const Importer: React.FC = () => {
         }
         
         // Process similar matches
-        if (similarMatches && Array.isArray(similarMatches) && similarMatches.length > 0) {
+        if (similarMatches.length > 0) {
           similarMatches.forEach(match => {
             // Skip if already added as exact match or if missing required fields
             if (!match || typeof match.id !== 'string' || typeof match[nameField] !== 'string') return;
@@ -487,13 +501,17 @@ const Importer: React.FC = () => {
       const tableName = type === 'objects' ? 'items' : type;
       
       // Query the database for any matching names
-      const { data, error } = await supabase
+      const result = await supabase
         .from(tableName)
         .select('id, ' + nameField)
         .in(nameField, namesToCheck);
       
-      if (error) {
-        console.error(`Error checking for duplicates in ${type}:`, error);
+      // Use our safe accessor pattern - no direct property access
+      const queryError = result.error;
+      const data = safeArray(result.data);
+      
+      if (queryError) {
+        console.error(`Error checking for duplicates in ${type}:`, getErrorMessage(queryError));
         return { existingNames: new Set<string>(), count: 0 };
       }
       
@@ -501,17 +519,15 @@ const Importer: React.FC = () => {
       const existingNames = new Set<string>();
       
       // Safely process data
-      if (Array.isArray(data)) {
-        data.forEach(item => {
-          if (item && typeof item[nameField] === 'string' && item[nameField]) {
-            existingNames.add(String(item[nameField]).toLowerCase());
-          }
-        });
-      }
+      data.forEach(item => {
+        if (item && typeof item[nameField] === 'string' && item[nameField]) {
+          existingNames.add(String(item[nameField]).toLowerCase());
+        }
+      });
       
       return { existingNames, count: existingNames.size };
     } catch (err) {
-      console.error(`Error in getExistingNameMap:`, err);
+      console.error(`Error in getExistingNameMap:`, getErrorMessage(err));
       return { existingNames: new Set<string>(), count: 0 };
     }
   };
@@ -594,16 +610,21 @@ const Importer: React.FC = () => {
       }
       
       // Insert elements into the appropriate table
-      const { data, error } = await supabase
+      const result = await supabase
         .from(tableName)
         .insert(newElements)
         .select();
       
-      if (error) {
-        throw new Error(`Error saving ${type}: ${getErrorMessage(error)}`);
+      // Use our safe accessor pattern - no direct property access
+      const insertError = result.error;
+      const data = result.data;
+      
+      if (insertError) {
+        throw new Error(`Error saving ${type}: ${getErrorMessage(insertError)}`);
       }
       
-      console.log(`Saved ${data?.length || 0} ${type}:`, data);
+      const dataLength = Array.isArray(data) ? data.length : 0;
+      console.log(`Saved ${dataLength} ${type}:`, data);
       
       // If some duplicates were skipped, show a message
       if (duplicatesCount > 0) {
