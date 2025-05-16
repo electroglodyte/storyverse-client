@@ -1,22 +1,55 @@
 import React from 'react'
-import { Tables } from '@/types/database'
-import { useRouter } from 'next/router'
+import { useNavigate } from 'react-router-dom'
+import type { StoryWorld, Story, Series } from '@/types/database'
 
-type StoryWorld = Tables['story_worlds']
-type Story = Tables['stories']
-
-interface Props {
+interface SideNavProps {
+  activeStoryWorld: StoryWorld | null
+  activeStory: Story | null
+  activeSeries: Series | null
   storyWorlds: StoryWorld[]
-  selectedWorld: StoryWorld | null
-  stories: Story[]
-  onSelectWorld: (world: StoryWorld) => void
+  setActiveStoryWorld: (world: StoryWorld | null) => void
+  setActiveStory: (story: Story | null) => void
+  setActiveSeries: (series: Series | null) => void
+  loading: boolean
 }
 
-export default function SideNav({ storyWorlds, selectedWorld, stories, onSelectWorld }: Props) {
-  const router = useRouter()
+export default function SideNav({ 
+  activeStoryWorld, 
+  activeStory,
+  activeSeries, 
+  storyWorlds,
+  setActiveStoryWorld,
+  setActiveStory,
+  setActiveSeries,
+  loading 
+}: SideNavProps) {
+  const navigate = useNavigate()
+
+  const handleStoryWorldClick = (world: StoryWorld) => {
+    setActiveStoryWorld(world)
+    setActiveStory(null)
+    setActiveSeries(null)
+    navigate(`/storyworld/${world.id}`)
+  }
 
   const handleStoryClick = (story: Story) => {
-    router.push(`/story/${story.id}`)
+    setActiveStory(story)
+    navigate(`/story/${story.id}`)
+  }
+
+  if (loading) {
+    return (
+      <aside className="w-64 bg-gray-800 min-h-screen text-white p-4">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-700 rounded w-3/4 mb-6"></div>
+          <div className="space-y-3">
+            <div className="h-4 bg-gray-700 rounded"></div>
+            <div className="h-4 bg-gray-700 rounded w-5/6"></div>
+            <div className="h-4 bg-gray-700 rounded w-4/6"></div>
+          </div>
+        </div>
+      </aside>
+    )
   }
 
   return (
@@ -24,14 +57,16 @@ export default function SideNav({ storyWorlds, selectedWorld, stories, onSelectW
       <nav>
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4">Story Worlds</h2>
-          <ul>
+          <ul className="space-y-1">
             {storyWorlds.map((world) => (
               <li
                 key={world.id}
-                className={`cursor-pointer p-2 rounded ${
-                  selectedWorld?.id === world.id ? 'bg-blue-600' : 'hover:bg-gray-700'
+                className={`cursor-pointer p-2 rounded transition-colors ${
+                  activeStoryWorld?.id === world.id 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'hover:bg-gray-700'
                 }`}
-                onClick={() => onSelectWorld(world)}
+                onClick={() => handleStoryWorldClick(world)}
               >
                 {world.name}
               </li>
@@ -39,20 +74,12 @@ export default function SideNav({ storyWorlds, selectedWorld, stories, onSelectW
           </ul>
         </div>
 
-        {selectedWorld && (
+        {activeStoryWorld && activeStory && (
           <div>
-            <h2 className="text-lg font-semibold mb-4">Stories</h2>
-            <ul>
-              {stories.map((story) => (
-                <li
-                  key={story.id}
-                  className="cursor-pointer p-2 rounded hover:bg-gray-700"
-                  onClick={() => handleStoryClick(story)}
-                >
-                  {story.title}
-                </li>
-              ))}
-            </ul>
+            <h2 className="text-lg font-semibold mb-4">Current Story</h2>
+            <div className="p-2 bg-gray-700 rounded">
+              {activeStory.title}
+            </div>
           </div>
         )}
       </nav>
