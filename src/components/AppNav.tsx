@@ -1,5 +1,5 @@
 // src/components/AppNav.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { StoryWorld, Story, Series } from '../supabase-tables';
 import { supabase } from '../supabaseClient';
@@ -12,6 +12,7 @@ interface AppNavProps {
   setActiveStoryWorld: (storyWorld: StoryWorld | null) => void;
   setActiveStory: (story: Story | null) => void;
   setActiveSeries: (series: Series | null) => void;
+  loading: boolean;
 }
 
 export const AppNav: React.FC<AppNavProps> = ({
@@ -21,7 +22,8 @@ export const AppNav: React.FC<AppNavProps> = ({
   storyWorlds,
   setActiveStoryWorld,
   setActiveStory,
-  setActiveSeries
+  setActiveSeries,
+  loading
 }) => {
   const [showStoryWorldDropdown, setShowStoryWorldDropdown] = useState(false);
   const [showStoryDropdown, setShowStoryDropdown] = useState(false);
@@ -40,11 +42,24 @@ export const AppNav: React.FC<AppNavProps> = ({
     if (!showStoryDropdown && activeStoryWorld) {
       // Fetch stories for this story world when opening the dropdown
       try {
-        const { data, error } = await supabase
+        // Try with story_world_id first
+        let { data, error } = await supabase
           .from('stories')
           .select('*')
-          .eq('storyworld_id', activeStoryWorld.id)
-          .order('name', { ascending: true });
+          .eq('story_world_id', activeStoryWorld.id)
+          .order('title', { ascending: true });
+
+        // If no results, try with storyworld_id 
+        if ((!data || data.length === 0) && error) {
+          const result = await supabase
+            .from('stories')
+            .select('*')
+            .eq('storyworld_id', activeStoryWorld.id)
+            .order('title', { ascending: true });
+            
+          data = result.data;
+          error = result.error;
+        }
 
         if (error) throw error;
         setStories(data || []);
@@ -63,12 +78,26 @@ export const AppNav: React.FC<AppNavProps> = ({
     
     // Fetch a story from this story world
     try {
-      const { data, error } = await supabase
+      // Try with story_world_id first
+      let { data, error } = await supabase
         .from('stories')
         .select('*')
-        .eq('storyworld_id', storyWorld.id)
-        .order('name', { ascending: true })
+        .eq('story_world_id', storyWorld.id)
+        .order('title', { ascending: true })
         .limit(1);
+
+      // If no results, try with storyworld_id 
+      if ((!data || data.length === 0) && error) {
+        const result = await supabase
+          .from('stories')
+          .select('*')
+          .eq('storyworld_id', storyWorld.id)
+          .order('title', { ascending: true })
+          .limit(1);
+          
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
       
@@ -135,8 +164,9 @@ export const AppNav: React.FC<AppNavProps> = ({
           <button 
             onClick={toggleStoryWorldDropdown} 
             style={dropdownButtonStyle}
+            disabled={loading}
           >
-            <span>{activeStoryWorld?.name || 'Select a Story World'}</span>
+            <span>{loading ? 'Loading...' : (activeStoryWorld?.name || 'Select a Story World')}</span>
             <span className="ml-2">{showStoryWorldDropdown ? '▲' : '▼'}</span>
           </button>
           
@@ -201,8 +231,9 @@ export const AppNav: React.FC<AppNavProps> = ({
             <button 
               onClick={toggleStoryDropdown} 
               style={dropdownButtonStyle}
+              disabled={loading}
             >
-              <span>{activeStory?.title || 'Select a Story'}</span>
+              <span>{loading ? 'Loading...' : (activeStory?.title || activeStory?.name || 'Select a Story')}</span>
               <span className="ml-2">{showStoryDropdown ? '▲' : '▼'}</span>
             </button>
             
