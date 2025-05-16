@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.7.1
+ * Version: 0.7.2
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -133,6 +133,11 @@ interface CreateFactionTool {
   description: "Create a new faction and optionally link it to a story world or story";
 }
 
+interface CreateObjectTool {
+  name: "create_object";
+  description: "Create a new object (prop) and optionally link it to a story world or story";
+}
+
 interface CreateRelationshipTool {
   name: "create_relationship";
   description: "Create a relationship between two characters";
@@ -260,6 +265,35 @@ interface ImportStoryWithProgressTool {
   description: "Imports and analyzes a story with real-time progress updates on detected elements";
 }
 
+/**
+ * OBJECT (PROPS) TOOLS
+ */
+
+interface CreateObjectTool {
+  name: "create_object";
+  description: "Creates a new object (prop) in the story world";
+}
+
+interface LinkObjectToCharacterTool {
+  name: "link_object_to_character";
+  description: "Establishes a relationship between an object and a character";
+}
+
+interface LinkObjectToLocationTool {
+  name: "link_object_to_location";
+  description: "Establishes a relationship between an object and a location";
+}
+
+interface TrackObjectAppearanceTool {
+  name: "track_object_appearance";
+  description: "Records an appearance of an object in a scene or event";
+}
+
+interface AnalyzeObjectUsageTool {
+  name: "analyze_object_usage";
+  description: "Analyzes how objects are used throughout a story";
+}
+
 // Combined type representing all available tools
 type McpTool = 
   | AnalyzeWritingSampleTool
@@ -286,6 +320,7 @@ type McpTool =
   | CreateCharacterTool
   | CreateLocationTool
   | CreateFactionTool
+  | CreateObjectTool
   | CreateRelationshipTool
   | CreateItemTool
   | CreateCharacterArcTool
@@ -308,7 +343,11 @@ type McpTool =
   | DetectStorylinesTool
   | AnalyzeImportedStoryTool
   | ExtractStoryElementsTool
-  | ImportStoryWithProgressTool;
+  | ImportStoryWithProgressTool
+  | LinkObjectToCharacterTool
+  | LinkObjectToLocationTool
+  | TrackObjectAppearanceTool
+  | AnalyzeObjectUsageTool;
 
 // Export as a constant array of all available tools
 export const MCP_TOOLS: McpTool[] = [
@@ -364,7 +403,14 @@ export const MCP_TOOLS: McpTool[] = [
   // Import Tools
   { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" },
   { name: "extract_story_elements", description: "Extracts characters, locations, events, and other narrative elements from an imported text" },
-  { name: "import_story_with_progress", description: "Imports and analyzes a story with real-time progress updates on detected elements" }
+  { name: "import_story_with_progress", description: "Imports and analyzes a story with real-time progress updates on detected elements" },
+  
+  // Object (Props) Tools
+  { name: "create_object", description: "Creates a new object (prop) in the story world" },
+  { name: "link_object_to_character", description: "Establishes a relationship between an object and a character" },
+  { name: "link_object_to_location", description: "Establishes a relationship between an object and a location" },
+  { name: "track_object_appearance", description: "Records an appearance of an object in a scene or event" },
+  { name: "analyze_object_usage", description: "Analyzes how objects are used throughout a story" }
 ];
 
 // Path to the MCP server code in GitHub
