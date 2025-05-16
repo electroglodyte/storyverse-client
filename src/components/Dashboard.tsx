@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { FaBook, FaListUl, FaStream, FaCog, FaChartLine, FaPencilAlt } from 'react-icons/fa';
 import AdminUtils from './admin/AdminUtils';
@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import WritingDashboard from './dashboard/WritingDashboard';
 
 const Dashboard = () => {
+  const location = useLocation();
   const [stats, setStats] = useState({
     storyWorlds: 0,
     series: 0,
@@ -15,8 +16,33 @@ const Dashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  
+  // Default to overview, but check URL for tab parameter
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam === 'writing' ? 'writing' : 'overview');
+  
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Update active tab when URL changes
+    const tab = searchParams.get('tab');
+    if (tab === 'writing' && activeTab !== 'writing') {
+      setActiveTab('writing');
+    } else if (!tab && activeTab !== 'overview') {
+      setActiveTab('overview');
+    }
+  }, [location.search]);
+
+  // Handle tab change and update URL
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'writing') {
+      navigate('/?tab=writing', { replace: true });
+    } else {
+      navigate('/', { replace: true });
+    }
+  };
 
   useEffect(() => {
     async function fetchStats() {
@@ -52,7 +78,7 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto py-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <div className="flex justify-between items-center mb-6">
           <TabsList>
             <TabsTrigger value="overview" className="flex items-center gap-2">
