@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.6.18 (2025-05-16)
+## Current Version: 0.7.0 (2025-05-16)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -35,6 +35,15 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Add sequence numbering to events
 - [x] Add essence and interest fields to scenes table
 - [x] Create story_questions table for tracking narrative questions
+- [x] Create writing_goals, writing_sessions, and daily_progress tables for progress tracking
+
+### Progress Tracking Features
+- [x] Database schema for writing goals, sessions, and progress tracking
+- [ ] Dashboard UI implementation with progress visualization
+- [ ] Goal setting interface for daily/weekly/monthly targets
+- [ ] Session timer and word count tracking
+- [ ] Daily writing summaries and statistics
+- [ ] Progress charts and achievement badges
 
 ### MCP Tools Development
 - [ ] Build character journey analysis tools
@@ -71,6 +80,14 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Develop beat sheet management
 - [ ] Create conflict and resolution visualization
 - [ ] Create story question interface to track major narrative questions
+
+### Advanced Progress Analytics
+- [ ] Historical writing patterns analysis
+- [ ] Predictive completion date estimates
+- [ ] Productivity optimization suggestions
+- [ ] Writing streak gamification
+- [ ] Customizable dashboard widgets
+- [ ] Progress reports and exports
 
 ### Collaboration Features
 - [ ] Add multi-user editing capabilities
