@@ -21,6 +21,19 @@ interface StoryImporterProps {
   storyTitle: string;
 }
 
+// Helper function to extract characters marked in ALL CAPS
+const extractAllCapsCharacters = (text: string): string[] => {
+  // Regular expression to match words in ALL CAPS with 2 or more letters
+  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
+  const matches = text.match(allCapsRegex) || [];
+  
+  // Filter out common non-character ALL CAPS words
+  const nonCharacterWords = ['THE', 'AND', 'OF', 'TO', 'IN', 'A', 'FOR', 'WITH', 'IS', 'ON', 'AT', 'BY', 'AS', 'IT'];
+  const uniqueCharacters = [...new Set(matches)].filter(word => !nonCharacterWords.includes(word));
+  
+  return uniqueCharacters;
+};
+
 export const StoryImporter: React.FC<StoryImporterProps> = ({
   storyWorldId,
   onImportComplete,
@@ -78,12 +91,58 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     }
   }, [plotlines]);
 
+  // Generate a UUID for new characters
+  const generateUUID = (): string => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  // Enhance API results with detected ALL CAPS characters
+  const enhanceWithCapsCharacters = (apiResults: any, allCapsCharacters: string[]) => {
+    // Get existing character names
+    const existingNames = apiResults?.results?.characters?.map((char: Character) => 
+      char.name.toUpperCase()) || [];
+    
+    // Create new character objects for names not already in results
+    const newCharacters = allCapsCharacters
+      .filter(name => !existingNames.includes(name))
+      .map(name => ({
+        id: generateUUID(),
+        name: name.charAt(0) + name.slice(1).toLowerCase(), // Convert to Title Case
+        role: 'supporting' as const,
+        description: `A character in the story (detected via ALL CAPS)`,
+        story_id: apiResults.story?.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        confidence: 0.8, // High confidence since marked in ALL CAPS
+      }));
+    
+    // Combine API results with new characters
+    if (newCharacters.length > 0) {
+      if (!apiResults.results) {
+        apiResults.results = {};
+      }
+      if (!apiResults.results.characters) {
+        apiResults.results.characters = [];
+      }
+      apiResults.results.characters = [...apiResults.results.characters, ...newCharacters];
+    }
+    
+    return apiResults;
+  };
+
   const analyzeStory = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      // Use our enhanced import API
+      // Extract ALL CAPS characters from the text
+      const allCapsCharacters = extractAllCapsCharacters(storyText);
+      console.log('ALL CAPS characters:', allCapsCharacters);
+      
+      // Use the enhanced import API
       const apiUrl = '/api/import-story-with-progress';
       const response = await fetch(apiUrl, {
         method: 'POST',
@@ -108,8 +167,12 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
         throw new Error(`Error analyzing story: ${response.statusText}`);
       }
 
-      const data = await response.json();
-      console.log('Analysis results:', data);
+      let data = await response.json();
+      console.log('API analysis results:', data);
+      
+      // Enhance the API results with ALL CAPS characters
+      data = enhanceWithCapsCharacters(data, allCapsCharacters);
+      console.log('Enhanced analysis results:', data);
       
       setAnalysisResults(data);
       setStoryId(data.story.id);
