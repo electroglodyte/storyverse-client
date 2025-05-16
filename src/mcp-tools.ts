@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.7.2
+ * Version: 0.8.0
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -247,6 +247,35 @@ interface DetectStorylinesTool {
 }
 
 /**
+ * SCENE METADATA TOOLS
+ */
+
+interface UpdateSceneCreationNotesTool {
+  name: "update_scene_creation_notes";
+  description: "Adds or updates creation notes for a scene with timestamps";
+}
+
+interface GenerateCharacter5QTool {
+  name: "generate_character_5q";
+  description: "Analyzes a scene and generates 5Q answers for each character";
+}
+
+interface UpdateCharacter5QTool {
+  name: "update_character_5q";
+  description: "Updates the 5Q answers for a specific character in a scene";
+}
+
+interface AnalyzeSceneSubtextTool {
+  name: "analyze_scene_subtext";
+  description: "Analyzes a scene and suggests possible subtexts";
+}
+
+interface UpdateSceneSubtextTool {
+  name: "update_scene_subtext";
+  description: "Updates the subtext notes for a scene";
+}
+
+/**
  * IMPORT TOOLS
  */
 
@@ -336,6 +365,11 @@ type McpTool =
   | CombineScenesTool
   | SceneToWritingSampleTool
   | DetectStorylinesTool
+  | UpdateSceneCreationNotesTool
+  | GenerateCharacter5QTool
+  | UpdateCharacter5QTool
+  | AnalyzeSceneSubtextTool
+  | UpdateSceneSubtextTool
   | AnalyzeImportedStoryTool
   | ExtractStoryElementsTool
   | ImportStoryWithProgressTool
@@ -395,6 +429,13 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "combine_scenes", description: "Combines multiple scenes into a single scene" },
   { name: "scene_to_writing_sample", description: "Creates a writing sample from a scene's content" },
   { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" },
+  
+  // New Scene Metadata Tools
+  { name: "update_scene_creation_notes", description: "Adds or updates creation notes for a scene with timestamps" },
+  { name: "generate_character_5q", description: "Analyzes a scene and generates 5Q answers for each character" },
+  { name: "update_character_5q", description: "Updates the 5Q answers for a specific character in a scene" },
+  { name: "analyze_scene_subtext", description: "Analyzes a scene and suggests possible subtexts" },
+  { name: "update_scene_subtext", description: "Updates the subtext notes for a scene" },
   
   // Import Tools
   { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" },
