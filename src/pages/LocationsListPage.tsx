@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 import { Location, StoryWorld } from '../supabase-tables';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaPlus, FaMapMarkerAlt, FaEdit, FaTrash } from 'react-icons/fa';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { toast } from 'react-hot-toast';
@@ -12,6 +12,7 @@ const LocationsListPage: React.FC = () => {
   const [selectedStoryWorld, setSelectedStoryWorld] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Fetch story worlds for the dropdown filter
   useEffect(() => {
@@ -27,8 +28,17 @@ const LocationsListPage: React.FC = () => {
         }
 
         setStoryWorlds(data || []);
-        // If there's at least one story world, select it by default
-        if (data && data.length > 0) {
+        
+        // Get storyWorldId from URL if present
+        const searchParams = new URLSearchParams(location.search);
+        const storyWorldId = searchParams.get('storyWorldId');
+        
+        // If a storyWorldId is in the URL, use it
+        if (storyWorldId && data && data.some(world => world.id === storyWorldId)) {
+          setSelectedStoryWorld(storyWorldId);
+        } 
+        // Otherwise, if there's at least one story world, select it by default
+        else if (data && data.length > 0) {
           setSelectedStoryWorld(data[0].id);
         }
       } catch (error: any) {
@@ -38,7 +48,7 @@ const LocationsListPage: React.FC = () => {
     };
 
     fetchStoryWorlds();
-  }, []);
+  }, [location.search]);
 
   // Fetch locations based on selected story world
   useEffect(() => {
@@ -69,6 +79,13 @@ const LocationsListPage: React.FC = () => {
     fetchLocations();
   }, [selectedStoryWorld]);
 
+  // Update URL when story world selection changes
+  const handleStoryWorldChange = (id: string) => {
+    setSelectedStoryWorld(id);
+    // Update the URL to include the selected story world
+    navigate(`/locations?storyWorldId=${id}`, { replace: true });
+  };
+
   const handleDeleteLocation = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this location?')) {
       return;
@@ -85,7 +102,7 @@ const LocationsListPage: React.FC = () => {
       }
 
       // Remove the deleted location from the state
-      setLocations(locations.filter(location => location.id !== id));
+      setLocations(locations.filter(loc => loc.id !== id));
       toast.success('Location deleted successfully');
     } catch (error: any) {
       toast.error(`Error deleting location: ${error.message}`);
@@ -100,14 +117,14 @@ const LocationsListPage: React.FC = () => {
     // Initialize with root level (null parent)
     parentMap.set(null, []);
     
-    locations.forEach(location => {
-      const parentId = location.parent_location_id || null;
+    locations.forEach(loc => {
+      const parentId = loc.parent_location_id || null;
       
       if (!parentMap.has(parentId)) {
         parentMap.set(parentId, []);
       }
       
-      parentMap.get(parentId)?.push(location);
+      parentMap.get(parentId)?.push(loc);
     });
     
     return parentMap;
@@ -118,8 +135,8 @@ const LocationsListPage: React.FC = () => {
     const groupedMap = groupedLocations();
     const locationsForParent = groupedMap.get(parentId) || [];
     
-    return locationsForParent.map(location => (
-      <React.Fragment key={location.id}>
+    return locationsForParent.map(loc => (
+      <React.Fragment key={loc.id}>
         <tr className="hover:bg-gray-50">
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="flex items-center">
@@ -129,7 +146,7 @@ const LocationsListPage: React.FC = () => {
                 </div>
                 <div className="ml-4">
                   <div className="text-sm font-medium text-gray-900">
-                    {location.name}
+                    {loc.name}
                   </div>
                 </div>
               </div>
@@ -137,29 +154,29 @@ const LocationsListPage: React.FC = () => {
           </td>
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="text-sm text-gray-900">
-              {location.location_type || 'Not specified'}
+              {loc.location_type || 'Not specified'}
             </div>
           </td>
           <td className="px-6 py-4 whitespace-nowrap">
             <div className="text-sm text-gray-900">
-              {location.time_period || 'Not specified'}
+              {loc.time_period || 'Not specified'}
             </div>
           </td>
           <td className="px-6 py-4">
             <div className="text-sm text-gray-900 line-clamp-2">
-              {location.description || 'No description provided'}
+              {loc.description || 'No description provided'}
             </div>
           </td>
           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
             <div className="flex space-x-2">
               <button 
-                onClick={() => navigate(`/locations/${location.id}`)}
+                onClick={() => navigate(`/locations/${loc.id}?storyWorldId=${selectedStoryWorld}`)}
                 className="text-blue-600 hover:text-blue-900"
               >
                 <FaEdit />
               </button>
               <button 
-                onClick={() => handleDeleteLocation(location.id)}
+                onClick={() => handleDeleteLocation(loc.id)}
                 className="text-red-600 hover:text-red-900"
               >
                 <FaTrash />
@@ -167,7 +184,7 @@ const LocationsListPage: React.FC = () => {
             </div>
           </td>
         </tr>
-        {renderLocationRows(location.id, level + 1)}
+        {renderLocationRows(loc.id, level + 1)}
       </React.Fragment>
     ));
   };
@@ -177,7 +194,7 @@ const LocationsListPage: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Locations</h1>
         <Link
-          to="/locations/new"
+          to={`/locations/new?storyWorldId=${selectedStoryWorld}`}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center"
         >
           <FaPlus className="mr-2" />
@@ -193,7 +210,7 @@ const LocationsListPage: React.FC = () => {
         <select
           className="w-full md:w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           value={selectedStoryWorld}
-          onChange={(e) => setSelectedStoryWorld(e.target.value)}
+          onChange={(e) => handleStoryWorldChange(e.target.value)}
         >
           {storyWorlds.map((world) => (
             <option key={world.id} value={world.id}>
@@ -215,7 +232,7 @@ const LocationsListPage: React.FC = () => {
             Create your first location to start building your story world's locations.
           </p>
           <Link
-            to="/locations/new"
+            to={`/locations/new?storyWorldId=${selectedStoryWorld}`}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md inline-flex items-center"
           >
             <FaPlus className="mr-2" />
