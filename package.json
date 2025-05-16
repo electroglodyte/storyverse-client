@@ -28,7 +28,7 @@
     "ag-grid-react": "^31.0.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
-    "date-fns": "^4.1.0",
+    "date-fns": "^3.3.1",
     "lucide-react": "^0.263.1",
     "next-themes": "^0.2.1",
     "react": "^18.2.0",
