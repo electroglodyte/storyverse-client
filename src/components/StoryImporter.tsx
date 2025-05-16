@@ -5,6 +5,15 @@ import { Button, Card, Checkbox, Grid, Typography, Box, CircularProgress } from 
 import { supabase } from '../supabaseClient';
 import { Character, Location, Plotline } from '../supabase-tables';
 
+// Extended interfaces for API response data that includes confidence scores
+interface CharacterWithConfidence extends Character {
+  confidence?: number;
+}
+
+interface LocationWithConfidence extends Location {
+  confidence?: number;
+}
+
 interface StoryImporterProps {
   storyWorldId?: string;
   onImportComplete?: (storyId: string) => void;
@@ -21,8 +30,8 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'analyzing' | 'characters' | 'locations' | 'plotlines' | 'complete'>('analyzing');
-  const [characters, setCharacters] = useState<Character[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+  const [characters, setCharacters] = useState<CharacterWithConfidence[]>([]);
+  const [locations, setLocations] = useState<LocationWithConfidence[]>([]);
   const [plotlines, setPlotlines] = useState<Plotline[]>([]);
   const [selectedCharacters, setSelectedCharacters] = useState<Record<string, boolean>>({});
   const [selectedLocations, setSelectedLocations] = useState<Record<string, boolean>>({});
@@ -330,7 +339,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                       <Typography variant="body2">
                         {character.description || 'A character in the story'}
                       </Typography>
-                      {character.confidence && (
+                      {character.confidence !== undefined && (
                         <Typography variant="caption" color="textSecondary" display="block" mt={1}>
                           Detection confidence: {Math.round(character.confidence * 100)}%
                         </Typography>
@@ -409,12 +418,12 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                         borderRadius: 1,
                         mb: 1
                       }}>
-                        {location.locationType || location.location_type || 'location'}
+                        {location.location_type || 'location'}
                       </Typography>
                       <Typography variant="body2">
                         {location.description || 'A location in the story'}
                       </Typography>
-                      {location.confidence && (
+                      {location.confidence !== undefined && (
                         <Typography variant="caption" color="textSecondary" display="block" mt={1}>
                           Detection confidence: {Math.round(location.confidence * 100)}%
                         </Typography>
@@ -491,7 +500,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                         borderRadius: 1,
                         mb: 1
                       }}>
-                        {plotline.plotlineType || plotline.type || 'plotline'}
+                        {plotline.plotline_type || 'plotline'}
                       </Typography>
                       <Typography variant="body2">
                         {plotline.description || 'A plotline in the story'}
