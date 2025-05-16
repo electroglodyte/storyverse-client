@@ -6,11 +6,24 @@ const NON_CHARACTER_WORDS = [
   'BUT', 'OR', 'THAT', 'THIS', 'THESE', 'THOSE', 'MY', 'YOUR', 'HIS', 'HER', 'OUR', 'THEIR',
   'ARE', 'WAS', 'WERE', 'BE', 'BEEN', 'BEING', 'HAVE', 'HAS', 'HAD', 'DO', 'DOES', 'DID',
   'NOT', 'NO', 'YES', 'CAN', 'WILL', 'WOULD', 'SHOULD', 'COULD', 'MAY', 'MIGHT',
-  'YEAR', 'YEARS', 'STORY', 'SYNOPSIS'
+  'YEAR', 'YEARS', 'STORY', 'SYNOPSIS',
+  // Common screenplay elements that often appear in ALL CAPS
+  'FADE', 'CUT', 'DISSOLVE', 'SMASH', 'TITLE', 'CREDITS', 'ANGLE', 'PAN', 'TRACKING',
+  'ESTABLISHING', 'POV', 'FLASHBACK', 'BACK', 'CONTINUOUS', 'INTERCUT', 'SCENE', 
+  'INT', 'EXT', 'DAY', 'NIGHT', 'MORNING', 'EVENING', 'AFTERNOON', 'DAWN', 'DUSK',
+  'CONTINUOUS', 'LATER', 'MOMENTS', 'SAME', 'TIME', 'BEAT', 'PAUSE', 'SOUND',
+  'DOOR', 'WINDOW', 'STREET', 'ROOM', 'HOUSE', 'CAR', 'PHONE', 'NEXT', 'OVER',
+  // Sound effects often in ALL CAPS
+  'BOOM', 'CRASH', 'BANG', 'RING', 'THUD', 'CLICK', 'CLACK', 'WHOOSH', 'SLAM'
 ];
 
-// Helper function to extract characters marked in ALL CAPS
-// This improved version handles multi-word names
+// Common words that often appear in sluglines
+const SLUGLINE_WORDS = [
+  'INT', 'EXT', 'DAY', 'NIGHT', 'CONTINUOUS', 'LATER', 'MOMENTS', 'MORNING', 
+  'AFTERNOON', 'EVENING', 'DAWN', 'DUSK'
+];
+
+// Helper function to extract characters marked in ALL CAPS with improved screenplay awareness
 export const extractAllCapsCharacters = (text: string): string[] => {
   // First, identify dialogue and scene descriptions where character names appear
   const scriptLines = text.split('\n');
@@ -22,59 +35,120 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   // Regular expression to detect character speech or action line prefixes (common script format)
   const characterLineRegex = /^([A-Z][A-Z\s]+)(?:\s*\(.*\))?\s*$/;
   
+  // Regular expression to detect sluglines (scene headings)
+  const sluglineRegex = /^(INT|EXT|INT\/EXT|EXT\/INT)[\.\s]/i;
+  
   // First pass - extract character names from script formatting if present
   for (const line of scriptLines) {
+    // Skip sluglines - they often contain capitalized location names, not characters
+    if (sluglineRegex.test(line)) {
+      continue;
+    }
+    
     const match = line.match(characterLineRegex);
     if (match) {
       const name = match[1].trim();
-      if (name.length > 1 && !NON_CHARACTER_WORDS.includes(name)) {
-        if (name.includes(' ')) {
-          // This is a multi-word name, save it intact
-          multiWordNames.push(name);
-        } else {
-          potentialNames.push(name);
+      
+      // More aggressive filtering of non-character names
+      if (name.length > 1 && 
+          !NON_CHARACTER_WORDS.includes(name) && 
+          !SLUGLINE_WORDS.some(word => name.includes(word))) {
+        
+        // Check for dialogue context - character names are usually followed by dialogue
+        const lineIndex = scriptLines.indexOf(line);
+        const hasDialogueAfter = lineIndex < scriptLines.length - 1 && 
+                                 !characterLineRegex.test(scriptLines[lineIndex + 1]) &&
+                                 !sluglineRegex.test(scriptLines[lineIndex + 1]) &&
+                                 scriptLines[lineIndex + 1].trim().length > 0;
+        
+        // Higher confidence if it has dialogue after
+        if (hasDialogueAfter) {
+          if (name.includes(' ')) {
+            multiWordNames.push(name);
+          } else {
+            potentialNames.push(name);
+          }
+        }
+        // Still add it even without dialogue, but only if it looks like a proper name
+        else if (name.length >= 3 && !/^[A-Z]+S$/.test(name)) { // Avoid possessive forms like "JOHN'S"
+          if (name.includes(' ')) {
+            multiWordNames.push(name);
+          } else {
+            potentialNames.push(name);
+          }
         }
       }
     }
   }
   
-  // Second pass - extract remaining ALL CAPS words
+  // Second pass - extract remaining ALL CAPS words, but only in certain contexts
   // Regular expression to match words in ALL CAPS with 2 or more letters
   const allCapsRegex = /\b[A-Z][A-Z]+\b/g;
-  const allCapsMatches = text.match(allCapsRegex) || [];
   
-  // Add individual words, filtering non-character words and possessive forms
-  for (const word of allCapsMatches) {
-    // Only skip possessive forms if they're at the end of a title
-    if (word.endsWith("'S") && (text.includes(`${word} TALE`) || text.includes(`${word} STORY`))) {
+  // Process the text line by line for better context awareness
+  for (const line of scriptLines) {
+    // Skip sluglines and likely action descriptions
+    if (sluglineRegex.test(line) || 
+        SLUGLINE_WORDS.some(word => line.includes(word))) {
       continue;
     }
     
-    if (!NON_CHARACTER_WORDS.includes(word)) {
+    // Skip lines that are likely just scene directions
+    if (line.includes('CUT TO') || 
+        line.includes('FADE') || 
+        line.includes('DISSOLVE') ||
+        /^[A-Z\s]+:$/.test(line)) { // Lines ending with colon are often headings
+      continue;
+    }
+    
+    const allCapsMatches = line.match(allCapsRegex) || [];
+    
+    // Add individual words, with more aggressive filtering
+    for (const word of allCapsMatches) {
+      // Skip common non-character words
+      if (NON_CHARACTER_WORDS.includes(word)) {
+        continue;
+      }
+      
+      // Skip possessive forms
+      if (word.endsWith("'S") || word.endsWith("S'")) {
+        continue;
+      }
+      
+      // Skip words that are too short (likely abbreviations)
+      if (word.length < 3) {
+        continue;
+      }
+      
+      // Skip words that look like technical terms or sound effects
+      if (/^[A-Z]+[0-9]+$/.test(word) || // Skip things like "RT66" 
+          /^[A-Z]{2,5}$/.test(word)) {   // Skip short acronyms like "FBI"
+        continue;
+      }
+      
       potentialNames.push(word);
     }
   }
   
-  // Detect multi-word character names (like "BOBA FETT")
-  // Look for patterns where ALL CAPS words appear together consistently
+  // Extract multi-word character names with stricter filtering
   const multiWordRegex = /\b[A-Z][A-Z]+\s+[A-Z][A-Z]+(?:\s+[A-Z][A-Z]+)*\b/g;
   const multiWordMatches = text.match(multiWordRegex) || [];
   
   for (const multiWord of multiWordMatches) {
     // Skip if any of the words are in the non-character list
     const words = multiWord.split(/\s+/);
-    const isNonCharacter = words.every(word => NON_CHARACTER_WORDS.includes(word));
+    const isNonCharacter = words.some(word => NON_CHARACTER_WORDS.includes(word));
     
-    if (!isNonCharacter) {
-      // Check if this is a title (e.g., "A WOLF'S TALE")
+    if (!isNonCharacter && words.length <= 3) { // Limit to reasonable name length
+      // Check if this is a title or slugline element
       const lowerMultiWord = multiWord.toLowerCase();
-      if (!lowerMultiWord.includes("tale") && !lowerMultiWord.includes("story")) {
+      if (!lowerMultiWord.includes("tale") && 
+          !lowerMultiWord.includes("story") &&
+          !SLUGLINE_WORDS.some(word => multiWord.includes(word))) {
+        
         multiWordNames.push(multiWord);
-      }
-      
-      // Remove the individual words from potentialNames if they're part of a multi-word name
-      // Only do this if we're keeping the multi-word name
-      if (multiWordNames.includes(multiWord)) {
+        
+        // Remove the individual words from potentialNames if they're part of a multi-word name
         words.forEach(word => {
           const index = potentialNames.indexOf(word);
           if (index !== -1) {
@@ -105,7 +179,7 @@ export const generateCharacterDescription = (name: string, storyText: string): s
   const searchName = name.includes(' ') ? name.split(' ')[0] : name;
   
   // First, check for explicit descriptions near the character's name
-  const namePattern = new RegExp(`${searchName}[^.!?]*(?:[,.;:]\\s*[^.!?]*)?[.!?]`, 'g');
+  const namePattern = new RegExp(`${searchName}[^.!?]*(?:[,.;:]\\\\s*[^.!?]*)?[.!?]`, 'g');
   const contextMatches = storyText.match(namePattern);
   
   if (contextMatches && contextMatches.length > 0) {
