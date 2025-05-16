@@ -311,7 +311,10 @@ const Importer: React.FC = () => {
       }
       
       // Check for duplicates in the database
-      const duplicateElements = await checkDuplicates(type, elementsToSave);
+      const duplicatesResult = await checkDuplicates(type, elementsToSave);
+      
+      // Ensure duplicatesResult is an array (for proper TypeScript handling)
+      const duplicateElements = Array.isArray(duplicatesResult) ? duplicatesResult : [];
       
       // Filter out duplicate elements
       const newElements = elementsToSave.filter(elem => {
@@ -326,8 +329,11 @@ const Importer: React.FC = () => {
         });
       });
       
-      if (duplicateElements.length > 0) {
-        console.log(`Found ${duplicateElements.length} existing ${type} that will be skipped:`, 
+      // Safely access duplicateElements length
+      const duplicatesCount = duplicateElements.length;
+      
+      if (duplicatesCount > 0) {
+        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, 
           duplicateElements.map(elem => elem.name || elem.title || 'Unnamed'));
       }
       
@@ -419,8 +425,8 @@ const Importer: React.FC = () => {
       console.log(`Saved ${data?.length || 0} ${type}:`, data);
       
       // If some duplicates were skipped, show a message
-      if (duplicateElements.length > 0) {
-        setError(`Note: ${duplicateElements.length} ${type} already existed and were skipped.`);
+      if (duplicatesCount > 0) {
+        setError(`Note: ${duplicatesCount} ${type} already existed and were skipped.`);
         setTimeout(() => setError(null), 5000); // Clear message after 5 seconds
       }
       
