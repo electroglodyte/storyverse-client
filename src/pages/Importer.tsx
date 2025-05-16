@@ -377,7 +377,7 @@ const Importer: React.FC = () => {
         // Get a safe ID for the element that is guaranteed to be a string
         const safeId = getSafeId(element);
         
-        // First check for exact matches - using our safe query helper
+        // First check for exact matches - use await directly here
         const exactResult = await safeSupabaseQuery(
           supabase
             .from(tableName)
@@ -385,7 +385,7 @@ const Importer: React.FC = () => {
             .eq(nameField, elementName)
         );
         
-        // Then check for similar matches (case insensitive) - using our safe query helper
+        // Then check for similar matches (case insensitive) - use await directly here
         const similarResult = await safeSupabaseQuery(
           supabase
             .from(tableName)
@@ -524,7 +524,7 @@ const Importer: React.FC = () => {
       // Convert 'objects' to 'items' for the table name if necessary
       const tableName = type === 'objects' ? 'items' : type;
       
-      // Query the database for any matching names using our safe query helper
+      // Query the database for any matching names - use await directly here
       const result = await safeSupabaseQuery(
         supabase
           .from(tableName)
@@ -631,7 +631,7 @@ const Importer: React.FC = () => {
         return;
       }
       
-      // Insert elements into the appropriate table using our safe query helper
+      // Insert elements into the appropriate table - use await directly here
       const result = await safeSupabaseQuery(
         supabase
           .from(tableName)
