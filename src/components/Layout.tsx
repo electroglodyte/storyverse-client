@@ -1,10 +1,10 @@
 // src/components/Layout.tsx
 import { Outlet } from 'react-router-dom';
-import { SideNav } from './SideNav';
+import SideNav from './SideNav';
 import { AppNav } from './AppNav';
 import { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
-import { StoryWorld, Story, Series } from '../supabase-tables';
+import { supabase, Tables } from '@/services/supabase';
+import type { StoryWorld, Story, Series } from '@/types/database';
 
 export default function Layout() {
   const [activeStoryWorld, setActiveStoryWorld] = useState<StoryWorld | null>(null);
@@ -18,45 +18,40 @@ export default function Layout() {
     const fetchStoryWorlds = async () => {
       setLoading(true);
       try {
-        // Try story_worlds first
-        let { data, error } = await supabase
+        // Get story worlds
+        const { data, error } = await supabase
           .from('story_worlds')
           .select('*')
           .order('name', { ascending: true });
 
         if (error) {
-          console.log('Error fetching from story_worlds:', error);
-          const result = await supabase
-            .from('storyworlds')
-            .select('*')
-            .order('name', { ascending: true });
-          
-          data = result.data;
-          error = result.error;
-          
-          if (error) {
-            console.log('Error fetching from storyworlds:', error);
-            // Try one more table name possibility
-            const finalResult = await supabase
-              .from('storyworld')
-              .select('*')
-              .order('name', { ascending: true });
-            
-            data = finalResult.data;
-            error = finalResult.error;
-          }
-        }
-
-        if (error) {
-          console.error('Error fetching story worlds from all possible tables:', error);
+          console.error('Error fetching story worlds:', error);
           // Set some sample data for testing the UI
-          const sampleData = [
-            { id: '1', name: 'The Irish Mystery', description: 'A mystery set in Ireland' },
-            { id: '2', name: 'Space Adventure', description: 'A sci-fi adventure in space' },
-            { id: '3', name: 'Wild West Tales', description: 'Stories from the wild west' }
+          const sampleData: StoryWorld[] = [
+            { 
+              id: '1', 
+              name: 'The Irish Mystery', 
+              description: 'A mystery set in Ireland',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
+            { 
+              id: '2', 
+              name: 'Space Adventure', 
+              description: 'A sci-fi adventure in space',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
+            { 
+              id: '3', 
+              name: 'Wild West Tales', 
+              description: 'Stories from the wild west',
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
           ];
-          setStoryWorlds(sampleData as StoryWorld[]);
-          setActiveStoryWorld(sampleData[0] as StoryWorld);
+          setStoryWorlds(sampleData);
+          setActiveStoryWorld(sampleData[0]);
         } else {
           console.log('Successfully fetched story worlds:', data);
           setStoryWorlds(data || []);
@@ -67,31 +62,12 @@ export default function Layout() {
 
             // Fetch stories from this storyworld
             try {
-              // Try different possible column names for the foreign key
               const storyWorldId = data[0].id;
-              let storiesData;
-              
-              // Try story_world_id first
-              const result1 = await supabase
+              const { data: storiesData } = await supabase
                 .from('stories')
                 .select('*')
                 .eq('story_world_id', storyWorldId)
                 .order('title', { ascending: true });
-              
-              if (result1.data && result1.data.length > 0) {
-                storiesData = result1.data;
-              } else {
-                // Try storyworld_id
-                const result2 = await supabase
-                  .from('stories')
-                  .select('*')
-                  .eq('storyworld_id', storyWorldId)
-                  .order('title', { ascending: true });
-                
-                if (result2.data && result2.data.length > 0) {
-                  storiesData = result2.data;
-                }
-              }
 
               if (storiesData && storiesData.length > 0) {
                 setActiveStory(storiesData[0]);
