@@ -1,4 +1,4 @@
 // Version information for StoryVerse client
-export const VERSION = '0.7.2';
+export const VERSION = '0.7.3';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Fixed dependency conflict: downgraded date-fns to v3.x for compatibility with react-day-picker. Added UI components for writing progress tracking system with goals, writing sessions, and daily progress dashboard.';
+export const VERSION_NOTES = 'Fixed dependency conflicts and TypeScript errors in the writing progress tracking UI. Added missing UI components for the dashboard. Updated import paths for better maintainability.';
