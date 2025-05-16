@@ -42,10 +42,13 @@ import SceneVersionCompare from './pages/scenes/SceneVersionCompare';
 import SceneImportPage from './pages/scenes/SceneImportPage';
 import SceneExportPage from './pages/scenes/SceneExportPage';
 
-// Import and Analysis Pages (updated to use our new components)
+// Import and Analysis Pages (existing)
 import ImportAndAnalyzeStory from './pages/ImportAndAnalyzeStory';
 import StoryAnalysisProgress from './pages/StoryAnalysisProgress';
 import StoryAnalysisResults from './pages/StoryAnalysisResults';
+
+// New Importer component
+import Importer from './pages/Importer';
 
 // Legacy import component - keep for backward compatibility
 import ImportAnalyzer from './pages/import/ImportAnalyzer';
@@ -84,6 +87,11 @@ const router = createBrowserRouter([
       {
         path: 'analysis-results',
         element: <StoryAnalysisResults />,
+      },
+      // New Importer route
+      {
+        path: 'importer',
+        element: <Importer />,
       },
       // Legacy Import route - keep for backward compatibility
       {
