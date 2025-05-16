@@ -1,6 +1,6 @@
 /**
  * StoryVerse Database Schema
- * Version: 0.4.2
+ * Version: 0.4.3
  * 
  * This file contains TypeScript types for all tables in the Supabase database.
  */
@@ -146,6 +146,61 @@ export interface Faction {
   created_at: string;
   updated_at: string;
   user_id?: string;
+}
+
+// Object - a prop or item in the story
+export interface Object {
+  id: string;
+  name: string;
+  description?: string;
+  significance?: string;
+  current_location?: string;
+  current_owner?: string;
+  properties?: string;
+  history?: string;
+  appearance_count?: number;
+  is_macguffin?: boolean;
+  object_type?: string;  // weapon, tool, clothing, magical, technology, document, etc.
+  story_world_id?: string;
+  storyworld_id?: string; // Alias for story_world_id
+  story_id?: string;
+  project_id?: string;    // Alias for story_world_id
+  tags?: string[];
+  media_urls?: string[];
+  notes?: string;
+  created_at: string;
+  user_id?: string;
+}
+
+// Object-Character Relationship - links objects to characters
+export interface ObjectCharacterRelationship {
+  id: string;
+  object_id: string;
+  character_id: string;
+  relationship_type?: string; // owned, created, desires, etc.
+  description?: string;
+  created_at: string;
+}
+
+// Object-Location Relationship - links objects to locations
+export interface ObjectLocationRelationship {
+  id: string;
+  object_id: string;
+  location_id: string;
+  relationship_type?: string; // stored, hidden, connected to, etc.
+  description?: string;
+  created_at: string;
+}
+
+// Object Appearance - tracks where/when objects appear
+export interface ObjectAppearance {
+  id: string;
+  object_id: string;
+  scene_id?: string;
+  event_id?: string;
+  importance?: string; // primary, secondary, background
+  description?: string;
+  created_at: string;
 }
 
 // Character Relationship - connection between two characters
