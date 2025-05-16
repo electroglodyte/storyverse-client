@@ -19,6 +19,7 @@ interface SideNavProps {
   setActiveStoryWorld: (storyWorld: StoryWorld | null) => void;
   setActiveStory: (story: Story | null) => void;
   setActiveSeries: (series: Series | null) => void;
+  loading: boolean;
 }
 
 export const SideNav: React.FC<SideNavProps> = ({
@@ -28,7 +29,8 @@ export const SideNav: React.FC<SideNavProps> = ({
   storyWorlds,
   setActiveStoryWorld,
   setActiveStory,
-  setActiveSeries
+  setActiveSeries,
+  loading
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,12 +81,26 @@ export const SideNav: React.FC<SideNavProps> = ({
     if (storyWorld) {
       // Fetch a story from this story world
       try {
-        const { data, error } = await supabase
+        // Try with story_world_id first
+        let { data, error } = await supabase
           .from('stories')
           .select('*')
-          .eq('storyworld_id', storyWorld.id)
-          .order('name', { ascending: true })
+          .eq('story_world_id', storyWorld.id)
+          .order('title', { ascending: true })
           .limit(1);
+
+        // If no results, try with storyworld_id 
+        if ((!data || data.length === 0) && error) {
+          const result = await supabase
+            .from('stories')
+            .select('*')
+            .eq('storyworld_id', storyWorld.id)
+            .order('title', { ascending: true })
+            .limit(1);
+            
+          data = result.data;
+          error = result.error;
+        }
 
         if (error) throw error;
         
@@ -444,12 +460,13 @@ export const SideNav: React.FC<SideNavProps> = ({
               justifyContent: 'space-between', 
               alignItems: 'center',
               border: 'none',
-              cursor: 'pointer'
+              cursor: loading ? 'wait' : 'pointer'
             }}
             onClick={toggleDropdown}
+            disabled={loading}
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeStoryWorld?.name || 'Select a Story World'}
+              {loading ? 'Loading...' : (activeStoryWorld?.name || 'Select a Story World')}
             </span>
             <span>{showDropdown ? '▲' : '▼'}</span>
           </button>
