@@ -8,7 +8,7 @@ import {
   FaCog, FaTheaterMasks, FaPen, FaFileImport, FaFileExport,
   FaHistory, FaComments, FaExchangeAlt, FaEdit, FaMagic,
   FaUser, FaMapMarkerAlt, FaUsers, FaTools, FaCube,
-  FaChartLine, FaCalendarAlt, FaStopwatch
+  FaChartLine, FaCalendarAlt, FaStopwatch, FaFileCode
 } from 'react-icons/fa';
 import { supabase } from '../supabaseClient';
 
@@ -449,13 +449,13 @@ export const SideNav: React.FC<SideNavProps> = ({
           </li>
           <li>
             <Link
-              to={`/importer?storyWorldId=${storyWorldId}${storyId ? `&storyId=${storyId}` : ''}`}
-              style={isActive('/importer') ? activeStyle : navItemStyle}
+              to={`/json-import`}
+              style={isActive('/json-import') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/importer')) e.currentTarget.style.backgroundColor = 'transparent'}}
+              onMouseOut={(e) => {if (!isActive('/json-import')) e.currentTarget.style.backgroundColor = 'transparent'}}
             >
-              <FaFileImport style={{ marginRight: '0.5rem' }} />
-              <span>Importer</span>
+              <FaFileCode style={{ marginRight: '0.5rem' }} />
+              <span>JSON Import</span>
             </Link>
           </li>
         </ul>
@@ -532,13 +532,13 @@ export const SideNav: React.FC<SideNavProps> = ({
         </li>
         <li>
           <Link
-            to="/importer"
-            style={isActive('/importer') && !location.pathname.includes('?storyId=') && !location.pathname.includes('?storyWorldId=') ? activeStyle : navItemStyle}
+            to="/json-import"
+            style={isActive('/json-import') ? activeStyle : navItemStyle}
             onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-            onMouseOut={(e) => {if (!isActive('/importer') || location.pathname.includes('?storyId=') || location.pathname.includes('?storyWorldId=')) e.currentTarget.style.backgroundColor = 'transparent'}}
+            onMouseOut={(e) => {if (!isActive('/json-import')) e.currentTarget.style.backgroundColor = 'transparent'}}
           >
-            <FaMagic style={{ marginRight: '0.5rem' }} />
-            <span>Importer</span>
+            <FaFileCode style={{ marginRight: '0.5rem' }} />
+            <span>JSON Import</span>
           </Link>
         </li>
         <li>
