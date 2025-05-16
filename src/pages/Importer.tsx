@@ -14,6 +14,9 @@ import {
   extractScenes
 } from '../extractors';
 
+// Import new util for handling duplicates
+import { checkForDuplicates } from '../utils/duplicateHandler';
+
 interface FileInfo {
   file: File;
   content: string | null;
@@ -245,7 +248,16 @@ const Importer: React.FC = () => {
       };
 
       // Before setting extracted elements, check for potential duplicates
-      await checkForDuplicates('characters', characterObjects);
+      await checkForDuplicates(
+        'characters', 
+        characterObjects,
+        setDuplicateElements,
+        setExtractedElements,
+        setSelectedElements,
+        safeSupabaseQuery,
+        supabase,
+        getSafeId
+      );
       
       // Store the extracted elements and move to the first review step
       setExtractedElements(processedData);
@@ -333,7 +345,16 @@ const Importer: React.FC = () => {
                 console.log(`Added ${newApiCharacters.length} additional characters from API`);
                 
                 // Check these new characters for duplicates too
-                checkForDuplicates('characters', newApiCharacters);
+                checkForDuplicates(
+                  'characters',
+                  newApiCharacters,
+                  setDuplicateElements,
+                  setExtractedElements,
+                  setSelectedElements,
+                  safeSupabaseQuery,
+                  supabase,
+                  getSafeId
+                );
               }
             }
             setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
@@ -355,155 +376,6 @@ const Importer: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Enhanced duplicate detection with more robust type handling
-  const checkForDuplicates = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', elements: any[]) => {
-    if (!elements || elements.length === 0) return;
-    
-    try {
-      const tableName = type === 'objects' ? 'items' : type;
-      const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
-      
-      const duplicatesInfo: Record<string, DuplicateInfo[]> = {};
-      
-      // For each extracted element, check for similar entries in the database
-      for (const element of elements) {
-        // Skip elements without the required name field
-        if (!element || typeof element[nameField] !== 'string' || !element[nameField]) continue;
-        
-        const elementName = element[nameField];
-        
-        // Get a safe ID for the element that is guaranteed to be a string
-        const safeId = getSafeId(element);
-        
-        // First check for exact matches - use await directly here
-        const exactResult = await safeSupabaseQuery(
-          supabase
-            .from(tableName)
-            .select('id, ' + nameField)
-            .eq(nameField, elementName)
-        );
-        
-        // Then check for similar matches (case insensitive) - use await directly here
-        const similarResult = await safeSupabaseQuery(
-          supabase
-            .from(tableName)
-            .select('id, ' + nameField)
-            .neq('id', safeId)
-            .ilike(nameField, `%${elementName}%`)
-        );
-        
-        // Handle errors if any
-        if (exactResult.error) {
-          console.error(`Error checking for exact duplicates:`, exactResult.error);
-          continue;
-        }
-        
-        if (similarResult.error) {
-          console.error(`Error checking for similar duplicates:`, similarResult.error);
-          continue;
-        }
-        
-        // Combine and process matches
-        const allMatches: DuplicateInfo[] = [];
-        
-        // Process exact matches
-        exactResult.data.forEach(match => {
-          // Using direct access within a guard clause
-          if (match && typeof match.id === 'string' && typeof match[nameField] === 'string') {
-            allMatches.push({
-              id: match.id,
-              name: match[nameField],
-              match_type: 'exact',
-              similarity: 100
-            });
-          }
-        });
-        
-        // Process similar matches
-        similarResult.data.forEach(match => {
-          // Skip if already added as exact match or if missing required fields
-          if (!match || typeof match.id !== 'string' || typeof match[nameField] !== 'string') return;
-          
-          if (!allMatches.some(m => m.id === match.id)) {
-            // Calculate similarity (simple version)
-            const nameLower = elementName.toLowerCase();
-            const matchNameLower = match[nameField].toLowerCase();
-            const similarity = matchNameLower.includes(nameLower) || nameLower.includes(matchNameLower) ? 70 : 50;
-            
-            allMatches.push({
-              id: match.id,
-              name: match[nameField],
-              match_type: 'similar',
-              similarity
-            });
-          }
-        });
-        
-        // If matches found, store them with the element's safe id
-        if (allMatches.length > 0) {
-          duplicatesInfo[safeId] = allMatches;
-        }
-      }
-      
-      // Update state with duplicate info
-      if (Object.keys(duplicatesInfo).length > 0) {
-        setDuplicateElements(prev => ({
-          ...prev,
-          ...duplicatesInfo
-        }));
-        
-        console.log(`Found ${Object.keys(duplicatesInfo).length} elements with potential duplicates`);
-      }
-    } catch (err) {
-      console.error(`Error in checkForDuplicates:`, getErrorMessage(err));
-    }
-  };
-
-  // Toggle selection of an element
-  const toggleElementSelection = (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', id: string) => {
-    if (!id) return; // Don't toggle empty IDs
-    
-    setSelectedElements(prev => {
-      if (prev[type].includes(id)) {
-        return {
-          ...prev,
-          [type]: prev[type].filter(itemId => itemId !== id)
-        };
-      } else {
-        return {
-          ...prev,
-          [type]: [...prev[type], id]
-        };
-      }
-    });
-  };
-
-  // Handle checkbox click without toggling the card
-  const handleCheckboxClick = (e: React.MouseEvent, type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', id: string) => {
-    e.stopPropagation(); // Prevent card click
-    toggleElementSelection(type, id);
-  };
-
-  // Select/deselect all elements of a given type
-  const toggleAllSelection = (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', select: boolean) => {
-    if (!extractedElements) return;
-    
-    setSelectedElements(prev => {
-      if (select) {
-        // Use getSafeId to ensure we always have a valid ID
-        return {
-          ...prev,
-          [type]: extractedElements[type]?.map((item: any) => getSafeId(item)) || []
-        };
-      } else {
-        return {
-          ...prev,
-          [type]: []
-        };
-      }
-    });
   };
 
   // New simplified approach: just get existing names/titles as strings
@@ -581,6 +453,51 @@ const Importer: React.FC = () => {
         delete updated[id];
       }
       return updated;
+    });
+  };
+
+  // Toggle selection of an element
+  const toggleElementSelection = (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', id: string) => {
+    if (!id) return; // Don't toggle empty IDs
+    
+    setSelectedElements(prev => {
+      if (prev[type].includes(id)) {
+        return {
+          ...prev,
+          [type]: prev[type].filter(itemId => itemId !== id)
+        };
+      } else {
+        return {
+          ...prev,
+          [type]: [...prev[type], id]
+        };
+      }
+    });
+  };
+
+  // Handle checkbox click without toggling the card
+  const handleCheckboxClick = (e: React.MouseEvent, type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', id: string) => {
+    e.stopPropagation(); // Prevent card click
+    toggleElementSelection(type, id);
+  };
+
+  // Select/deselect all elements of a given type
+  const toggleAllSelection = (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', select: boolean) => {
+    if (!extractedElements) return;
+    
+    setSelectedElements(prev => {
+      if (select) {
+        // Use getSafeId to ensure we always have a valid ID
+        return {
+          ...prev,
+          [type]: extractedElements[type]?.map((item: any) => getSafeId(item)) || []
+        };
+      } else {
+        return {
+          ...prev,
+          [type]: []
+        };
+      }
     });
   };
 
