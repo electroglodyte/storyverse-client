@@ -1,7 +1,11 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.9';
+export const VERSION = '0.9.10';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = `Fixed database and Supabase connectivity:
+export const VERSION_NOTES = `Fixed dependency issues for Vercel deployment:
+- Removed @types/react-dropzone as react-dropzone now includes its own TypeScript types
+- This fixes the build error during npm install on Vercel
+
+Previous (0.9.9): Fixed database and Supabase connectivity:
 - Added database.types.ts with proper TypeScript definitions for Supabase tables
 - Created proper exports for supabaseClient in lib directory 
 - Fixed imports in entityImporter.ts
