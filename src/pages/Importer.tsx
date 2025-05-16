@@ -314,13 +314,13 @@ const Importer: React.FC = () => {
         }
         
         // Then check for similar matches (case insensitive)
-        // Create a safe id for the query - if element.id doesn't exist, use a random UUID
-        const safeElementId = element.id || uuidv4(); // Fix for line 335
+        // Create a safe id for the query - ensure element.id exists or generate one
+        const elementId = element.id || uuidv4(); // Fixed line 335
         
         const { data: similarMatches, error: similarError } = await supabase
           .from(tableName)
           .select('id, ' + nameField)
-          .neq('id', safeElementId) // Using the safe ID here
+          .neq('id', elementId) // Using the safe variable now
           .ilike(nameField, `%${elementName}%`);
           
         if (similarError) {
@@ -364,8 +364,8 @@ const Importer: React.FC = () => {
         }
         
         // If matches found, store them
-        if (allMatches.length > 0 && element.id) { // Fix for line 347
-          duplicatesInfo[element.id] = allMatches;
+        if (allMatches.length > 0 && elementId) { // Fixed line 347
+          duplicatesInfo[elementId] = allMatches;
         }
       }
       
@@ -496,7 +496,7 @@ const Importer: React.FC = () => {
     // Remove from duplicates list
     setDuplicateElements(prev => {
       const updated = { ...prev };
-      delete updated[id]; // Fix for line 354
+      if (id) delete updated[id]; // Fixed line 354
       return updated;
     });
   };
