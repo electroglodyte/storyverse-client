@@ -626,6 +626,16 @@ const Importer: React.FC = () => {
                     {typeProperty && element[typeProperty] && (
                       <span className="element-type">{element[typeProperty]}</span>
                     )}
+                    {type === 'characters' && element.character_logline && (
+                      <p className="element-logline" style={{ 
+                        fontStyle: 'italic', 
+                        fontSize: '0.9em',
+                        color: '#555',
+                        margin: '4px 0'
+                      }}>
+                        {element.character_logline}
+                      </p>
+                    )}
                     {element.description && (
                       <p className="element-description">
                         {element.description.length > 100 
