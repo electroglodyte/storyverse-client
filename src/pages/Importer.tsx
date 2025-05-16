@@ -35,14 +35,6 @@ interface DuplicateInfo {
   similarity: number; // 0-100 percentage
 }
 
-// Define a proper shape for errors in the application
-interface DatabaseError {
-  message: string;
-  details?: string;
-  hint?: string;
-  code?: string;
-}
-
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -275,7 +267,7 @@ const Importer: React.FC = () => {
             }
             setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
           }
-        }).catch(apiErr => {
+        }).catch((apiErr: Error) => { // Fix error #1
           console.warn('API error:', apiErr);
           setDebugInfo(prev => `${prev}\nAPI error: ${apiErr.message}`);
         });
