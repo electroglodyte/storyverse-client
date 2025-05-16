@@ -18,8 +18,8 @@ interface ExtractedElements {
 }
 
 // Default story and world UUIDs - use the existing records from the database
-const DEFAULT_STORYWORLD_ID = uuidv4(); // Generate a new UUID for storyworld if needed
-const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // Use the existing NoneStory ID
+const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
+const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
 
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
