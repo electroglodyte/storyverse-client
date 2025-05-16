@@ -1,155 +1,23 @@
-// Generated types for Supabase tables with strict enums
+import { Database } from '@/types/supabase'
 
-export type Json = string | number | boolean | null | { [key: string]: Json } | Json[]
+// Type-only exports
+export type { Database } from '@/types/supabase'
 
-export type StoryType = 'novel' | 'short_story' | 'screenplay' | 'episode' | 'other'
-export type StoryStatus = 'concept' | 'outline' | 'draft' | 'revision' | 'completed'
-export type SeriesStatus = 'planned' | 'in-progress' | 'completed' | 'on-hold'
-export type SceneType = 'beat' | 'outline' | 'scene' | 'chapter' | 'outline_element' | 'summary' 
-export type SceneStatus = 'idea' | 'draft' | 'revised' | 'polished' | 'finished'
-export type SceneFormat = 'plain' | 'fountain' | 'markdown'
-export type CommentType = 'revision' | 'suggestion' | 'question' | 'comment'
-export type PlotlineType = 'main' | 'subplot' | 'character' | 'thematic' | 'other'
-
-export interface Database {
-  Tables: {
-    story_worlds: {
-      Row: {
-        id: string
-        name: string
-        description?: string
-        genre?: string[]
-        tags?: string[]
-        time_period?: string
-        rules?: string
-        image_url?: string
-        notes?: string
-        attributes?: Json
-        created_at: string
-        updated_at: string
-        user_id?: string
-      }
-      Insert: Omit<Database['Tables']['story_worlds']['Row'], 'id' | 'created_at' | 'updated_at'>
-      Update: Partial<Database['Tables']['story_worlds']['Insert']>
-    }
-    series: {
-      Row: {
-        id: string
-        name: string
-        description?: string
-        story_world_id?: string
-        tags?: string[]
-        status?: SeriesStatus
-        target_length?: number
-        sequence_type?: string
-        image_url?: string
-        notes?: string
-        attributes?: Json
-        created_at: string
-        updated_at: string
-        user_id?: string
-      }
-      Insert: Omit<Database['Tables']['series']['Row'], 'id' | 'created_at' | 'updated_at'>
-      Update: Partial<Database['Tables']['series']['Insert']>
-    }
-    stories: {
-      Row: {
-        id: string
-        title: string
-        description?: string
-        story_world_id?: string
-        series_id?: string
-        series_order?: number
-        status?: StoryStatus
-        story_type?: StoryType
-        word_count?: number
-        word_count_target?: number
-        target_date?: string
-        synopsis?: string
-        image_url?: string
-        notes?: string
-        tags?: string[]
-        genre?: string[]
-        attributes?: Json
-        created_at: string
-        updated_at: string
-        user_id?: string
-      }
-      Insert: Omit<Database['Tables']['stories']['Row'], 'id' | 'created_at' | 'updated_at'>
-      Update: Partial<Database['Tables']['stories']['Insert']>
-    }
-    scenes: {
-      Row: {
-        id: string
-        title: string
-        description?: string
-        content?: string
-        event_id?: string
-        story_id?: string
-        sequence_number?: number
-        is_visible?: boolean
-        type: SceneType
-        status: SceneStatus
-        format?: SceneFormat
-        metadata?: Json
-        essence?: string
-        interest?: string
-        creation_notes?: string
-        character_5q?: Json
-        subtext?: string
-        created_at: string
-        updated_at: string
-      }
-      Insert: Omit<Database['Tables']['scenes']['Row'], 'id' | 'created_at' | 'updated_at'>
-      Update: Partial<Database['Tables']['scenes']['Insert']>
-    }
-    scene_versions: {
-      Row: {
-        id: string
-        scene_id: string
-        content: string
-        version_number: number
-        created_at: string
-        created_by?: string
-        notes?: string
-      }
-      Insert: Omit<Database['Tables']['scene_versions']['Row'], 'id' | 'created_at'>
-      Update: Partial<Database['Tables']['scene_versions']['Insert']>
-    }
-    scene_comments: {
-      Row: {
-        id: string
-        scene_id: string
-        content: string
-        created_at: string
-        created_by?: string
-        resolved?: boolean
-        position?: Json
-        type?: CommentType
-      }
-      Insert: Omit<Database['Tables']['scene_comments']['Row'], 'id' | 'created_at'>
-      Update: Partial<Database['Tables']['scene_comments']['Insert']>
-    }
-    plotlines: {
-      Row: {
-        id: string
-        title: string
-        description?: string
-        story_id: string
-        plotline_type?: PlotlineType
-        starting_event_id?: string
-        climax_event_id?: string
-        resolution_event_id?: string
-        theme?: string
-        notes?: string
-        created_at: string
-        updated_at: string
-      }
-      Insert: Omit<Database['Tables']['plotlines']['Row'], 'id' | 'created_at' | 'updated_at'>
-      Update: Partial<Database['Tables']['plotlines']['Insert']>
-    }
-  }
+// Core entity types
+export type StoryWorld = Database['public']['Tables']['story_worlds']['Row']
+export type Story = Database['public']['Tables']['stories']['Row'] 
+export type Series = Database['public']['Tables']['series']['Row']
+export type Scene = Database['public']['Tables']['scenes']['Row'] & {
+  type: string
+  status: string
 }
-
-export type Tables = Database['Tables']
-export type TableName = keyof Database['Tables']
+export type Character = Database['public']['Tables']['characters']['Row']
+export type Location = Database['public']['Tables']['locations']['Row']
+export type Faction = Database['public']['Tables']['factions']['Row']
+export type Item = Database['public']['Tables']['items']['Row']
+export type Event = Database['public']['Tables']['events']['Row']
+export type WritingSample = Database['public']['Tables']['writing_samples']['Row']
+export type StyleProfile = Database['public']['Tables']['style_profiles']['Row']
+export type StyleAnalysis = Database['public']['Tables']['style_analyses']['Row']
+export type SceneComment = Database['public']['Tables']['scene_comments']['Row']
+export type SceneVersion = Database['public']['Tables']['scene_versions']['Row']
