@@ -35,6 +35,12 @@ interface DuplicateInfo {
   similarity: number; // 0-100 percentage
 }
 
+// Added interface for element with required id
+interface ElementWithId {
+  id: string;
+  [key: string]: any; // Other properties
+}
+
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -302,6 +308,10 @@ const Importer: React.FC = () => {
         
         const elementName = element[nameField];
         
+        // Generate a UUID if element doesn't have an id
+        // This is a more robust fix that ensures we always have a valid id string
+        const elementId: string = typeof element.id === 'string' ? element.id : uuidv4();
+        
         // First check for exact matches
         const { data: exactMatches, error: exactError } = await supabase
           .from(tableName)
@@ -314,13 +324,10 @@ const Importer: React.FC = () => {
         }
         
         // Then check for similar matches (case insensitive)
-        // Create a safe id for the query - ensure element.id exists or generate one
-        const elementId = element.id || uuidv4(); // Fixed line 335
-        
         const { data: similarMatches, error: similarError } = await supabase
           .from(tableName)
           .select('id, ' + nameField)
-          .neq('id', elementId) // Using the safe variable now
+          .neq('id', elementId)
           .ilike(nameField, `%${elementName}%`);
           
         if (similarError) {
@@ -363,8 +370,9 @@ const Importer: React.FC = () => {
           });
         }
         
-        // If matches found, store them
-        if (allMatches.length > 0 && elementId) { // Fixed line 347
+        // If matches found, store them with the element's id
+        if (allMatches.length > 0) {
+          // Using the validated elementId to store duplicates info
           duplicatesInfo[elementId] = allMatches;
         }
       }
@@ -474,8 +482,8 @@ const Importer: React.FC = () => {
   };
 
   // Handle discarding a duplicate element
-  const handleDiscardDuplicate = (id: string) => {
-    if (!extractedElements) return;
+  const handleDiscardDuplicate = (id?: string) => {
+    if (!extractedElements || !id) return; // Ensure we have a valid id
     
     // Remove from selected elements
     setSelectedElements(prev => ({
@@ -496,7 +504,7 @@ const Importer: React.FC = () => {
     // Remove from duplicates list
     setDuplicateElements(prev => {
       const updated = { ...prev };
-      if (id) delete updated[id]; // Fixed line 354
+      delete updated[id]; // Safe delete since we already checked for valid id
       return updated;
     });
   };
@@ -776,19 +784,21 @@ const Importer: React.FC = () => {
         {count > 0 ? (
           <div className="elements-list">
             {elements.map((element: any) => {
-              const isSelected = selectedElements[type].includes(element.id);
+              // Safely get element ID or generate a fallback
+              const elementId = element.id || '';
+              const isSelected = selectedElements[type].includes(elementId);
               const nameProperty = getNameProperty();
               const typeProperty = getTypeProperty();
-              const hasDuplicates = duplicateElements[element.id] && duplicateElements[element.id].length > 0;
+              const hasDuplicates = duplicateElements[elementId] && duplicateElements[elementId].length > 0;
               
               return (
                 <div 
-                  key={element.id} 
+                  key={elementId || uuidv4()} // Safe key even if id is missing
                   className={`element-card ${isSelected ? 'selected' : ''} ${hasDuplicates ? 'has-duplicates' : ''}`}
                 >
                   <div 
                     className="element-checkbox"
-                    onClick={(e) => handleCheckboxClick(e, type, element.id)}
+                    onClick={(e) => handleCheckboxClick(e, type, elementId)}
                   >
                     <input 
                       type="checkbox" 
@@ -812,7 +822,7 @@ const Importer: React.FC = () => {
                         fontSize: '0.85em'
                       }}>
                         <strong>Potential duplicate found: </strong>
-                        {duplicateElements[element.id].map((dup, idx) => (
+                        {duplicateElements[elementId].map((dup, idx) => (
                           <span key={idx}>
                             {dup.name} 
                             ({dup.match_type === 'exact' ? 'exact match' : `${dup.similarity}% similar`})
@@ -827,11 +837,11 @@ const Importer: React.FC = () => {
                                 cursor: 'pointer',
                                 fontSize: '0.85em'
                               }}
-                              onClick={() => handleDiscardDuplicate(element.id)}
+                              onClick={() => handleDiscardDuplicate(elementId)}
                             >
                               Discard
                             </button>
-                            {idx < duplicateElements[element.id].length - 1 ? ', ' : ''}
+                            {idx < duplicateElements[elementId].length - 1 ? ', ' : ''}
                           </span>
                         ))}
                       </div>
@@ -841,8 +851,8 @@ const Importer: React.FC = () => {
                     {type === 'characters' && (
                       <textarea
                         className="element-logline-editor"
-                        value={editedLoglines[element.id] || element.character_logline || ''}
-                        onChange={(e) => handleLoglineChange(element.id, e.target.value)}
+                        value={editedLoglines[elementId] || element.character_logline || ''}
+                        onChange={(e) => handleLoglineChange(elementId, e.target.value)}
                         placeholder="Enter character logline..."
                         style={{ 
                           width: '100%',
