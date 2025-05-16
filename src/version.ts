@@ -1,4 +1,4 @@
 // Version information for StoryVerse client
 export const VERSION = '0.9.7';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Cleaned up database by removing test Rufus story world and related characters to ensure a clean workspace. Previous update (0.9.6): Fixed JSON Import functionality by creating a new "import-story" Edge Function that properly handles the JSON data from Claude\'s story analysis. Updated the JSONImport component to use the correct Edge Function and parameter handling, resolving the "Failed to send a request to the Edge Function" error that was occurring during import attempts.';
+export const VERSION_NOTES = 'Enhanced Character Import: Fixed JSON Import functionality to properly handle arrays of characters directly pasted from Claude. The improved Edge Function now intelligently detects the format of input data and processes it appropriately, while the UI displays helpful warnings when a story selection is required for character import. The system will correctly create factions when characters include faction_id fields, and provides more detailed logging of the import process for troubleshooting.';
