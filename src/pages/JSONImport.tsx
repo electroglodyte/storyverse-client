@@ -143,21 +143,21 @@ const JSONImport: React.FC = () => {
 
       // Add selected story world and story IDs to the data
       if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
-        parsedData.storyWorldId = selectedStoryWorldId;
+        parsedData.existingStoryWorldId = selectedStoryWorldId;
         const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
         addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
       }
 
       if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
-        parsedData.storyId = selectedStoryId;
+        parsedData.existingStoryId = selectedStoryId;
         const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
         addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
       }
 
       // Process the data using import_analyzed_story tool
-      addLog('Invoking import_analyzed_story tool...');
-      const { data, error: importError } = await supabase.functions.invoke('import-analyzed-story', {
-        body: { data: parsedData }
+      addLog('Invoking import_story tool...');
+      const { data, error: importError } = await supabase.functions.invoke('import-story', {
+        body: parsedData
       });
 
       if (importError) {
@@ -168,16 +168,18 @@ const JSONImport: React.FC = () => {
       if (data) {
         if (data.success) {
           setSuccess('Story data imported successfully!');
-          addLog(`Successfully imported story: ${data.story?.title || 'Unnamed'}`);
+          addLog(`Successfully imported story with ID: ${data.entityIds.storyId || 'N/A'}`);
           
           // Log details of what was imported
-          if (data.stats) {
-            Object.entries(data.stats).forEach(([key, value]) => {
-              addLog(`Imported ${value} ${key}`);
+          if (data.entityIds) {
+            Object.entries(data.entityIds).forEach(([key, value]) => {
+              if (key !== 'storyId' && key !== 'storyWorldId') {
+                addLog(`Imported ${value} ${key}`);
+              }
             });
           }
         } else {
-          throw new Error(data.message || 'Unknown error occurred during import');
+          throw new Error(data.error || 'Unknown error occurred during import');
         }
       } else {
         throw new Error('No response data received from import function');
