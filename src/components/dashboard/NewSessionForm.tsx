@@ -73,13 +73,13 @@ export default function NewSessionForm({ onSessionCreated, onCancel }: NewSessio
     const fetchStories = async () => {
       const { data, error } = await supabase
         .from('stories')
-        .select('id, title')
+        .select('id, title, name, created_at, updated_at')
         .order('title');
         
       if (error) {
         console.error('Error fetching stories:', error);
-      } else {
-        setStories(data || []);
+      } else if (data) {
+        setStories(data);
       }
     };
     
@@ -98,14 +98,14 @@ export default function NewSessionForm({ onSessionCreated, onCancel }: NewSessio
     const fetchScenes = async () => {
       const { data, error } = await supabase
         .from('scenes')
-        .select('id, title')
+        .select('id, title, type, status, created_at, updated_at')
         .eq('story_id', selectedStory)
         .order('title');
         
       if (error) {
         console.error('Error fetching scenes:', error);
-      } else {
-        setScenes(data || []);
+      } else if (data) {
+        setScenes(data);
       }
     };
     
