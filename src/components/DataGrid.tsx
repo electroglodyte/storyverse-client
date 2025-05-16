@@ -1,123 +1,83 @@
-import React, { useCallback, useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { ColDef, GridApi, ColumnApi } from 'ag-grid-community';
 
 interface DataGridProps {
-  columnDefs: any[];
-  rowData: any[];
-  title?: string;
-  onRowSelected?: (rowData: any) => void;
-  onCellValueChanged?: (event: any) => void;
-  onRowDeleted?: (rowData: any) => void;
-  actionButtons?: React.ReactNode;
-  className?: string;
-  isLoading?: boolean;
+  rows: any[];
+  columns: ColDef[];
+  getRowId?: (params: any) => string;
+  onRowSelected?: (event: any) => void;
+  onRowClick?: (id: string) => void;
+  defaultColDef?: ColDef;
+  rowSelection?: 'single' | 'multiple';
+  suppressRowClickSelection?: boolean;
+  onSelectionChanged?: () => void;
+  onRowDeleted?: (id: string) => void;
 }
 
-const DataGrid: React.FC<DataGridProps> = ({
-  columnDefs,
-  rowData,
-  title,
+export const DataGrid: React.FC<DataGridProps> = ({
+  rows,
+  columns,
+  getRowId,
   onRowSelected,
-  onCellValueChanged,
-  onRowDeleted,
-  actionButtons,
-  className = '',
-  isLoading = false,
-}) => {
-  const [gridApi, setGridApi] = useState(null);
-  const [gridColumnApi, setGridColumnApi] = useState(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const onGridReady = useCallback((params: any) => {
-    setGridApi(params.api);
-    setGridColumnApi(params.columnApi);
-    params.api.sizeColumnsToFit();
-  }, []);
-
-  // Handle window resize to ensure the grid stays responsive
-  useEffect(() => {
-    const handleResize = () => {
-      if (gridApi) {
-        setTimeout(() => {
-          gridApi.sizeColumnsToFit();
-        }, 100);
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [gridApi]);
-
-  const onSelectionChanged = useCallback(() => {
-    if (gridApi && onRowSelected) {
-      const selectedRows = gridApi.getSelectedRows();
-      if (selectedRows.length > 0) {
-        onRowSelected(selectedRows[0]);
-      }
-    }
-  }, [gridApi, onRowSelected]);
-
-  const defaultColDef = {
+  onRowClick,
+  defaultColDef = {
     flex: 1,
     minWidth: 100,
-    editable: true,
-    sortable: true,
-    filter: true,
     resizable: true,
-    wrapHeaderText: true,
-    autoHeaderHeight: true,
+  },
+  rowSelection = 'single',
+  suppressRowClickSelection = false,
+  onSelectionChanged,
+  onRowDeleted,
+}) => {
+  const gridRef = React.useRef<AgGridReact>(null);
+  const containerStyle = { width: '100%', height: '100%' };
+
+  React.useEffect(() => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.sizeColumnsToFit();
+    }
+  }, [rows, columns]);
+
+  const onGridReady = () => {
+    if (gridRef.current?.api) {
+      gridRef.current.api.sizeColumnsToFit();
+    }
   };
 
-  // Custom AG Grid theme class to apply our brown/beige styling
-  const gridThemeClass = 'ag-theme-alpine custom-ag-theme';
+  const onRowClicked = (event: any) => {
+    if (onRowClick && event.data?.id) {
+      onRowClick(event.data.id);
+    }
+  };
+
+  const getSelectedRows = () => {
+    if (gridRef.current?.api) {
+      return gridRef.current.api.getSelectedRows();
+    }
+    return [];
+  };
 
   return (
-    <div ref={containerRef} className={`card w-full shadow-md rounded-lg overflow-hidden mb-6 ${className}`} style={{ width: '100%' }}>
-      {/* Full-Width Header */}
-      {title && (
-        <div className="flex justify-between items-center px-6 py-4 bg-header text-white rounded-t-lg w-full" style={{ width: '100%' }}>
-          <h2 className="text-xl font-semibold">{title}</h2>
-          {actionButtons && <div className="flex space-x-2">{actionButtons}</div>}
-        </div>
-      )}
-      
-      {isLoading ? (
-        <div className="h-64 flex items-center justify-center bg-background w-full">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-accent"></div>
-        </div>
-      ) : (
-        <div 
-          className={`${gridThemeClass} w-full mx-auto bg-background`} 
-          style={{ 
-            height: '500px', 
-            width: '100%',
-            maxWidth: '100%'
-          }}
-        >
-          <AgGridReact
-            columnDefs={columnDefs}
-            rowData={rowData}
-            rowSelection="single"
-            onGridReady={onGridReady}
-            onSelectionChanged={onSelectionChanged}
-            onCellValueChanged={onCellValueChanged}
-            defaultColDef={defaultColDef}
-            animateRows={true}
-            pagination={true}
-            paginationPageSize={20}
-            domLayout="normal"
-            suppressMovableColumns={false}
-            suppressColumnVirtualisation={false}
-          />
-        </div>
-      )}
-
-      {/* Debug Width - Visible element to show container width */}
-      <div className="w-full h-1 bg-accent" style={{ width: '100%' }}></div>
+    <div style={containerStyle}>
+      <div className="ag-theme-alpine" style={{ height: '500px', width: '100%' }}>
+        <AgGridReact
+          ref={gridRef}
+          rowData={rows}
+          columnDefs={columns}
+          defaultColDef={defaultColDef}
+          onGridReady={onGridReady}
+          getRowId={getRowId}
+          onRowClicked={onRowClicked}
+          rowSelection={rowSelection}
+          suppressRowClickSelection={suppressRowClickSelection}
+          onSelectionChanged={onSelectionChanged}
+          onRowSelected={onRowSelected}
+        />
+      </div>
     </div>
   );
 };
-
-export default DataGrid;
