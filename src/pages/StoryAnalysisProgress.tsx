@@ -5,15 +5,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 import './StoryAnalysisProgress.css';
 
-/**
- * ULTRA ROBUST VERSION 2.2 - ENHANCED DOM MANIPULATION WITH GUARANTEED UI PRESERVATION
- * 
- * This version fixes critical issues in the extraction review process:
- * 1. Eliminates flicker by using improved direct DOM manipulation techniques
- * 2. Guarantees extraction review visibility and clickability 
- * 3. Preserves all UI elements correctly using z-index stacking context
- * 4. Prevents race conditions with delayed execution and promise-based rendering
- */
+// Constants for localStorage keys
+const EXTRACTION_COMPLETE_KEY = 'storyverse_extraction_complete';
+const EXTRACTION_DATA_KEY = 'storyverse_extraction_data';
+const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
+const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
+const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
+const EXTRACTION_CACHE_BREAKER_KEY = 'storyverse_extraction_cache_breaker';
 
 interface AnalysisData {
   storyId: string;
@@ -24,15 +22,6 @@ interface AnalysisData {
     content: string | null;
   }>;
 }
-
-// Constants for localStorage keys
-const EXTRACTION_COMPLETE_KEY = 'storyverse_extraction_complete';
-const EXTRACTION_DATA_KEY = 'storyverse_extraction_data';
-const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
-const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
-const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
-const EXTRACTION_REVIEW_CONTAINER_ID = 'extraction-review-overlay';
-const EXTRACTION_CACHE_BREAKER_KEY = 'storyverse_extraction_cache_breaker';
 
 // StoryAnalysisProgress component - improved with persistent data management
 const StoryAnalysisProgress: React.FC = () => {
@@ -70,10 +59,8 @@ const StoryAnalysisProgress: React.FC = () => {
   });
   const [forceNewExtraction, setForceNewExtraction] = useState<boolean>(false);
   
-  // CRITICAL: This is an independent state variable that ONLY can be set to true
-  // and will ONLY be cleared on explicit user action. This ensures we don't lose the
-  // extraction complete state in React's render cycle.
-  const [mustShowExtractionReview, setMustShowExtractionReview] = useState<boolean>(
+  // NEW: Added state for showing extraction review instead of DOM manipulation
+  const [showExtractionReview, setShowExtractionReview] = useState<boolean>(
     localStorage.getItem(EXTRACTION_COMPLETE_KEY) === 'true'
   );
   
@@ -88,35 +75,14 @@ const StoryAnalysisProgress: React.FC = () => {
     scenes: 0,
     plotlines: 0
   });
+  
   const MAX_SAVE_RETRIES = 3;
-  // Ref to force extraction review screen
-  const forceExtractionReviewRef = useRef<boolean>(true);
-  // Track if extraction is complete
-  const extractionCompleteRef = useRef<boolean>(false);
+  
   // Timer ref to prevent memory leaks
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  // Ref to store click handler functions for DOM elements
-  const handlerFunctionsRef = useRef<{
-    continueToSave: (() => void) | null,
-    forceNewExtraction: (() => void) | null
-  }>({
-    continueToSave: null,
-    forceNewExtraction: null
-  });
-  // Ref for counting overlay creation attempts
-  const overlayAttemptCountRef = useRef<number>(0);
-  const MAX_OVERLAY_ATTEMPTS = 5;
+  
   // Animation progress for forced delay
   const [extractionProgress, setExtractionProgress] = useState<number>(0);
-  // Ref to track forced new extraction status
-  const isNewExtractionRef = useRef<boolean>(false);
-  // Store the original body and sidebar elements
-  const originalBodyStyleRef = useRef<string>('');
-  const originalSidebarDisplayRef = useRef<string>('');
-  // Track if extraction review is currently showing
-  const isExtractionReviewShowingRef = useRef<boolean>(false);
-  // Ref to store the timestamp of the last DOM check
-  const lastDomCheckRef = useRef<number>(0);
   
   const navigate = useNavigate();
 
@@ -150,542 +116,6 @@ const StoryAnalysisProgress: React.FC = () => {
     }
   };
 
-  // ULTRA ROBUST VERSION: Refined DOM-based approach for extraction review screen
-  // Improved with guaranteed CSS rendering and element visibility
-  const showExtractionReviewScreen = async () => {
-    logDebug("*** SHOWING EXTRACTION REVIEW SCREEN WITH ULTRA ROBUST DOM APPROACH ***");
-    
-    // Check if we've recently tried this to avoid rapid re-renders
-    const now = Date.now();
-    if (now - lastDomCheckRef.current < 500) {
-      logDebug("Skipping showExtractionReviewScreen - called too frequently");
-      return;
-    }
-    lastDomCheckRef.current = now;
-    
-    // Mark that we're attempting to show the extraction review
-    isExtractionReviewShowingRef.current = true;
-    
-    // Safety: increment attempt counter
-    overlayAttemptCountRef.current += 1;
-    
-    // First, make sure we have summary data
-    if (!extractionSummary && localStorage.getItem(EXTRACTION_SUMMARY_KEY)) {
-      try {
-        const savedSummary = JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || '{}');
-        setExtractionSummary(savedSummary);
-      } catch (err) {
-        logDebug("Error parsing extraction summary:", err);
-      }
-    }
-    
-    // Get timestamp if available
-    const timestamp = extractionTimestamp || 
-                      localStorage.getItem(EXTRACTION_TIMESTAMP_KEY) || 
-                      new Date().toISOString();
-    
-    try {
-      // Remove any existing overlay to prevent duplicates
-      const existingOverlay = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-      if (existingOverlay) {
-        try {
-          existingOverlay.remove();
-          logDebug("Removed existing overlay before creating new one");
-        } catch (err) {
-          logDebug("Error removing existing overlay:", err);
-        }
-      }
-      
-      // IMPORTANT: Store original body style
-      if (!originalBodyStyleRef.current) {
-        const bodyStyle = document.body.style.cssText;
-        originalBodyStyleRef.current = bodyStyle;
-        logDebug("Stored original body style:", bodyStyle);
-      }
-      
-      // Store original sidebar display state if it exists
-      const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
-      if (sidebarElement && !originalSidebarDisplayRef.current) {
-        const computedStyle = window.getComputedStyle(sidebarElement);
-        originalSidebarDisplayRef.current = computedStyle.display;
-        logDebug("Stored original sidebar display:", originalSidebarDisplayRef.current);
-      }
-      
-      // Create a new overlay container
-      const overlayContainer = document.createElement('div');
-      overlayContainer.id = EXTRACTION_REVIEW_CONTAINER_ID;
-      overlayContainer.className = 'extraction-review-overlay';
-      
-      // Set critical styles directly on the element to guarantee visibility
-      // Using important flags for all critical properties
-      Object.assign(overlayContainer.style, {
-        position: 'fixed !important',
-        top: '0 !important',
-        left: '0 !important',
-        right: '0 !important',
-        bottom: '0 !important',
-        backgroundColor: 'rgba(255, 255, 255, 0.98) !important',
-        zIndex: '1000000 !important', // Ultra high z-index
-        display: 'flex !important',
-        justifyContent: 'center !important',
-        alignItems: 'flex-start !important',
-        overflowY: 'auto !important',
-        padding: '20px !important',
-        transform: 'translateZ(0) !important', // Force hardware acceleration
-        backfaceVisibility: 'hidden !important', // Additional performance improvement
-        willChange: 'transform !important', // Signal to browser to optimize
-        transition: 'none !important', // Disable transitions to prevent flicker
-      });
-      
-      // Add inline !important to every style
-      for (const key in overlayContainer.style) {
-        if (typeof overlayContainer.style[key] === 'string' && overlayContainer.style[key] && !overlayContainer.style[key].includes('!important')) {
-          overlayContainer.style[key] = `${overlayContainer.style[key]} !important`;
-        }
-      }
-      
-      // Generate HTML for the extraction review
-      const summaryItems = extractionSummary || 
-                          JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
-                          '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
-      
-      // Create the HTML content with inlined styles for maximum reliability
-      const htmlContent = `
-        <div class="extraction-review-content" style="width:100% !important;max-width:800px !important;margin:0 auto !important;padding:20px !important;background-color:white !important;border-radius:8px !important;box-shadow:0 4px 12px rgba(0,0,0,0.1) !important;position:relative !important;z-index:1000001 !important;">
-          <div class="analysis-progress-container" style="text-align:center !important;">
-            <h1 style="margin-bottom:20px !important;color:#333 !important;font-size:28px !important;">Analyzing Story</h1>
-            <div class="extraction-complete" style="padding:20px !important;">
-              <div class="success-icon" style="margin:0 auto 20px !important;width:60px !important;height:60px !important;background-color:#4CAF50 !important;color:white !important;border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:32px !important;">✓</div>
-              <h2 style="margin-bottom:10px !important;color:#333 !important;font-size:24px !important;">Extraction Complete!</h2>
-              <p style="margin-bottom:20px !important;color:#555 !important;font-size:16px !important;">The narrative elements have been successfully extracted. Ready to save to database.</p>
-              
-              <div class="extraction-summary" style="margin-bottom:30px !important;">
-                <div class="summary" style="display:flex !important;flex-wrap:wrap !important;justify-content:center !important;gap:20px !important;margin-bottom:20px !important;">
-                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Characters</h3>
-                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#2196F3 !important;">${summaryItems.characters || 0}</span>
-                  </div>
-                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Locations</h3>
-                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#9C27B0 !important;">${summaryItems.locations || 0}</span>
-                  </div>
-                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Events</h3>
-                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#FF9800 !important;">${summaryItems.events || 0}</span>
-                  </div>
-                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Scenes</h3>
-                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#607D8B !important;">${summaryItems.scenes || 0}</span>
-                  </div>
-                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Plotlines</h3>
-                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#E91E63 !important;">${summaryItems.plotlines || 0}</span>
-                  </div>
-                </div>
-                
-                <div class="extraction-timestamp" style="text-align:center !important;font-size:14px !important;color:#777 !important;margin-bottom:15px !important;">
-                  Extracted at: ${new Date(timestamp).toLocaleString()}
-                </div>
-                
-                ${debugInfo ? `
-                  <div class="debug-info" style="margin-top:20px !important;padding:15px !important;background-color:#f5f5f5 !important;border-radius:4px !important;font-size:12px !important;max-height:200px !important;overflow-y:auto !important;text-align:left !important;">
-                    <h3 style="margin-bottom:5px !important;font-size:14px !important;color:#555 !important;">Debug Information</h3>
-                    <pre style="white-space:pre-wrap !important;margin:0 !important;font-family:monospace !important;">${debugInfo}</pre>
-                  </div>
-                ` : ''}
-              </div>
-              
-              <div class="actions-container" style="display:flex !important;justify-content:center !important;gap:15px !important;margin-top:30px !important;position:relative !important;z-index:1000002 !important;">
-                <button id="continue-to-save-btn" style="padding:12px 24px !important;background-color:#2196F3 !important;color:white !important;border:none !important;border-radius:4px !important;font-size:16px !important;cursor:pointer !important;font-weight:bold !important;position:relative !important;z-index:1000003 !important;">
-                  Continue to Save Elements
-                </button>
-                <button id="force-new-extraction-btn" style="padding:12px 24px !important;background-color:#F5F5F5 !important;color:#333 !important;border:1px solid #DDD !important;border-radius:4px !important;font-size:16px !important;cursor:pointer !important;position:relative !important;z-index:1000003 !important;">
-                  Force New Extraction
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-      
-      // Set the HTML content
-      overlayContainer.innerHTML = htmlContent;
-      
-      // Append to document
-      document.body.appendChild(overlayContainer);
-      
-      // CRITICAL: Add an inline stylesheet with !important rules to guarantee styles are applied
-      const styleId = 'extraction-review-critical-style';
-      let styleElement = document.getElementById(styleId);
-      if (!styleElement) {
-        styleElement = document.createElement('style');
-        styleElement.id = styleId;
-        styleElement.innerHTML = `
-          #${EXTRACTION_REVIEW_CONTAINER_ID} {
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            right: 0 !important;
-            bottom: 0 !important;
-            background-color: rgba(255, 255, 255, 0.98) !important;
-            z-index: 1000000 !important;
-            display: flex !important;
-            justify-content: center !important;
-            align-items: flex-start !important;
-            overflow-y: auto !important;
-            padding: 20px !important;
-            transform: translateZ(0) !important;
-            backface-visibility: hidden !important;
-            will-change: transform !important;
-            transition: none !important;
-          }
-          
-          #${EXTRACTION_REVIEW_CONTAINER_ID} button {
-            cursor: pointer !important;
-            position: relative !important;
-            z-index: 1000003 !important;
-            transform: translateZ(0) !important;
-          }
-          
-          #${EXTRACTION_REVIEW_CONTAINER_ID} #continue-to-save-btn:hover {
-            background-color: #1976D2 !important;
-          }
-          
-          #${EXTRACTION_REVIEW_CONTAINER_ID} #force-new-extraction-btn:hover {
-            background-color: #E0E0E0 !important;
-          }
-          
-          /* Ensure proper z-index */
-          .sidebar, .side-nav, .navbar, .nav-header {
-            z-index: 1 !important;
-          }
-        `;
-        document.head.appendChild(styleElement);
-      }
-      
-      // RESTORE VISIBILITY: Ensure sidebar and navigation elements are still visible
-      await restoreOriginalUIElements();
-      
-      // Define the event handler functions
-      const handleContinueClick = () => {
-        logDebug("Continue button clicked via direct DOM event handler");
-        // Use the stored callback functions from the ref
-        if (handlerFunctionsRef.current.continueToSave) {
-          handlerFunctionsRef.current.continueToSave();
-        } else {
-          logDebug("WARNING: Continue handler function is null!");
-          // Fallback action
-          localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-          setMustShowExtractionReview(false);
-          setAnalysisPhase('saving');
-          setIsAnalyzing(true);
-          // Try to hide the overlay
-          try {
-            overlayContainer.style.display = 'none';
-          } catch (err) {
-            logDebug("Error hiding overlay:", err);
-          }
-        }
-      };
-      
-      const handleNewExtractionClick = () => {
-        logDebug("Force new extraction button clicked via direct DOM event handler");
-        // Use the stored callback function from the ref
-        if (handlerFunctionsRef.current.forceNewExtraction) {
-          handlerFunctionsRef.current.forceNewExtraction();
-        } else {
-          logDebug("WARNING: Force new extraction handler function is null!");
-          // Fallback action - reload the page
-          window.location.reload();
-        }
-      };
-      
-      // Add event listeners with a slight delay to ensure the DOM is ready
-      setTimeout(() => {
-        try {
-          const continueBtn = document.getElementById('continue-to-save-btn');
-          const resetBtn = document.getElementById('force-new-extraction-btn');
-          
-          if (continueBtn) {
-            // Remove existing listeners if any
-            const newContinueBtn = continueBtn.cloneNode(true);
-            if (continueBtn.parentNode) {
-              continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
-            }
-            // Add the new listener
-            newContinueBtn.addEventListener('click', handleContinueClick);
-            logDebug("Successfully attached continue button event listener");
-          } else {
-            logDebug("WARNING: Could not find continue button in DOM");
-          }
-          
-          if (resetBtn) {
-            // Remove existing listeners if any
-            const newResetBtn = resetBtn.cloneNode(true);
-            if (resetBtn.parentNode) {
-              resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
-            }
-            // Add the new listener
-            newResetBtn.addEventListener('click', handleNewExtractionClick);
-            logDebug("Successfully attached reset button event listener");
-          } else {
-            logDebug("WARNING: Could not find reset button in DOM");
-          }
-        } catch (err) {
-          logDebug("Error attaching event listeners to extraction review buttons:", err);
-        }
-      }, 50);
-      
-      // Make sure the overlay is visible
-      try {
-        overlayContainer.style.display = 'flex';
-        
-        // Force reflow to ensure the browser renders the overlay
-        void overlayContainer.offsetHeight;
-        
-        logDebug("Extraction review overlay displayed directly in DOM");
-      } catch (err) {
-        logDebug("Error displaying overlay:", err);
-      }
-      
-      // Double-check to make sure overlay exists and is visible after a delay
-      setTimeout(() => {
-        const overlayCheck = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-        if (!overlayCheck) {
-          logDebug("WARNING: Overlay not found after creation delay, retrying...");
-          
-          // Try again if we haven't reached maximum attempts
-          if (overlayAttemptCountRef.current < MAX_OVERLAY_ATTEMPTS) {
-            showExtractionReviewScreen();
-          } else {
-            logDebug("ERROR: Maximum overlay creation attempts reached");
-          }
-        } else if (overlayCheck.style.display !== 'flex') {
-          logDebug("WARNING: Overlay exists but is not visible, fixing...");
-          overlayCheck.style.display = 'flex !important';
-        }
-        
-        // Ensure UI elements are still visible
-        restoreOriginalUIElements();
-      }, 200);
-      
-      // Set up a recurring check (every 2 seconds) to ensure the overlay stays visible
-      // and the buttons remain clickable
-      const intervalId = setInterval(() => {
-        if (!isExtractionReviewShowingRef.current) {
-          clearInterval(intervalId);
-          return;
-        }
-        
-        const overlayCheck = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-        if (!overlayCheck) {
-          logDebug("WARNING: Overlay disappeared, recreating...");
-          if (overlayAttemptCountRef.current < MAX_OVERLAY_ATTEMPTS) {
-            showExtractionReviewScreen();
-          }
-        } else {
-          // Make sure buttons are properly attached with listeners
-          const continueBtn = document.getElementById('continue-to-save-btn');
-          const resetBtn = document.getElementById('force-new-extraction-btn');
-          
-          if (!continueBtn || !resetBtn) {
-            logDebug("WARNING: Buttons missing from overlay, reattaching...");
-            // Refresh internal HTML to recreate buttons
-            overlayCheck.innerHTML = htmlContent;
-            
-            setTimeout(() => {
-              try {
-                const newContinueBtn = document.getElementById('continue-to-save-btn');
-                const newResetBtn = document.getElementById('force-new-extraction-btn');
-                
-                if (newContinueBtn) {
-                  newContinueBtn.addEventListener('click', handleContinueClick);
-                }
-                
-                if (newResetBtn) {
-                  newResetBtn.addEventListener('click', handleNewExtractionClick);
-                }
-                
-                logDebug("Reattached button event listeners");
-              } catch (err) {
-                logDebug("Error reattaching button listeners:", err);
-              }
-            }, 50);
-          }
-        }
-        
-        // Ensure UI elements are still visible
-        restoreOriginalUIElements();
-      }, 2000);
-      
-      // Clean up interval after 2 minutes (120000ms)
-      setTimeout(() => {
-        clearInterval(intervalId);
-      }, 120000);
-    } catch (err) {
-      logDebug("Error showing extraction review screen:", err);
-      
-      // Last resort fallback - try to show a minimal, reliable extraction review
-      try {
-        // Get current summary data for the fallback
-        const currentSummary = extractionSummary || 
-                              JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
-                              '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
-                              
-        const fallbackDiv = document.createElement('div');
-        fallbackDiv.style.cssText = "position:fixed !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; background:white !important; z-index:9999999 !important; display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important; padding:20px !important;";
-        fallbackDiv.innerHTML = `
-          <h1 style="margin-bottom:20px !important;">Extraction Complete</h1>
-          <p style="margin-bottom:20px !important;">Ready to save ${currentSummary.characters || 0} characters, ${currentSummary.locations || 0} locations, and more.</p>
-          <div style="display:flex !important; gap:20px !important;">
-            <button id="fallback-continue" style="padding:10px 20px !important; background:#2196F3 !important; color:white !important; border:none !important; cursor:pointer !important;">Continue to Save</button>
-            <button id="fallback-retry" style="padding:10px 20px !important; background:#f5f5f5 !important; color:#333 !important; border:1px solid #ddd !important; cursor:pointer !important;">Force New Extraction</button>
-          </div>
-        `;
-        document.body.appendChild(fallbackDiv);
-        
-        document.getElementById('fallback-continue')?.addEventListener('click', () => {
-          if (handlerFunctionsRef.current.continueToSave) {
-            handlerFunctionsRef.current.continueToSave();
-          } else {
-            localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-            setMustShowExtractionReview(false);
-            setAnalysisPhase('saving');
-            window.location.reload();
-          }
-        });
-        
-        document.getElementById('fallback-retry')?.addEventListener('click', () => {
-          if (handlerFunctionsRef.current.forceNewExtraction) {
-            handlerFunctionsRef.current.forceNewExtraction();
-          } else {
-            window.location.reload();
-          }
-        });
-      } catch (fallbackErr) {
-        logDebug("Fallback extraction review also failed:", fallbackErr);
-      }
-    }
-  };
-  
-  // Hide the extraction review overlay
-  const hideExtractionReviewScreen = () => {
-    try {
-      // Mark that the extraction review screen is no longer showing
-      isExtractionReviewShowingRef.current = false;
-      
-      const overlayContainer = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
-      if (overlayContainer) {
-        // First try to hide it
-        overlayContainer.style.display = 'none';
-        
-        // Then try to remove it completely
-        try {
-          overlayContainer.remove();
-        } catch (removeErr) {
-          logDebug("Error removing overlay, fallback to hiding:", removeErr);
-        }
-        
-        // Restore original UI elements
-        restoreOriginalUIElements();
-        
-        logDebug("Successfully hid extraction review overlay");
-      }
-      
-      // Also remove critical style if present
-      const styleElement = document.getElementById('extraction-review-critical-style');
-      if (styleElement) {
-        try {
-          styleElement.remove();
-        } catch (err) {
-          logDebug("Error removing style element:", err);
-        }
-      }
-    } catch (err) {
-      logDebug("Error in hideExtractionReviewScreen:", err);
-    }
-  };
-  
-  // Restore visibility of UI elements that may have been affected
-  const restoreOriginalUIElements = async () => {
-    try {
-      // Restore original body style if we stored it
-      if (originalBodyStyleRef.current) {
-        document.body.style.cssText = originalBodyStyleRef.current;
-      }
-      
-      // Find and restore sidebar display if it exists
-      const sidebarElements = document.querySelectorAll('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
-      if (sidebarElements.length > 0 && originalSidebarDisplayRef.current) {
-        sidebarElements.forEach(sidebar => {
-          (sidebar as HTMLElement).style.display = originalSidebarDisplayRef.current;
-          (sidebar as HTMLElement).style.visibility = 'visible';
-          (sidebar as HTMLElement).style.opacity = '1';
-        });
-      }
-      
-      // Find and restore other navigation elements
-      const navElements = document.querySelectorAll('header, nav, .navbar, .nav-header, .top-bar, .app-header');
-      navElements.forEach(nav => {
-        (nav as HTMLElement).style.visibility = 'visible';
-        (nav as HTMLElement).style.display = '';
-        (nav as HTMLElement).style.opacity = '1';
-      });
-      
-      // Make sure any other similar elements are visible
-      document.querySelectorAll('.layout-container, .main-content, .content-area').forEach(element => {
-        (element as HTMLElement).style.visibility = 'visible';
-        (element as HTMLElement).style.opacity = '1';
-      });
-      
-      logDebug("Restored visibility of UI elements");
-    } catch (err) {
-      logDebug("Error restoring UI elements:", err);
-    }
-  };
-
-  // Function to forcibly set the component to extraction review mode
-  const forceExtractionReviewScreen = () => {
-    logDebug("*** FORCING EXTRACTION REVIEW SCREEN ***");
-    
-    // First clear any existing timers
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    
-    // Set persistent flag in localStorage
-    localStorage.setItem(EXTRACTION_COMPLETE_KEY, 'true');
-    
-    // Set our dedicated state variable to true
-    setMustShowExtractionReview(true);
-    
-    // Update all relevant state and refs
-    setAnalysisPhase('extracted');
-    setIsAnalyzing(false);
-    extractionCompleteRef.current = true;
-    forceExtractionReviewRef.current = true;
-    
-    // Reset overlay attempt counter
-    overlayAttemptCountRef.current = 0;
-    
-    // DIRECT DOM MANIPULATION: Show extraction review
-    showExtractionReviewScreen();
-    
-    // Schedule this again in 250ms to ensure it sticks
-    timerRef.current = setTimeout(() => {
-      logDebug("*** REINFORCING EXTRACTION REVIEW MODE (delayed) ***");
-      setAnalysisPhase('extracted');
-      setIsAnalyzing(false);
-      setMustShowExtractionReview(true);
-      
-      // Show again to ensure it's visible
-      showExtractionReviewScreen();
-      
-      // Ensure UI elements are properly visible
-      restoreOriginalUIElements();
-    }, 250);
-  };
-  
   // Improved analysis data access with multiple backups
   const getAnalysisData = (): AnalysisData | null => {
     try {
@@ -762,7 +192,60 @@ const StoryAnalysisProgress: React.FC = () => {
       return null;
     }
   };
+
+  // Handler functions for extraction review screen buttons
+  const handleContinueToSaving = () => {
+    logDebug("Continue to saving button clicked");
+    
+    // Remove the extraction complete flag from localStorage
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    
+    // Update state to show saving phase
+    setShowExtractionReview(false);
+    setAnalysisPhase('saving');
+    setIsAnalyzing(true);
+    
+    // Start saving process
+    processSavingDirectly();
+  };
   
+  const handleFreshExtraction = () => {
+    logDebug("Force new extraction button clicked");
+    
+    // Set flag to force a new extraction
+    setForceNewExtraction(true);
+    
+    // Clear all extraction flags and data
+    clearAnalysisCache();
+    
+    // Reset state to extraction phase
+    setShowExtractionReview(false);
+    setAnalysisPhase('extracting');
+    setIsAnalyzing(true);
+    setExtractionStarted(false);
+    
+    // Start fresh extraction
+    processExtraction();
+  };
+
+  // Clear local storage cache for extraction
+  const clearAnalysisCache = () => {
+    // Set a new cache breaker value
+    const cacheBreaker = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    localStorage.setItem(EXTRACTION_CACHE_BREAKER_KEY, cacheBreaker);
+    
+    // Clear extraction-related data
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    localStorage.removeItem(EXTRACTION_DATA_KEY);
+    localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
+    localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
+    
+    logDebug(`Cleared analysis cache with breaker: ${cacheBreaker}`);
+    
+    // Return the cache breaker in case we need it
+    return cacheBreaker;
+  };
+
   // Forced delay simulation to prevent instant extraction
   const simulateProcessingDelay = async (targetTimeMs: number = 3000) => {
     logDebug(`Simulating processing delay of ${targetTimeMs}ms...`);
@@ -791,77 +274,11 @@ const StoryAnalysisProgress: React.FC = () => {
       updateProgress();
     });
   };
-  
-  // Clear local storage cache for extraction
-  const clearAnalysisCache = () => {
-    // Set a new cache breaker value
-    const cacheBreaker = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    localStorage.setItem(EXTRACTION_CACHE_BREAKER_KEY, cacheBreaker);
-    
-    // Clear extraction-related data
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-    localStorage.removeItem(EXTRACTION_DATA_KEY);
-    localStorage.removeItem(EXTRACTION_SUMMARY_KEY);
-    localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
-    
-    logDebug(`Cleared analysis cache with breaker: ${cacheBreaker}`);
-    
-    // Return the cache breaker in case we need it
-    return cacheBreaker;
-  };
-
-  // Handler functions for extraction review screen buttons
-  const handleContinueToSaving = () => {
-    logDebug("Continue to saving button clicked");
-    
-    // Remove the extraction complete flag from localStorage
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-    
-    // Update state to show saving phase
-    setMustShowExtractionReview(false);
-    setAnalysisPhase('saving');
-    setIsAnalyzing(true);
-    
-    // Hide the extraction review screen
-    hideExtractionReviewScreen();
-    
-    // Start saving process
-    processSavingDirectly();
-  };
-  
-  const handleFreshExtraction = () => {
-    logDebug("Force new extraction button clicked");
-    
-    // Set flag to force a new extraction
-    setForceNewExtraction(true);
-    isNewExtractionRef.current = true;
-    
-    // Clear all extraction flags and data
-    clearAnalysisCache();
-    
-    // Reset state to extraction phase
-    setMustShowExtractionReview(false);
-    setAnalysisPhase('extracting');
-    setIsAnalyzing(true);
-    setExtractionStarted(false);
-    
-    // Hide the extraction review screen
-    hideExtractionReviewScreen();
-    
-    // Start fresh extraction
-    processExtraction();
-  };
 
   // Check for extraction complete status on component mount
   useEffect(() => {
-    // IMPORTANT: Store the handler functions in refs so they can be accessed by direct DOM event handlers
-    handlerFunctionsRef.current = {
-      continueToSave: handleContinueToSaving,
-      forceNewExtraction: handleFreshExtraction
-    };
-    
-    // Skip all this if we're doing a forced new extraction
-    if (isNewExtractionRef.current) {
+    // Skip if we're doing a forced new extraction
+    if (forceNewExtraction) {
       logDebug("Component mount - skipping cached extraction check due to forced new extraction");
       return;
     }
@@ -875,8 +292,8 @@ const StoryAnalysisProgress: React.FC = () => {
     logDebug(`Component mount - extraction complete: ${wasExtractionComplete}`);
     
     if (wasExtractionComplete) {
-      logDebug("Found extraction complete flag in localStorage, forcing review screen");
-      setMustShowExtractionReview(true);
+      logDebug("Found extraction complete flag in localStorage");
+      setShowExtractionReview(true);
       
       if (extractionDataStr) {
         try {
@@ -886,7 +303,6 @@ const StoryAnalysisProgress: React.FC = () => {
           // Restore the UI state to show extraction review
           setExtractedElements(extractionData);
           extractedElementsRef.current = extractionData;
-          extractionCompleteRef.current = true;
           setAnalysisPhase('extracted');
           setIsAnalyzing(false);
           
@@ -912,135 +328,29 @@ const StoryAnalysisProgress: React.FC = () => {
           const timestamp = extractionTimestampStr || new Date().toISOString();
           setExtractionTimestamp(timestamp);
           
-          // Reset overlay attempt counter
-          overlayAttemptCountRef.current = 0;
-          
-          // Store the original UI state before we manipulate DOM
-          storeOriginalUIState();
-          
-          // DIRECT DOM APPROACH: Show extraction review screen
-          setTimeout(() => {
-            showExtractionReviewScreen();
-          }, 150);
-          
           logDebug("Successfully restored extraction complete state");
         } catch (err) {
           logDebug("Error restoring extraction state:", err);
           // Don't clear the flags - we still want to show the review screen
           // but we'll need to re-extract the data
-          
-          // Try to show the extraction review screen anyway
-          setTimeout(() => {
-            showExtractionReviewScreen();
-          }, 150);
         }
       }
     } else {
       // Reset flags on component mount
-      forceExtractionReviewRef.current = true;
-      extractionCompleteRef.current = false;
-      setMustShowExtractionReview(false);
-      
-      // Hide the extraction review screen if visible
-      hideExtractionReviewScreen();
+      setShowExtractionReview(false);
     }
-    
-    // Add custom CSS to ensure overlay is visible with !important
-    const style = document.createElement('style');
-    style.id = 'extraction-review-style';
-    style.textContent = `
-      .extraction-review-overlay {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        background-color: rgba(255, 255, 255, 0.97) !important;
-        z-index: 1000000 !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: flex-start !important;
-        overflow-y: auto !important;
-        transform: translateZ(0) !important;
-        will-change: transform !important;
-      }
-      
-      #extraction-review-overlay {
-        position: fixed !important;
-        z-index: 1000000 !important;
-        display: flex !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        bottom: 0 !important;
-        background-color: #fff !important;
-      }
-      
-      #continue-to-save-btn:hover {
-        background-color: #1976D2 !important;
-      }
-      
-      #force-new-extraction-btn:hover {
-        background-color: #E0E0E0 !important;
-      }
-      
-      /* Fix for any UI elements that might be hidden */
-      body.has-extraction-overlay .sidebar,
-      body.has-extraction-overlay .side-nav,
-      body.has-extraction-overlay nav,
-      body.has-extraction-overlay header {
-        visibility: visible !important;
-        display: block !important;
-        opacity: 1 !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    // Clean up timers and DOM elements on unmount
+
+    // Clean up timers on unmount
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
-      
-      // Remove the extraction review screen
-      hideExtractionReviewScreen();
-      
-      // Remove the custom style
-      const styleElement = document.getElementById('extraction-review-style');
-      if (styleElement) {
-        styleElement.remove();
-      }
     };
   }, []);
-  
-  // Store original UI state before we manipulate DOM
-  const storeOriginalUIState = () => {
-    try {
-      // Store original body style
-      originalBodyStyleRef.current = document.body.style.cssText || '';
-      
-      // Try to find sidebar elements
-      const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
-      if (sidebarElement) {
-        const computedStyle = window.getComputedStyle(sidebarElement);
-        originalSidebarDisplayRef.current = computedStyle.display || 'block';
-      }
-      
-      logDebug("Stored original UI state:", {
-        bodyStyle: originalBodyStyleRef.current,
-        sidebarDisplay: originalSidebarDisplayRef.current
-      });
-    } catch (err) {
-      logDebug("Error storing original UI state:", err);
-    }
-  };
 
   // Component initialization and data recovery
   useEffect(() => {
     try {
-      // Store original UI state on component mount
-      storeOriginalUIState();
-      
       // Try to get analysis data
       const analysisDataStr = sessionStorage.getItem('analysisData');
       
@@ -1110,6 +420,22 @@ const StoryAnalysisProgress: React.FC = () => {
       }
     };
   }, [analysisPhase]);
+
+  // Utility function to generate a unique ID for detected items
+  const generateUniqueId = (type: string, name: string): string => {
+    return `${type}-${name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  };
+
+  // Add a detected item with a small delay to create visual feedback
+  const addDetectedItem = async (type: string, name: string) => {
+    return new Promise<void>(resolve => {
+      setTimeout(() => {
+        const itemId = generateUniqueId(type, name);
+        setDetectedItems(prev => [...prev, { type, name, id: itemId }]);
+        resolve();
+      }, Math.random() * 50 + 10); // Faster delay between 10-60ms
+    });
+  };
 
   // Improved text analysis with better error handling and timeout management
   const analyzeText = async (analysisData: AnalysisData) => {
@@ -1288,9 +614,146 @@ const StoryAnalysisProgress: React.FC = () => {
       throw err;
     }
   };
-  
-  // IMPROVED DIRECT DATABASE OPERATIONS WITH BETTER DEDUPLICATION
-  
+
+  // Extract narrative elements phase with improved resilience
+  const processExtraction = async () => {
+    try {
+      // Mark extraction as started
+      setExtractionStarted(true);
+      
+      // Reset extraction progress
+      setExtractionProgress(0);
+      
+      // IMPORTANT: Clear cache to force a fresh extraction
+      if (forceNewExtraction) {
+        clearAnalysisCache();
+      }
+      
+      // Get analysis data from session storage or backup sources
+      const analysisData = getAnalysisData();
+      
+      if (!analysisData) {
+        logDebug("No analysis data found during extraction phase");
+        setError('No analysis data found. Please return to the import screen.');
+        setIsAnalyzing(false);
+        setAnalysisPhase('error');
+        return;
+      }
+      
+      // Store in component state for UI
+      setCurrentFile(analysisData.files[0]?.name || '');
+      setStoryId(analysisData.storyId);
+      setStoryWorldId(analysisData.storyWorldId);
+      
+      // Debug the stored analysis data
+      logDebug('Analysis data for extraction:', analysisData);
+      setDebugInfo(`Story ID: ${analysisData.storyId}, Files: ${analysisData.files.length}`);
+      
+      // Check if there are any files to analyze
+      if (!analysisData.files || analysisData.files.length === 0) {
+        logDebug("No files found for analysis");
+        setError('No files found for analysis. Please upload a file and try again.');
+        setIsAnalyzing(false);
+        setAnalysisPhase('error');
+        return;
+      }
+      
+      // ALWAYS perform a fresh extraction - no caching
+      let extractAttempts = 0;
+      const MAX_EXTRACT_ATTEMPTS = 3;
+      let elements = null;
+      
+      while (extractAttempts < MAX_EXTRACT_ATTEMPTS && !elements) {
+        try {
+          setAnalysisPhase('extracting');
+          setRetryAttempt(extractAttempts);
+          
+          // Update UI if this is a retry
+          if (extractAttempts > 0) {
+            await addDetectedItem('System', `Retry attempt ${extractAttempts}...`);
+            setAnalysisStage(`Retry ${extractAttempts}/${MAX_EXTRACT_ATTEMPTS}: Extracting narrative elements...`);
+          }
+          
+          // First, artificially slow down to show extraction progress UI
+          await simulateProcessingDelay(4000);
+          
+          elements = await analyzeText(analysisData);
+          
+          if (elements) {
+            // Display a sample of the extracted elements in the UI
+            await addDetectedItem('System', 'Processing extracted elements...');
+            
+            if (elements.characters?.length > 0) {
+              await addDetectedItem('System', `Found ${elements.characters.length} characters`);
+              for (const char of elements.characters.slice(0, 3)) {
+                await addDetectedItem('Character', char.name);
+              }
+            }
+            
+            if (elements.locations?.length > 0) {
+              await addDetectedItem('System', `Found ${elements.locations.length} locations`);
+              for (const loc of elements.locations.slice(0, 3)) {
+                await addDetectedItem('Location', loc.name);
+              }
+            }
+            
+            if (elements.scenes?.length > 0) {
+              await addDetectedItem('System', `Found ${elements.scenes.length} scenes`);
+              for (const scene of elements.scenes.slice(0, 3)) {
+                await addDetectedItem('Scene', scene.title);
+              }
+            }
+            
+            if (elements.plotlines?.length > 0) {
+              await addDetectedItem('System', `Found ${elements.plotlines.length} plotlines`);
+              for (const plot of elements.plotlines.slice(0, 3)) {
+                await addDetectedItem('Plotline', plot.title);
+              }
+            }
+            
+            // Add artificial delay to ensure user sees the extraction results
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            // Update state to show extraction review
+            localStorage.setItem(EXTRACTION_COMPLETE_KEY, 'true');
+            
+            // Update all relevant state vars
+            setAnalysisPhase('extracted');
+            setIsAnalyzing(false);
+            setShowExtractionReview(true);
+            
+            // Break the while loop
+            break;
+          }
+          
+          extractAttempts++;
+        } catch (err) {
+          logDebug(`Extraction attempt ${extractAttempts + 1} failed:`, err);
+          extractAttempts++;
+          
+          if (extractAttempts >= MAX_EXTRACT_ATTEMPTS) {
+            throw err; // Re-throw if all attempts failed
+          }
+          
+          // Add error to UI
+          await addDetectedItem('Error', `Extraction failed: ${err.message}`);
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Delay before retry
+        }
+      }
+      
+      if (!elements && extractAttempts >= MAX_EXTRACT_ATTEMPTS) {
+        logDebug(`All ${MAX_EXTRACT_ATTEMPTS} extraction attempts failed`);
+        throw new Error(`Failed to extract after ${MAX_EXTRACT_ATTEMPTS} attempts`);
+      }
+      
+    } catch (err: any) {
+      logDebug("Final extraction error:", err);
+      setError(`Failed to extract story elements: ${err.message}`);
+      setAnalysisPhase('error');
+      setIsAnalyzing(false);
+    }
+  };
+
   // Direct save character with strict deduplication
   const saveCharacterDirect = async (char: any, storyId: string, storyWorldId: string) => {
     try {
@@ -1942,9 +1405,9 @@ const StoryAnalysisProgress: React.FC = () => {
       }
     }
   };
-  
+
   // Enhanced data saving approach using batch processing and error handling
-  const saveElementsDirectly = async () => {
+  const processSavingDirectly = async () => {
     try {
       logDebug("=== Starting direct database save process ===");
       
@@ -2277,10 +1740,10 @@ const StoryAnalysisProgress: React.FC = () => {
       localStorage.removeItem(EXTRACTION_TIMESTAMP_KEY);
       localStorage.removeItem(EXTRACTION_STAGE_KEY);
       
-      // Hide the extraction review screen
-      hideExtractionReviewScreen();
-      
       logDebug("=== Direct database save process completed successfully ===");
+      
+      // Navigate to results page
+      navigate('/analysis-results');
       
       return finalResults;
     } catch (err: any) {
@@ -2290,409 +1753,104 @@ const StoryAnalysisProgress: React.FC = () => {
         
       logDebug("Error in direct save process:", errorDetails);
       setFullErrorDetails(`Save error: ${errorDetails}`);
+      setError(`Error saving to database: ${err.message}`);
+      setAnalysisPhase('error');
+      setIsAnalyzing(false);
       throw err;
     }
   };
 
-  // Utility function to generate a unique ID for detected items
-  const generateUniqueId = (type: string, name: string): string => {
-    return `${type}-${name}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  };
-
-  // Add a detected item with a small delay to create visual feedback
-  const addDetectedItem = async (type: string, name: string) => {
-    return new Promise<void>(resolve => {
-      setTimeout(() => {
-        const itemId = generateUniqueId(type, name);
-        setDetectedItems(prev => [...prev, { type, name, id: itemId }]);
-        resolve();
-      }, Math.random() * 50 + 10); // Faster delay between 10-60ms
-    });
-  };
-
-  // Extract narrative elements phase with improved resilience
-  const processExtraction = async () => {
-    try {
-      // Mark extraction as started
-      setExtractionStarted(true);
-      
-      // Reset extraction progress
-      setExtractionProgress(0);
-      
-      // IMPORTANT: Clear cache to force a fresh extraction
-      if (forceNewExtraction || isNewExtractionRef.current) {
-        clearAnalysisCache();
-      }
-      
-      // Get analysis data from session storage or backup sources
-      const analysisData = getAnalysisData();
-      
-      if (!analysisData) {
-        logDebug("No analysis data found during extraction phase");
-        setError('No analysis data found. Please return to the import screen.');
-        setIsAnalyzing(false);
-        setAnalysisPhase('error');
-        return;
-      }
-      
-      // Store in component state for UI
-      setCurrentFile(analysisData.files[0]?.name || '');
-      setStoryId(analysisData.storyId);
-      setStoryWorldId(analysisData.storyWorldId);
-      
-      // Debug the stored analysis data
-      logDebug('Analysis data for extraction:', analysisData);
-      setDebugInfo(`Story ID: ${analysisData.storyId}, Files: ${analysisData.files.length}`);
-      
-      // Check if there are any files to analyze
-      if (!analysisData.files || analysisData.files.length === 0) {
-        logDebug("No files found for analysis");
-        setError('No files found for analysis. Please upload a file and try again.');
-        setIsAnalyzing(false);
-        setAnalysisPhase('error');
-        return;
-      }
-      
-      // ALWAYS perform a fresh extraction - no caching
-      let extractAttempts = 0;
-      const MAX_EXTRACT_ATTEMPTS = 3;
-      let elements = null;
-      
-      while (extractAttempts < MAX_EXTRACT_ATTEMPTS && !elements) {
-        try {
-          setAnalysisPhase('extracting');
-          setRetryAttempt(extractAttempts);
-          
-          // Update UI if this is a retry
-          if (extractAttempts > 0) {
-            await addDetectedItem('System', `Retry attempt ${extractAttempts}...`);
-            setAnalysisStage(`Retry ${extractAttempts}/${MAX_EXTRACT_ATTEMPTS}: Extracting narrative elements...`);
-          }
-          
-          // First, artificially slow down to show extraction progress UI
-          await simulateProcessingDelay(4000);
-          
-          elements = await analyzeText(analysisData);
-          
-          if (elements) {
-            // IMPORTANT FIX: Force showing the extraction review screen
-            logDebug("EXTRACTION COMPLETE: Setting to extracted phase and stopping analysis");
-            
-            // Display a sample of the extracted elements in the UI
-            await addDetectedItem('System', 'Processing extracted elements...');
-            
-            if (elements.characters?.length > 0) {
-              await addDetectedItem('System', `Found ${elements.characters.length} characters`);
-              for (const char of elements.characters.slice(0, 3)) {
-                await addDetectedItem('Character', char.name);
-              }
-            }
-            
-            if (elements.locations?.length > 0) {
-              await addDetectedItem('System', `Found ${elements.locations.length} locations`);
-              for (const loc of elements.locations.slice(0, 3)) {
-                await addDetectedItem('Location', loc.name);
-              }
-            }
-            
-            if (elements.scenes?.length > 0) {
-              await addDetectedItem('System', `Found ${elements.scenes.length} scenes`);
-              for (const scene of elements.scenes.slice(0, 3)) {
-                await addDetectedItem('Scene', scene.title);
-              }
-            }
-            
-            if (elements.plotlines?.length > 0) {
-              await addDetectedItem('System', `Found ${elements.plotlines.length} plotlines`);
-              for (const plot of elements.plotlines.slice(0, 3)) {
-                await addDetectedItem('Plotline', plot.title);
-              }
-            }
-            
-            // Add artificial delay to ensure user sees the extraction results
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Store original UI state before forcing review screen
-            storeOriginalUIState();
-            
-            // Call our utility function that force-sets the proper state
-            forceExtractionReviewScreen();
-          }
-          
-          break;
-        } catch (err: any) {
-          logDebug(`Extract attempt ${extractAttempts + 1} failed:`, err);
-          
-          // If we've reached max attempts, propagate the error
-          if (extractAttempts === MAX_EXTRACT_ATTEMPTS - 1) {
-            throw err;
-          }
-          
-          // Otherwise, log retry and continue
-          await addDetectedItem('Warning', `Extraction attempt failed: ${err.message}`);
-          extractAttempts++;
-        }
-      }
-      
-      if (!elements) {
-        throw new Error('Failed to extract narrative elements after multiple attempts');
-      }
-    } catch (err: any) {
-      logDebug("Error during extraction:", err);
-      setError(`Extraction error: ${err.message || 'Unknown error'}`);
-      setFullErrorDetails(err instanceof Error ? err.stack || err.message : String(err));
-      await addDetectedItem('Error', `Extraction error: ${err.message || 'Unknown error'}`);
-      setAnalysisPhase('error');
-      setIsAnalyzing(false);
-    }
-  };
-  
-  // Improved direct database save phase with comprehensive checking and setup
-  const processSavingDirectly = async () => {
-    try {
-      logDebug("=== Starting processSavingDirectly ===");
-      
-      // Remove the extraction complete flag - now we're saving
-      localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-      setMustShowExtractionReview(false);
-      
-      // Hide the extraction review screen
-      hideExtractionReviewScreen();
-      
-      // Check if we have the required state for saving
-      if (!extractedElements && !extractedElementsRef.current) {
-        logDebug("No extracted elements to save");
-        setError('No extracted elements to save. Please extract data first.');
-        setAnalysisPhase('error');
-        setIsAnalyzing(false);
-        return;
-      }
-      
-      // Update UI state for saving
-      setAnalysisPhase('saving');
-      setAnalysisStage('Preparing to save elements...');
-      setSavingProgress(0);
-      
-      try {
-        // Save all elements directly to database
-        const saveResults = await saveElementsDirectly();
-        
-        // Update UI with success
-        setAnalysisPhase('complete');
-        setIsAnalyzing(false);
-        setAnalysisStage('Analysis completed successfully!');
-        await addDetectedItem('System', 'All elements saved to database successfully!');
-        
-        // After a short delay, navigate to the story dashboard
-        setTimeout(() => {
-          try {
-            // Navigate to story viewer with the story ID
-            const analysisData = getAnalysisData();
-            if (analysisData && analysisData.storyId) {
-              navigate(`/story/${analysisData.storyId}`);
-            } else {
-              // Fallback to stories list
-              navigate('/stories');
-            }
-          } catch (navigateErr) {
-            logDebug("Error navigating after save:", navigateErr);
-            // Fallback - just stay on the page
-          }
-        }, 2000);
-      } catch (saveErr) {
-        logDebug("Error in saveElementsDirectly:", saveErr);
-        setError(`Error saving elements: ${saveErr.message || 'Unknown error'}`);
-        setAnalysisPhase('error');
-        setIsAnalyzing(false);
-      }
-    } catch (err: any) {
-      logDebug("Error in processSavingDirectly:", err);
-      setError(`Save error: ${err.message || 'Unknown error'}`);
-      setFullErrorDetails(err instanceof Error ? err.stack || err.message : String(err));
-      setAnalysisPhase('error');
-      setIsAnalyzing(false);
-    }
-  };
-
-  // Main logic to control the analysis flow
+  // Start analysis on component mount if not showing extraction review
   useEffect(() => {
-    // Only start extraction if it hasn't already begun
-    if (isAnalyzing && !extractionStarted && analysisPhase === 'extracting') {
+    if (!showExtractionReview && !extractionStarted && !error) {
       processExtraction();
     }
-    
-    // Handle saving phase
-    if (isAnalyzing && analysisPhase === 'saving') {
-      processSavingDirectly();
-    }
-  }, [isAnalyzing, analysisPhase, extractionStarted]);
+  }, [showExtractionReview, extractionStarted, error]);
 
-  // Render the UI based on current state
-  return (
-    <div className="analysis-progress-container">
-      <h1>Analyzing Story</h1>
-      
-      {/* Analysis progress phase */}
-      {isAnalyzing && (
-        <div className="analysis-progress">
-          <div className="progress-status">
-            <h2>{analysisPhase === 'extracting' ? 'Extracting Story Elements' : 'Saving to Database...'}</h2>
-            <p>{analysisStage}</p>
-            
-            {/* Progress bar */}
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar" 
-                style={{ 
-                  width: `${analysisPhase === 'extracting' ? extractionProgress : savingProgress}%` 
-                }}
-              ></div>
-            </div>
-          </div>
+  // Render appropriate view based on component state
+  if (showExtractionReview) {
+    // Extraction completed, showing review UI
+    return (
+      <div className="analysis-progress-container">
+        <div className="analysis-progress-container">
+          <h1>Analyzing Story</h1>
           
-          {/* Detected items display */}
-          <div className="detected-items">
-            <h3>Detected Items</h3>
-            <div className="items-list">
-              {detectedItems.length === 0 ? (
-                <p>Waiting for analysis to begin...</p>
-              ) : (
-                <ul>
-                  {detectedItems.map(item => (
-                    <li key={item.id} className={`item-type-${item.type.toLowerCase()}`}>
-                      <span className="item-type">{item.type}</span>
-                      <span className="item-name">{item.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Extraction review phase - will be controlled by DOM manipulation */}
-      {analysisPhase === 'extracted' && !isAnalyzing && (
-        <div className="extraction-complete">
-          <div className="success-icon">✓</div>
-          <h2>Extraction Complete!</h2>
-          <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
-          
-          {/* Extraction summary */}
-          <div className="extraction-summary">
-            <div className="summary">
-              {extractionSummary && (
-                <>
-                  <div className="summary-item">
-                    <h3>Characters</h3>
-                    <span className="count">{extractionSummary.characters || 0}</span>
-                  </div>
-                  <div className="summary-item">
-                    <h3>Locations</h3>
-                    <span className="count">{extractionSummary.locations || 0}</span>
-                  </div>
-                  <div className="summary-item">
-                    <h3>Events</h3>
-                    <span className="count">{extractionSummary.events || 0}</span>
-                  </div>
-                  <div className="summary-item">
-                    <h3>Scenes</h3>
-                    <span className="count">{extractionSummary.scenes || 0}</span>
-                  </div>
-                  <div className="summary-item">
-                    <h3>Plotlines</h3>
-                    <span className="count">{extractionSummary.plotlines || 0}</span>
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="extraction-complete">
+            <div className="success-icon">✓</div>
+            <h2>Extraction Complete!</h2>
+            <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
             
-            {extractionTimestamp && (
+            <div className="extraction-summary">
+              <div className="summary">
+                <div className="summary-item">
+                  <h3>Characters</h3>
+                  <span className="count">{extractionSummary?.characters || 0}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Locations</h3>
+                  <span className="count">{extractionSummary?.locations || 0}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Events</h3>
+                  <span className="count">{extractionSummary?.events || 0}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Scenes</h3>
+                  <span className="count">{extractionSummary?.scenes || 0}</span>
+                </div>
+                <div className="summary-item">
+                  <h3>Plotlines</h3>
+                  <span className="count">{extractionSummary?.plotlines || 0}</span>
+                </div>
+              </div>
+              
               <div className="extraction-timestamp">
                 Extracted at: {new Date(extractionTimestamp).toLocaleString()}
               </div>
-            )}
+              
+              {debugInfo && (
+                <div className="debug-info">
+                  <h3>Debug Information</h3>
+                  <pre>{debugInfo}</pre>
+                </div>
+              )}
+            </div>
             
-            {debugInfo && (
-              <div className="debug-info">
-                <h3>Debug Information</h3>
-                <pre>{debugInfo}</pre>
-              </div>
-            )}
-          </div>
-          
-          {/* Action buttons */}
-          <div className="actions-container">
-            <button 
-              id="continue-to-save-btn" 
-              onClick={handleContinueToSaving}
-              className="primary"
-            >
-              Continue to Save Elements
-            </button>
-            <button 
-              id="force-new-extraction-btn" 
-              onClick={handleFreshExtraction}
-              className="secondary"
-            >
-              Force New Extraction
-            </button>
-          </div>
-        </div>
-      )}
-      
-      {/* Analysis complete phase */}
-      {analysisPhase === 'complete' && !isAnalyzing && (
-        <div className="analysis-complete">
-          <div className="success-icon">✓</div>
-          <h2>Analysis Complete!</h2>
-          <p>All elements have been saved to the database.</p>
-          
-          {/* Summary of saved items */}
-          <div className="save-summary">
-            <div className="summary">
-              <div className="summary-item">
-                <h3>Characters</h3>
-                <span className="count">{saveResults.characters || 0}</span>
-              </div>
-              <div className="summary-item">
-                <h3>Locations</h3>
-                <span className="count">{saveResults.locations || 0}</span>
-              </div>
-              <div className="summary-item">
-                <h3>Events</h3>
-                <span className="count">{saveResults.events || 0}</span>
-              </div>
-              <div className="summary-item">
-                <h3>Scenes</h3>
-                <span className="count">{saveResults.scenes || 0}</span>
-              </div>
-              <div className="summary-item">
-                <h3>Plotlines</h3>
-                <span className="count">{saveResults.plotlines || 0}</span>
-              </div>
-              <div className="summary-item">
-                <h3>Relationships</h3>
-                <span className="count">{saveResults.relationships || 0}</span>
-              </div>
+            <div className="actions-container">
+              <button 
+                id="continue-to-save-btn"
+                className="primary-button"
+                onClick={handleContinueToSaving}
+              >
+                Continue to Save Elements
+              </button>
+              <button 
+                id="force-new-extraction-btn"
+                className="secondary-button"
+                onClick={handleFreshExtraction}
+              >
+                Force New Extraction
+              </button>
             </div>
           </div>
-          
-          <div className="actions-container">
-            <p>Redirecting to story view...</p>
-          </div>
         </div>
-      )}
-      
-      {/* Error phase */}
-      {analysisPhase === 'error' && (
-        <div className="analysis-error">
+      </div>
+    );
+  }
+
+  if (error) {
+    // Show error state if something went wrong
+    return (
+      <div className="analysis-progress-container">
+        <h1>Analysis Error</h1>
+        
+        <div className="error-state">
           <div className="error-icon">!</div>
-          <h2>Analysis Error</h2>
-          <p>{error || 'An unknown error occurred during analysis.'}</p>
+          <h2>Analysis Failed</h2>
+          <p className="error-message">{error}</p>
           
           {fullErrorDetails && (
-            <div className="full-error-details">
+            <div className="debug-info">
               <h3>Error Details</h3>
               <pre>{fullErrorDetails}</pre>
             </div>
@@ -2700,30 +1858,136 @@ const StoryAnalysisProgress: React.FC = () => {
           
           <div className="actions-container">
             <button 
+              className="retry-button"
               onClick={() => {
-                // Clear error state and restart
                 setError(null);
-                setFullErrorDetails(null);
                 setAnalysisPhase('extracting');
                 setIsAnalyzing(true);
-                setExtractionStarted(false);
                 setForceNewExtraction(true);
-                isNewExtractionRef.current = true;
                 clearAnalysisCache();
+                processExtraction();
               }}
-              className="primary"
             >
               Retry Analysis
             </button>
             <button 
-              onClick={() => navigate('/stories')}
-              className="secondary"
+              className="secondary-button"
+              onClick={() => navigate('/')}
             >
-              Return to Stories
+              Go to Dashboard
             </button>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  if (analysisPhase === 'extracting') {
+    // Show extraction progress
+    return (
+      <div className="analysis-progress-container">
+        <h1>Analyzing Story</h1>
+        
+        <div className="progress-indicator">
+          <div className="spinner"></div>
+          <p>Extracting Story Elements</p>
+          <div className="analysis-phase">
+            {analysisStage}
+          </div>
+          
+          <div className="progress-bar-container">
+            <div 
+              className="progress-bar" 
+              style={{ width: `${extractionProgress}%` }}
+            ></div>
+            <div className="progress-text">
+              {Math.round(extractionProgress)}%
+            </div>
+          </div>
+        </div>
+        
+        <div className="detection-log">
+          <h3>Detected Items</h3>
+          <div className="log-entries">
+            {detectedItems.map(item => (
+              <div key={item.id} className="log-entry">
+                <div className={`item-type ${item.type.toLowerCase()}`}>
+                  {item.type}
+                </div>
+                <div className="item-name">
+                  {item.name}
+                </div>
+              </div>
+            ))}
+            {detectedItems.length === 0 && (
+              <div className="log-entry">
+                <div className="item-type system">System</div>
+                <div className="item-name">Waiting for items...</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (analysisPhase === 'saving') {
+    // Show saving progress
+    return (
+      <div className="analysis-progress-container">
+        <h1>Saving Story Elements</h1>
+        
+        <div className="progress-indicator">
+          <div className="spinner"></div>
+          <p>Saving to Database</p>
+          <div className="analysis-phase">
+            {analysisStage}
+          </div>
+          
+          <div className="progress-bar-container">
+            <div 
+              className="progress-bar" 
+              style={{ width: `${savingProgress}%` }}
+            ></div>
+            <div className="progress-text">
+              {Math.round(savingProgress)}%
+            </div>
+          </div>
+        </div>
+        
+        <div className="detection-log">
+          <h3>Save Progress</h3>
+          <div className="log-entries">
+            {detectedItems.map(item => (
+              <div key={item.id} className="log-entry">
+                <div className={`item-type ${item.type.toLowerCase()}`}>
+                  {item.type}
+                </div>
+                <div className="item-name">
+                  {item.name}
+                </div>
+              </div>
+            ))}
+            {detectedItems.length === 0 && (
+              <div className="log-entry">
+                <div className="item-type system">System</div>
+                <div className="item-name">Preparing to save...</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default loading state
+  return (
+    <div className="analysis-progress-container">
+      <h1>Initializing Analysis</h1>
+      <div className="progress-indicator">
+        <div className="spinner"></div>
+        <p>Please wait...</p>
+      </div>
     </div>
   );
 };
