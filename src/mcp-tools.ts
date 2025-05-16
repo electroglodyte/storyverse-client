@@ -441,5 +441,6 @@ export const EDGE_FUNCTIONS = {
   webApi: "web-api",
   serveWeb: "serve-web",
   mcpServer: "mcp-server",
+  analyzeStory: "analyze-story",
   importStory: "import-story"
 };
