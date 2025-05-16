@@ -53,6 +53,12 @@ interface NewGoalFormProps {
   onCancel: () => void;
 }
 
+// Define a type for the story data we receive from the database
+interface StoryData {
+  id: string;
+  title: string;
+}
+
 export default function NewGoalForm({ onGoalCreated, onCancel }: NewGoalFormProps) {
   const [stories, setStories] = useState<Story[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,13 +87,13 @@ export default function NewGoalForm({ onGoalCreated, onCancel }: NewGoalFormProp
     const fetchStories = async () => {
       const { data, error } = await supabase
         .from('stories')
-        .select('id, title')
+        .select('id, title, name, created_at, updated_at')
         .order('title');
         
       if (error) {
         console.error('Error fetching stories:', error);
-      } else {
-        setStories(data || []);
+      } else if (data) {
+        setStories(data);
       }
     };
     
