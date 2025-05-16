@@ -37,6 +37,12 @@
   font-size: 14px;
 }
 
+.required-field {
+  color: #c53030;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
 /* Custom select styling */
 .custom-select-wrapper {
   position: relative;
@@ -55,6 +61,10 @@
   color: #333;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   transition: all 0.2s ease;
+}
+
+.custom-select.required {
+  border-color: #e2a1a1;
 }
 
 .custom-select:hover {
@@ -172,6 +182,16 @@
   cursor: not-allowed;
 }
 
+.warning-message {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background-color: #fff9e0;
+  color: #895100;
+  border-radius: 6px;
+  font-size: 14px;
+  border-left: 4px solid #ffbb00;
+}
+
 .error-message {
   margin: 16px 0;
   padding: 12px 16px;
@@ -225,6 +245,31 @@
   margin-bottom: 4px;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* Data type indicator */
+.data-type-indicator {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+.data-type-characters {
+  background-color: #e0f7fa;
+  color: #006064;
+}
+
+.data-type-story {
+  background-color: #e8f5e9;
+  color: #1b5e20;
+}
+
+.data-type-unknown {
+  background-color: #f5f5f5;
+  color: #757575;
 }
 
 /* Make sure dropdowns stay side-by-side on most screens but stack on very small screens */
