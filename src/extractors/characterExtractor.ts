@@ -1,4 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../supabaseClient';
+import { Character } from '../supabase-tables';
 
 // Common non-character ALL CAPS words
 const NON_CHARACTER_WORDS = [
@@ -137,7 +139,7 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   const characterLineRegex = /^([A-Z][A-Z\s]+)(?:\s*\(.*\))?\s*$/;
   
   // Regular expression to detect sluglines (scene headings)
-  const sluglineRegex = /^(INT|EXT|INT\/EXT|EXT\/INT)[\.\s]/i;
+  const sluglineRegex = /^(INT|EXT|INT\/EXT|EXT\/INT)[\.|\s]/i;
   
   // First pass - extract character names from script formatting if present
   for (const line of scriptLines) {
@@ -158,9 +160,9 @@ export const extractAllCapsCharacters = (text: string): string[] => {
         // Check for dialogue context - character names are usually followed by dialogue
         const lineIndex = scriptLines.indexOf(line);
         const hasDialogueAfter = lineIndex < scriptLines.length - 1 && 
-                                 !characterLineRegex.test(scriptLines[lineIndex + 1]) &&
-                                 !sluglineRegex.test(scriptLines[lineIndex + 1]) &&
-                                 scriptLines[lineIndex + 1].trim().length > 0;
+                               !characterLineRegex.test(scriptLines[lineIndex + 1]) &&
+                               !sluglineRegex.test(scriptLines[lineIndex + 1]) &&
+                               scriptLines[lineIndex + 1].trim().length > 0;
         
         // Higher confidence if it has dialogue after - use our plausibility check
         if (hasDialogueAfter && isLikelyCharacterName(name)) {
@@ -304,7 +306,7 @@ export const generateCharacterDescription = (name: string, storyText: string): s
   const searchName = name.includes(' ') ? name.split(' ')[0] : name;
   
   // First, check for explicit descriptions near the character's name
-  const namePattern = new RegExp(`${searchName}[^.!?]*(?:[,.;:]\\\\s*[^.!?]*)?[.!?]`, 'g');
+  const namePattern = new RegExp(`${searchName}[^.!?]*(?:[,.;:]\\\\\\\\s*[^.!?]*)?[.!?]`, 'g');
   const contextMatches = storyText.match(namePattern);
   
   if (contextMatches && contextMatches.length > 0) {
@@ -458,13 +460,49 @@ export const identifyCharacterRole = (name: string, storyText: string): 'protago
   return 'background';
 };
 
+// Check if a character exists in the database by name
+export const checkIfCharacterExists = async (name: string, storyWorldId?: string): Promise<boolean> => {
+  try {
+    let query = supabase.from('characters').select('id, name');
+    
+    // Format name for comparison (case-insensitive)
+    const formattedName = name
+      .split(' ')
+      .map(word => word.charAt(0) + word.slice(1).toLowerCase())
+      .join(' ');
+    
+    // Filter by story world if provided
+    if (storyWorldId) {
+      query = query.eq('story_world_id', storyWorldId);
+    }
+    
+    // Use ilike for case-insensitive matching
+    query = query.ilike('name', formattedName);
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error checking for existing character:', error);
+      return false;
+    }
+    
+    return data && data.length > 0;
+  } catch (err) {
+    console.error('Error in checkIfCharacterExists:', err);
+    return false;
+  }
+};
+
 // Create a character object from a character name with improved details
-export const createCharacterObject = (name: string, storyId: string, storyText: string): any => {
+export const createCharacterObject = async (name: string, storyId: string, storyText: string, storyWorldId?: string): Promise<any> => {
   // Convert to Title Case (first letter of each word capitalized, rest lowercase)
   const formattedName = name
     .split(' ')
     .map(word => word.charAt(0) + word.slice(1).toLowerCase())
     .join(' ');
+  
+  // Check if character already exists
+  const exists = await checkIfCharacterExists(name, storyWorldId);
   
   // Identify role and generate description
   const role = identifyCharacterRole(name, storyText);
@@ -474,17 +512,38 @@ export const createCharacterObject = (name: string, storyId: string, storyText: 
   return {
     id: uuidv4(),
     name: formattedName,
-    role,
     description,
+    role,
     character_logline,
     story_id: storyId,
+    story_world_id: storyWorldId,
+    isNew: !exists, // Flag to indicate if this is a new character
     confidence: 0.9 // High confidence for ALL CAPS characters
   };
 };
 
 // Main function to extract and create character objects
-export const extractCharacters = (text: string, storyId: string): any[] => {
-  const characterNames = extractAllCapsCharacters(text);
-  console.log('Extracted character names:', characterNames);
-  return characterNames.map(name => createCharacterObject(name, storyId, text));
+export const extractCharacters = async (text: string, storyId: string, storyWorldId?: string): Promise<any[]> => {
+  try {
+    // Extract all potential character names from the text
+    const characterNames = extractAllCapsCharacters(text);
+    console.log('Extracted character names:', characterNames);
+    
+    // Create character objects with isNew flag
+    const characterPromises = characterNames.map(name => 
+      createCharacterObject(name, storyId, text, storyWorldId)
+    );
+    
+    // Wait for all character objects to be created and checked against the database
+    const characters = await Promise.all(characterPromises);
+    
+    // Debug information
+    const newCharacters = characters.filter(char => char.isNew);
+    console.log(`Found ${characterNames.length} total characters, ${newCharacters.length} are new`);
+    
+    return characters;
+  } catch (error) {
+    console.error('Error in extractCharacters:', error);
+    return [];
+  }
 };
