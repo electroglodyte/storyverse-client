@@ -99,7 +99,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
             extract_locations: true,
             extract_plotlines: true,
             extract_scenes: true,
-            confidence_threshold: 0.3 // Lower threshold to get more results
+            confidence_threshold: 0.05 // Much lower threshold to capture all possible characters
           }
         }),
       });
