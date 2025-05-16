@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.8.0
+ * Version: 0.8.5
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -279,19 +279,9 @@ interface UpdateSceneSubtextTool {
  * IMPORT TOOLS
  */
 
-interface AnalyzeImportedStoryTool {
-  name: "analyze_imported_story";
-  description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure";
-}
-
-interface ExtractStoryElementsTool {
-  name: "extract_story_elements";
-  description: "Extracts characters, locations, events, and other narrative elements from an imported text";
-}
-
-interface ImportStoryWithProgressTool {
-  name: "import_story_with_progress";
-  description: "Imports and analyzes a story with real-time progress updates on detected elements";
+interface ImportAnalyzedStoryTool {
+  name: "import_analyzed_story";
+  description: "Imports pre-analyzed story data (produced by Claude) into the database, handling entity relationships and deduplication";
 }
 
 /**
@@ -370,9 +360,7 @@ type McpTool =
   | UpdateCharacter5QTool
   | AnalyzeSceneSubtextTool
   | UpdateSceneSubtextTool
-  | AnalyzeImportedStoryTool
-  | ExtractStoryElementsTool
-  | ImportStoryWithProgressTool
+  | ImportAnalyzedStoryTool
   | LinkObjectToCharacterTool
   | LinkObjectToLocationTool
   | TrackObjectAppearanceTool
@@ -437,10 +425,8 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "analyze_scene_subtext", description: "Analyzes a scene and suggests possible subtexts" },
   { name: "update_scene_subtext", description: "Updates the subtext notes for a scene" },
   
-  // Import Tools
-  { name: "analyze_imported_story", description: "Analyzes an imported story and extracts narrative elements like characters, locations, events, and plot structure" },
-  { name: "extract_story_elements", description: "Extracts characters, locations, events, and other narrative elements from an imported text" },
-  { name: "import_story_with_progress", description: "Imports and analyzes a story with real-time progress updates on detected elements" },
+  // Import Tools (updated to new approach)
+  { name: "import_analyzed_story", description: "Imports pre-analyzed story data (produced by Claude) into the database, handling entity relationships and deduplication" },
   
   // Object (Props) Tools
   { name: "create_object", description: "Create a new object (prop) and optionally link it to a story world or story" },
