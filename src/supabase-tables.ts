@@ -1,6 +1,6 @@
 /**
  * StoryVerse Database Schema
- * Version: 0.4.3
+ * Version: 0.4.4
  * 
  * This file contains TypeScript types for all tables in the Supabase database.
  */
@@ -356,6 +356,8 @@ export interface Scene {
   status: SceneStatus;
   format?: 'plain' | 'fountain' | 'markdown';
   metadata?: Record<string, any>;
+  essence?: string;  // A very simple description of what happens in the scene
+  interest?: string; // Where the audience interest will lie in the scene
   created_at: string;
   updated_at: string;
 }
@@ -398,6 +400,24 @@ export interface SceneLocation {
   scene_id: string;
   location_id: string;
   created_at: string;
+}
+
+// Story Question - tracks narrative questions and their resolution
+export interface StoryQuestion {
+  id: string;
+  story_id: string;
+  question: string;
+  description?: string;
+  origin_scene_id?: string;   // Where the question is first introduced
+  resolution_scene_id?: string; // Where the question is resolved
+  importance?: number;        // 1-10 scale of importance
+  status?: 'open' | 'resolved' | 'abandoned'; // Current status
+  category?: string;          // e.g., 'plot', 'character', 'mystery', 'thematic'
+  target_audience?: boolean;  // Is this a question the audience is meant to track?
+  tags?: string[];
+  notes?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Event Dependencies - connections between events
