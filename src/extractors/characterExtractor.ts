@@ -6,7 +6,7 @@ const NON_CHARACTER_WORDS = [
   'BUT', 'OR', 'THAT', 'THIS', 'THESE', 'THOSE', 'MY', 'YOUR', 'HIS', 'HER', 'OUR', 'THEIR',
   'ARE', 'WAS', 'WERE', 'BE', 'BEEN', 'BEING', 'HAVE', 'HAS', 'HAD', 'DO', 'DOES', 'DID',
   'NOT', 'NO', 'YES', 'CAN', 'WILL', 'WOULD', 'SHOULD', 'COULD', 'MAY', 'MIGHT',
-  'YEAR', 'YEARS', 'TALE', 'STORY', 'BY', 'SYNOPSIS'
+  'YEAR', 'YEARS', 'STORY', 'SYNOPSIS'
 ];
 
 // Helper function to extract characters marked in ALL CAPS
@@ -40,13 +40,15 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   
   // Second pass - extract remaining ALL CAPS words
   // Regular expression to match words in ALL CAPS with 2 or more letters
-  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
+  const allCapsRegex = /\b[A-Z][A-Z]+\b/g;
   const allCapsMatches = text.match(allCapsRegex) || [];
   
   // Add individual words, filtering non-character words and possessive forms
   for (const word of allCapsMatches) {
-    // Skip possessive forms (e.g., "WOLF'S")
-    if (word.includes("'")) continue;
+    // Only skip possessive forms if they're at the end of a title
+    if (word.endsWith("'S") && (text.includes(`${word} TALE`) || text.includes(`${word} STORY`))) {
+      continue;
+    }
     
     if (!NON_CHARACTER_WORDS.includes(word)) {
       potentialNames.push(word);
@@ -55,24 +57,41 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   
   // Detect multi-word character names (like "BOBA FETT")
   // Look for patterns where ALL CAPS words appear together consistently
-  const multiWordRegex = /\b[A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g;
+  const multiWordRegex = /\b[A-Z][A-Z]+\s+[A-Z][A-Z]+(?:\s+[A-Z][A-Z]+)*\b/g;
   const multiWordMatches = text.match(multiWordRegex) || [];
   
   for (const multiWord of multiWordMatches) {
     // Skip if any of the words are in the non-character list
     const words = multiWord.split(/\s+/);
-    const isNonCharacter = words.some(word => NON_CHARACTER_WORDS.includes(word));
+    const isNonCharacter = words.every(word => NON_CHARACTER_WORDS.includes(word));
     
     if (!isNonCharacter) {
-      multiWordNames.push(multiWord);
+      // Check if this is a title (e.g., "A WOLF'S TALE")
+      const lowerMultiWord = multiWord.toLowerCase();
+      if (!lowerMultiWord.includes("tale") && !lowerMultiWord.includes("story")) {
+        multiWordNames.push(multiWord);
+      }
       
-      // Remove the individual words from potentialNames since they're part of a multi-word name
-      words.forEach(word => {
-        const index = potentialNames.indexOf(word);
-        if (index !== -1) {
-          potentialNames.splice(index, 1);
-        }
-      });
+      // Remove the individual words from potentialNames if they're part of a multi-word name
+      // Only do this if we're keeping the multi-word name
+      if (multiWordNames.includes(multiWord)) {
+        words.forEach(word => {
+          const index = potentialNames.indexOf(word);
+          if (index !== -1) {
+            potentialNames.splice(index, 1);
+          }
+        });
+      }
+    }
+  }
+  
+  // Extract character names from title lines (e.g., "RUFUS: A WOLF'S TALE")
+  const titleLineRegex = /^([A-Z][A-Z]+):\s/gm;
+  let titleMatch;
+  while ((titleMatch = titleLineRegex.exec(text)) !== null) {
+    const name = titleMatch[1];
+    if (name.length > 1 && !NON_CHARACTER_WORDS.includes(name)) {
+      potentialNames.push(name);
     }
   }
   
@@ -199,5 +218,6 @@ export const createCharacterObject = (name: string, storyId: string, storyText: 
 // Main function to extract and create character objects
 export const extractCharacters = (text: string, storyId: string): any[] => {
   const characterNames = extractAllCapsCharacters(text);
+  console.log('Extracted character names:', characterNames);
   return characterNames.map(name => createCharacterObject(name, storyId, text));
 };
