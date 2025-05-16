@@ -247,7 +247,7 @@ const StoryAnalysisProgress: React.FC = () => {
       // Generate HTML for the extraction review
       const summaryItems = extractionSummary || 
                           JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
-                          '{\"characters\":0,\"locations\":0,\"events\":0,\"scenes\":0,\"plotlines\":0,\"relationships\":0}');
+                          '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
       
       // Create the HTML content with inlined styles for maximum reliability
       const htmlContent = `
@@ -527,11 +527,16 @@ const StoryAnalysisProgress: React.FC = () => {
       
       // Last resort fallback - try to show a minimal, reliable extraction review
       try {
+        // Get current summary data for the fallback
+        const currentSummary = extractionSummary || 
+                              JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
+                              '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
+                              
         const fallbackDiv = document.createElement('div');
         fallbackDiv.style.cssText = "position:fixed !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; background:white !important; z-index:9999999 !important; display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important; padding:20px !important;";
         fallbackDiv.innerHTML = `
           <h1 style="margin-bottom:20px !important;">Extraction Complete</h1>
-          <p style="margin-bottom:20px !important;">Ready to save ${summaryItems.characters || 0} characters, ${summaryItems.locations || 0} locations, and more.</p>
+          <p style="margin-bottom:20px !important;">Ready to save ${currentSummary.characters || 0} characters, ${currentSummary.locations || 0} locations, and more.</p>
           <div style="display:flex !important; gap:20px !important;">
             <button id="fallback-continue" style="padding:10px 20px !important; background:#2196F3 !important; color:white !important; border:none !important; cursor:pointer !important;">Continue to Save</button>
             <button id="fallback-retry" style="padding:10px 20px !important; background:#f5f5f5 !important; color:#333 !important; border:1px solid #ddd !important; cursor:pointer !important;">Force New Extraction</button>
@@ -803,6 +808,48 @@ const StoryAnalysisProgress: React.FC = () => {
     
     // Return the cache breaker in case we need it
     return cacheBreaker;
+  };
+
+  // Handler functions for extraction review screen buttons
+  const handleContinueToSaving = () => {
+    logDebug("Continue to saving button clicked");
+    
+    // Remove the extraction complete flag from localStorage
+    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+    
+    // Update state to show saving phase
+    setMustShowExtractionReview(false);
+    setAnalysisPhase('saving');
+    setIsAnalyzing(true);
+    
+    // Hide the extraction review screen
+    hideExtractionReviewScreen();
+    
+    // Start saving process
+    processSavingDirectly();
+  };
+  
+  const handleFreshExtraction = () => {
+    logDebug("Force new extraction button clicked");
+    
+    // Set flag to force a new extraction
+    setForceNewExtraction(true);
+    isNewExtractionRef.current = true;
+    
+    // Clear all extraction flags and data
+    clearAnalysisCache();
+    
+    // Reset state to extraction phase
+    setMustShowExtractionReview(false);
+    setAnalysisPhase('extracting');
+    setIsAnalyzing(true);
+    setExtractionStarted(false);
+    
+    // Hide the extraction review screen
+    hideExtractionReviewScreen();
+    
+    // Start fresh extraction
+    processExtraction();
   };
 
   // Check for extraction complete status on component mount
@@ -2412,441 +2459,270 @@ const StoryAnalysisProgress: React.FC = () => {
       // Hide the extraction review screen
       hideExtractionReviewScreen();
       
-      // 1. Check if the user is authenticated
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        logDebug("Authentication check:", { hasSession: !!session });
-      } catch (error) {
-        logDebug("Error checking auth session:", error);
+      // Check if we have the required state for saving
+      if (!extractedElements && !extractedElementsRef.current) {
+        logDebug("No extracted elements to save");
+        setError('No extracted elements to save. Please extract data first.');
+        setAnalysisPhase('error');
+        setIsAnalyzing(false);
+        return;
       }
       
-      setIsAnalyzing(true);
+      // Update UI state for saving
       setAnalysisPhase('saving');
-      setAnalysisStage('Starting to save elements directly to database...');
+      setAnalysisStage('Preparing to save elements...');
+      setSavingProgress(0);
       
-      // 2. Verify extracted elements - try multiple sources
-      let elements = extractedElements || extractedElementsRef.current;
-      if (!elements) {
-        // Try to load from localStorage
-        const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
-        if (extractionDataStr) {
-          try {
-            elements = JSON.parse(extractionDataStr);
-            // Restore to component state
-            setExtractedElements(elements);
-            extractedElementsRef.current = elements;
-          } catch (err) {
-            logDebug("Error parsing extraction data from localStorage:", err);
-          }
-        }
-        
-        if (!elements) {
-          logDebug("No extracted elements found when trying to save");
-          throw new Error('No extracted elements found. Please try extracting the data again.');
-        }
-      }
-      
-      logDebug("Extracted elements available for saving:", {
-        characters: elements.characters?.length || 0,
-        locations: elements.locations?.length || 0
-      });
-      
-      // 3. Get analysis data - use our robust accessor
-      const analysisData = getAnalysisData();
-      
-      // 4. Validate we have necessary data
-      if (!analysisData) {
-        const errorMsg = 'No analysis data found. Please restart the analysis process.';
-        logDebug(errorMsg);
-        throw new Error(errorMsg);
-      }
-      
-      logDebug("Analysis data for saving:", {
-        storyId: analysisData.storyId,
-        storyWorldId: analysisData.storyWorldId,
-        fileName: analysisData.files?.[0]?.name || 'unknown'
-      });
-      
-      // 5. Verify IDs
-      if (!analysisData.storyId || !analysisData.storyWorldId) {
-        const missingFields = [];
-        if (!analysisData.storyId) missingFields.push('storyId');
-        if (!analysisData.storyWorldId) missingFields.push('storyWorldId');
-        
-        const errorMsg = `Missing required fields: ${missingFields.join(', ')}`;
-        logDebug(errorMsg);
-        throw new Error(errorMsg);
-      }
-      
-      // 6. Verify supabase connection
       try {
-        const { data, error } = await supabase.from('stories').select('id').limit(1);
-        if (error) {
-          logDebug("Database connection test failed:", error);
-          throw new Error(`Database connection error: ${error.message}`);
-        }
-        logDebug("Database connection test successful:", { hasData: !!data });
-      } catch (error) {
-        logDebug("Error testing database connection:", error);
-        throw new Error('Unable to connect to database. Please check your network connection.');
+        // Save all elements directly to database
+        const saveResults = await saveElementsDirectly();
+        
+        // Update UI with success
+        setAnalysisPhase('complete');
+        setIsAnalyzing(false);
+        setAnalysisStage('Analysis completed successfully!');
+        await addDetectedItem('System', 'All elements saved to database successfully!');
+        
+        // After a short delay, navigate to the story dashboard
+        setTimeout(() => {
+          try {
+            // Navigate to story viewer with the story ID
+            const analysisData = getAnalysisData();
+            if (analysisData && analysisData.storyId) {
+              navigate(`/story/${analysisData.storyId}`);
+            } else {
+              // Fallback to stories list
+              navigate('/stories');
+            }
+          } catch (navigateErr) {
+            logDebug("Error navigating after save:", navigateErr);
+            // Fallback - just stay on the page
+          }
+        }, 2000);
+      } catch (saveErr) {
+        logDebug("Error in saveElementsDirectly:", saveErr);
+        setError(`Error saving elements: ${saveErr.message || 'Unknown error'}`);
+        setAnalysisPhase('error');
+        setIsAnalyzing(false);
       }
-      
-      // 7. Reset retry counters before starting
-      saveRetryCountRef.current = {
-        characters: 0,
-        locations: 0,
-        events: 0,
-        scenes: 0,
-        plotlines: 0
-      };
-      
-      // 8. Now start the actual saving process
-      logDebug(`Starting to save with storyId=${analysisData.storyId}, storyWorldId=${analysisData.storyWorldId}`);
-      
-      // 9. Save extracted elements to database using improved direct approach
-      const results = await saveElementsDirectly();
-      
-      logDebug("=== Direct save results complete ===");
-      logDebug("Final save results:", results);
-      
-      setAnalysisPhase('complete');
     } catch (err: any) {
-      logDebug("Error during direct saving:", err);
-      
-      // Get detailed error info
-      const detailedError = err instanceof Error ? 
-        `${err.message}\n${err.stack || ''}` : 
-        String(err);
-      
-      setError(`Saving error: ${err.message || 'Unknown error'}`);
-      setFullErrorDetails(detailedError);
-      await addDetectedItem('Error', `Saving error: ${err.message || 'Unknown error'}`);
+      logDebug("Error in processSavingDirectly:", err);
+      setError(`Save error: ${err.message || 'Unknown error'}`);
+      setFullErrorDetails(err instanceof Error ? err.stack || err.message : String(err));
       setAnalysisPhase('error');
-    } finally {
       setIsAnalyzing(false);
     }
   };
-  
-  // Start extraction when component mounts
+
+  // Main logic to control the analysis flow
   useEffect(() => {
-    // Start extraction only if it's not already started and we're not already showing extraction review
-    if (!extractionStarted && !mustShowExtractionReview) {
-      logDebug("Starting initial extraction");
+    // Only start extraction if it hasn't already begun
+    if (isAnalyzing && !extractionStarted && analysisPhase === 'extracting') {
       processExtraction();
     }
-  }, [extractionStarted, mustShowExtractionReview]);
-  
-  // Navigation handler with improved data persistence
-  const handleViewResults = () => {
-    logDebug("Navigating to analysis results page");
     
-    // Verify we have the necessary data in session storage
-    const analysisDataStr = sessionStorage.getItem('analysisData');
-    const analysisResultsStr = sessionStorage.getItem('analysisResults');
-    
-    logDebug("Session storage before navigation:", {
-      hasAnalysisData: !!analysisDataStr,
-      hasAnalysisResults: !!analysisResultsStr
-    });
-    
-    // If either is missing, try to recover from backup
-    if (!analysisDataStr || !analysisResultsStr) {
-      logDebug("Missing critical data in session storage, attempting recovery");
-      
-      if (!analysisDataStr) {
-        const backupDataStr = localStorage.getItem('analysisDataBackup');
-        if (backupDataStr) {
-          sessionStorage.setItem('analysisData', backupDataStr);
-          logDebug("Restored analysis data from backup");
-        }
-      }
-      
-      if (!analysisResultsStr) {
-        const backupResultsStr = localStorage.getItem('analysisResultsBackup');
-        if (backupResultsStr) {
-          sessionStorage.setItem('analysisResults', backupResultsStr);
-          logDebug("Restored analysis results from backup");
-        }
-      }
-    }
-    
-    // Now navigate
-    navigate('/analysis-results');
-  };
-
-  // Enhanced retry logic to handle different failure modes
-  const handleRetry = () => {
-    // If we have extracted elements but failed to save, retry only the saving phase
-    if (analysisPhase === 'error' && (extractedElements || extractedElementsRef.current)) {
-      logDebug("Retrying saving phase only");
-      // Reset relevant states
-      setError(null);
-      setFullErrorDetails(null);
-      setIsAnalyzing(true);
-      
-      // Start from saving phase with direct approach
+    // Handle saving phase
+    if (isAnalyzing && analysisPhase === 'saving') {
       processSavingDirectly();
-    } else {
-      logDebug("Performing full retry - resetting state and reloading page");
-      // Full retry - Reset everything and reload
-      setDetectedItems([]);
-      setExtractedElements(null);
-      extractedElementsRef.current = null;
-      setExtractionStarted(false);
-      setFullErrorDetails(null);
-      setMustShowExtractionReview(false);
-      extractionCompleteRef.current = false;
-      
-      // Flag as forced new extraction
-      isNewExtractionRef.current = true;
-      setForceNewExtraction(true);
-      
-      // Clear localStorage flags
-      clearAnalysisCache();
-      
-      // Hide the extraction review screen
-      hideExtractionReviewScreen();
-      
-      // Force page reload to clear any browser cache/state
-      window.location.reload();
     }
-  };
+  }, [isAnalyzing, analysisPhase, extractionStarted]);
 
-  // Continue to saving handler with improved data integrity checks
-  const handleContinueToSaving = () => {
-    logDebug("USER EXPLICITLY CLICKED 'Continue to Save Elements'");
-    
-    // Clear the extraction complete flag
-    localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-    setMustShowExtractionReview(false);
-    
-    // Hide the extraction review screen
-    hideExtractionReviewScreen();
-    
-    // Backup session storage data before continuing
-    const analysisDataStr = sessionStorage.getItem('analysisData');
-    logDebug("Session storage before continuing to save:", {
-      hasAnalysisData: !!analysisDataStr
-    });
-    
-    if (!analysisDataStr) {
-      logDebug("WARNING: No analysis data in session storage before saving phase!");
-      // Try to recreate it from component state
-      if (storyId && storyWorldId && (extractedElements || extractedElementsRef.current)) {
-        logDebug("Recreating analysis data from component state");
-        const reconstructedData = {
-          storyId,
-          storyWorldId,
-          files: [{
-            name: currentFile,
-            type: 'text/plain',
-            content: null // We don't need the content anymore
-          }]
-        };
-        sessionStorage.setItem('analysisData', JSON.stringify(reconstructedData));
-        localStorage.setItem('analysisDataBackup', JSON.stringify(reconstructedData));
-        analysisDataRef.current = reconstructedData;
-        logDebug("Reconstructed analysis data:", reconstructedData);
-      }
-    }
-    
-    // Verify we have the extracted data before proceeding
-    if (!extractedElements && !extractedElementsRef.current) {
-      // Try to get from localStorage
-      const extractionDataStr = localStorage.getItem(EXTRACTION_DATA_KEY);
-      if (extractionDataStr) {
-        try {
-          const extractionData = JSON.parse(extractionDataStr);
-          setExtractedElements(extractionData);
-          extractedElementsRef.current = extractionData;
-        } catch (err) {
-          logDebug("Error parsing extraction data:", err);
-        }
-      }
-      
-      // If still no data, show error
-      if (!extractedElements && !extractedElementsRef.current) {
-        logDebug("ERROR: Extracted elements missing before save phase");
-        setError("Missing extracted elements data. Please try extracting again.");
-        return;
-      }
-    }
-    
-    // Now allow saving to proceed
-    logDebug("PROCEEDING TO SAVE PHASE: User has reviewed extraction and confirmed");
-    forceExtractionReviewRef.current = false;
-    
-    processSavingDirectly();
-  };
-
-  // Force new extraction with complete reset
-  const handleFreshExtraction = () => {
-    logDebug("Forcing new extraction");
-    // Clear state and restart extraction
-    setDetectedItems([]);
-    setExtractedElements(null);
-    extractedElementsRef.current = null;
-    setExtractionStarted(false);
-    setAnalysisPhase('extracting');
-    setIsAnalyzing(true);
-    setFullErrorDetails(null);
-    setMustShowExtractionReview(false);
-    extractionCompleteRef.current = false;
-    
-    // Flag for force new extraction
-    isNewExtractionRef.current = true;
-    setForceNewExtraction(true);
-    
-    // Clear localStorage flags - generate new cache breaker
-    clearAnalysisCache();
-    
-    // Hide the extraction review screen
-    hideExtractionReviewScreen();
-    
-    // Force page reload to clear any browser cache/state
-    window.location.reload();
-  };
-
-  // Helper function for analysis phase display
-  const getAnalysisPhaseDisplay = () => {
-    switch (analysisPhase) {
-      case 'extracting':
-        return 'Extracting Narrative Elements';
-      case 'saving':
-        return 'Saving To Database';
-      case 'extracted':
-        return 'Extraction Complete';
-      case 'complete':
-        return 'Analysis Complete';
-      case 'error':
-        return 'Error';
-      default:
-        return 'Processing';
-    }
-  };
-  
-  // Render a different view for each analysis phase
+  // Render the UI based on current state
   return (
     <div className="analysis-progress-container">
       <h1>Analyzing Story</h1>
       
-      {mustShowExtractionReview && (
-        // This renders a placeholder during the extraction review state,
-        // The actual UI is created directly in the DOM via showExtractionReviewScreen
-        <div id={EXTRACTION_REVIEW_CONTAINER_ID} style={{ display: 'none' }}>
-          <div className="extraction-review-placeholder">
-            {/* Will be replaced by DOM manipulation */}
-            Extraction review loading...
+      {/* Analysis progress phase */}
+      {isAnalyzing && (
+        <div className="analysis-progress">
+          <div className="progress-status">
+            <h2>{analysisPhase === 'extracting' ? 'Extracting Story Elements' : 'Saving to Database...'}</h2>
+            <p>{analysisStage}</p>
+            
+            {/* Progress bar */}
+            <div className="progress-bar-container">
+              <div 
+                className="progress-bar" 
+                style={{ 
+                  width: `${analysisPhase === 'extracting' ? extractionProgress : savingProgress}%` 
+                }}
+              ></div>
+            </div>
+          </div>
+          
+          {/* Detected items display */}
+          <div className="detected-items">
+            <h3>Detected Items</h3>
+            <div className="items-list">
+              {detectedItems.length === 0 ? (
+                <p>Waiting for analysis to begin...</p>
+              ) : (
+                <ul>
+                  {detectedItems.map(item => (
+                    <li key={item.id} className={`item-type-${item.type.toLowerCase()}`}>
+                      <span className="item-type">{item.type}</span>
+                      <span className="item-name">{item.name}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       )}
       
-      {!mustShowExtractionReview && (
-        <>
-          {isAnalyzing && (
-            <div className="progress-indicator">
-              <div className="spinner"></div>
-              <p>{analysisPhase === 'extracting' ? 'Extracting narrative elements...' : 'Saving elements to database...'}</p>
-              
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar" 
-                  style={{ 
-                    width: `${analysisPhase === 'extracting' ? extractionProgress : savingProgress}%` 
-                  }}
-                ></div>
-                <div className="progress-text">
-                  {analysisPhase === 'extracting' ? 
-                    `${Math.round(extractionProgress)}%` : 
-                    `${Math.round(savingProgress)}%`}
-                </div>
-              </div>
-              
-              <div className="analysis-phase">{getAnalysisPhaseDisplay()}</div>
-              <div className="analysis-stage">{analysisStage}</div>
-            </div>
-          )}
+      {/* Extraction review phase - will be controlled by DOM manipulation */}
+      {analysisPhase === 'extracted' && !isAnalyzing && (
+        <div className="extraction-complete">
+          <div className="success-icon">✓</div>
+          <h2>Extraction Complete!</h2>
+          <p>The narrative elements have been successfully extracted. Ready to save to database.</p>
           
-          {!isAnalyzing && analysisPhase === 'complete' && (
-            <div className="analysis-complete">
-              <div className="success-icon">✓</div>
-              <h2>Analysis Completed Successfully!</h2>
-              <p>The narrative elements have been extracted and saved to your database.</p>
-              
-              <div className="summary">
-                <div className="summary-item">
-                  <h3>Characters</h3>
-                  <span className="count">{saveResults.characters}</span>
-                </div>
-                <div className="summary-item">
-                  <h3>Locations</h3>
-                  <span className="count">{saveResults.locations}</span>
-                </div>
-                <div className="summary-item">
-                  <h3>Events</h3>
-                  <span className="count">{saveResults.events}</span>
-                </div>
-                <div className="summary-item">
-                  <h3>Scenes</h3>
-                  <span className="count">{saveResults.scenes}</span>
-                </div>
-                <div className="summary-item">
-                  <h3>Plotlines</h3>
-                  <span className="count">{saveResults.plotlines}</span>
-                </div>
-              </div>
-              
-              <div className="actions-container">
-                <button className="view-results-button" onClick={handleViewResults}>
-                  View Detailed Results
-                </button>
-              </div>
-            </div>
-          )}
-          
-          {!isAnalyzing && analysisPhase === 'error' && (
-            <div className="analysis-complete">
-              <div className="error-icon">!</div>
-              <h2>Analysis Error</h2>
-              <p>There was an issue during the analysis process.</p>
-              
-              {error && (
-                <div className="error-message">
-                  {error}
-                </div>
+          {/* Extraction summary */}
+          <div className="extraction-summary">
+            <div className="summary">
+              {extractionSummary && (
+                <>
+                  <div className="summary-item">
+                    <h3>Characters</h3>
+                    <span className="count">{extractionSummary.characters || 0}</span>
+                  </div>
+                  <div className="summary-item">
+                    <h3>Locations</h3>
+                    <span className="count">{extractionSummary.locations || 0}</span>
+                  </div>
+                  <div className="summary-item">
+                    <h3>Events</h3>
+                    <span className="count">{extractionSummary.events || 0}</span>
+                  </div>
+                  <div className="summary-item">
+                    <h3>Scenes</h3>
+                    <span className="count">{extractionSummary.scenes || 0}</span>
+                  </div>
+                  <div className="summary-item">
+                    <h3>Plotlines</h3>
+                    <span className="count">{extractionSummary.plotlines || 0}</span>
+                  </div>
+                </>
               )}
-              
-              {fullErrorDetails && (
-                <div className="debug-info">
-                  <h3>Error Details</h3>
-                  <pre>{fullErrorDetails}</pre>
-                </div>
-              )}
-              
-              <div className="actions-container">
-                <button className="retry-button" onClick={handleRetry}>
-                  Retry Analysis
-                </button>
-              </div>
             </div>
-          )}
+            
+            {extractionTimestamp && (
+              <div className="extraction-timestamp">
+                Extracted at: {new Date(extractionTimestamp).toLocaleString()}
+              </div>
+            )}
+            
+            {debugInfo && (
+              <div className="debug-info">
+                <h3>Debug Information</h3>
+                <pre>{debugInfo}</pre>
+              </div>
+            )}
+          </div>
           
-          <div className="detection-log">
-            <h3>Detection Log</h3>
-            <div className="log-entries">
-              {detectedItems.map(item => (
-                <div key={item.id} className="log-entry">
-                  <span className={`item-type ${item.type.toLowerCase()}`}>
-                    {item.type}
-                  </span>
-                  <span className="item-name">
-                    {item.name}
-                  </span>
-                </div>
-              ))}
+          {/* Action buttons */}
+          <div className="actions-container">
+            <button 
+              id="continue-to-save-btn" 
+              onClick={handleContinueToSaving}
+              className="primary"
+            >
+              Continue to Save Elements
+            </button>
+            <button 
+              id="force-new-extraction-btn" 
+              onClick={handleFreshExtraction}
+              className="secondary"
+            >
+              Force New Extraction
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Analysis complete phase */}
+      {analysisPhase === 'complete' && !isAnalyzing && (
+        <div className="analysis-complete">
+          <div className="success-icon">✓</div>
+          <h2>Analysis Complete!</h2>
+          <p>All elements have been saved to the database.</p>
+          
+          {/* Summary of saved items */}
+          <div className="save-summary">
+            <div className="summary">
+              <div className="summary-item">
+                <h3>Characters</h3>
+                <span className="count">{saveResults.characters || 0}</span>
+              </div>
+              <div className="summary-item">
+                <h3>Locations</h3>
+                <span className="count">{saveResults.locations || 0}</span>
+              </div>
+              <div className="summary-item">
+                <h3>Events</h3>
+                <span className="count">{saveResults.events || 0}</span>
+              </div>
+              <div className="summary-item">
+                <h3>Scenes</h3>
+                <span className="count">{saveResults.scenes || 0}</span>
+              </div>
+              <div className="summary-item">
+                <h3>Plotlines</h3>
+                <span className="count">{saveResults.plotlines || 0}</span>
+              </div>
+              <div className="summary-item">
+                <h3>Relationships</h3>
+                <span className="count">{saveResults.relationships || 0}</span>
+              </div>
             </div>
           </div>
-        </>
+          
+          <div className="actions-container">
+            <p>Redirecting to story view...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Error phase */}
+      {analysisPhase === 'error' && (
+        <div className="analysis-error">
+          <div className="error-icon">!</div>
+          <h2>Analysis Error</h2>
+          <p>{error || 'An unknown error occurred during analysis.'}</p>
+          
+          {fullErrorDetails && (
+            <div className="full-error-details">
+              <h3>Error Details</h3>
+              <pre>{fullErrorDetails}</pre>
+            </div>
+          )}
+          
+          <div className="actions-container">
+            <button 
+              onClick={() => {
+                // Clear error state and restart
+                setError(null);
+                setFullErrorDetails(null);
+                setAnalysisPhase('extracting');
+                setIsAnalyzing(true);
+                setExtractionStarted(false);
+                setForceNewExtraction(true);
+                isNewExtractionRef.current = true;
+                clearAnalysisCache();
+              }}
+              className="primary"
+            >
+              Retry Analysis
+            </button>
+            <button 
+              onClick={() => navigate('/stories')}
+              className="secondary"
+            >
+              Return to Stories
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
