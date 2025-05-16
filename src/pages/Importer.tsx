@@ -35,15 +35,26 @@ interface DuplicateInfo {
   similarity: number; // 0-100 percentage
 }
 
-// Added interface for element with required id
-interface ElementWithId {
-  id: string;
-  [key: string]: any; // Other properties
-}
-
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
+
+/**
+ * Helper function to safely get an ID from any object or generate a new one
+ * This avoids TypeScript errors when trying to access potentially missing 'id' property
+ */
+function getSafeId(obj: any): string {
+  // If object is null/undefined, return a new UUID
+  if (!obj) return uuidv4();
+  
+  // If id exists and is a string, return it
+  if (typeof obj.id === 'string' && obj.id.length > 0) {
+    return obj.id;
+  }
+  
+  // Otherwise generate a new UUID
+  return uuidv4();
+}
 
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -77,10 +88,11 @@ const Importer: React.FC = () => {
   useEffect(() => {
     if (extractedElements && Object.keys(editedLoglines).length > 0) {
       const updatedCharacters = extractedElements.characters.map(character => {
-        if (editedLoglines[character.id]) {
+        const safeId = getSafeId(character);
+        if (editedLoglines[safeId]) {
           return {
             ...character,
-            character_logline: editedLoglines[character.id]
+            character_logline: editedLoglines[safeId]
           };
         }
         return character;
@@ -193,13 +205,14 @@ const Importer: React.FC = () => {
       setExtractedElements(processedData);
       
       // Initialize selected elements with all the IDs (by default all are selected)
+      // Using getSafeId to ensure we always have a valid ID
       setSelectedElements({
-        characters: processedData.characters?.map((c: any) => c.id) || [],
-        locations: processedData.locations?.map((l: any) => l.id) || [],
-        plotlines: processedData.plotlines?.map((p: any) => p.id) || [],
-        scenes: processedData.scenes?.map((s: any) => s.id) || [],
-        events: processedData.events?.map((e: any) => e.id) || [],
-        objects: processedData.objects?.map((o: any) => o.id) || []
+        characters: processedData.characters?.map((c: any) => getSafeId(c)) || [],
+        locations: processedData.locations?.map((l: any) => getSafeId(l)) || [],
+        plotlines: processedData.plotlines?.map((p: any) => getSafeId(p)) || [],
+        scenes: processedData.scenes?.map((s: any) => getSafeId(s)) || [],
+        events: processedData.events?.map((e: any) => getSafeId(e)) || [],
+        objects: processedData.objects?.map((o: any) => getSafeId(o)) || []
       });
       
       try {
@@ -236,14 +249,19 @@ const Importer: React.FC = () => {
             if (apiCharacters.length > 0) {
               // Merge API characters with already extracted ones
               // Create a set of existing names to avoid duplicates
-              const existingNames = new Set(processedData.characters.map((c: any) => c.name.toLowerCase()));
+              const existingNames = new Set(processedData.characters.map((c: any) => {
+                return typeof c.name === 'string' ? c.name.toLowerCase() : '';
+              }).filter(Boolean));
               
               // Process and filter API characters
               const newApiCharacters = apiCharacters
-                .filter((c: any) => c.name && !existingNames.has(c.name.toLowerCase()))
+                .filter((c: any) => {
+                  const name = typeof c.name === 'string' ? c.name.toLowerCase() : '';
+                  return name && !existingNames.has(name);
+                })
                 .map((c: any) => ({
                   ...c,
-                  id: c.id || uuidv4(),
+                  id: getSafeId(c), // Use getSafeId to ensure valid ID
                   story_id: DEFAULT_STORY_ID,
                   confidence: c.confidence || 0.7
                 }));
@@ -262,7 +280,7 @@ const Importer: React.FC = () => {
                 // Update the selected characters
                 setSelectedElements(prev => ({
                   ...prev,
-                  characters: [...prev.characters, ...newApiCharacters.map((c: any) => c.id)]
+                  characters: [...prev.characters, ...newApiCharacters.map((c: any) => getSafeId(c))]
                 }));
                 
                 console.log(`Added ${newApiCharacters.length} additional characters from API`);
@@ -292,9 +310,9 @@ const Importer: React.FC = () => {
     }
   };
 
-  // Enhanced duplicate detection
+  // Enhanced duplicate detection with more robust type handling
   const checkForDuplicates = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', elements: any[]) => {
-    if (elements.length === 0) return;
+    if (!elements || elements.length === 0) return;
     
     try {
       const tableName = type === 'objects' ? 'items' : type;
@@ -304,13 +322,13 @@ const Importer: React.FC = () => {
       
       // For each extracted element, check for similar entries in the database
       for (const element of elements) {
-        if (!element[nameField]) continue;
+        // Skip elements without the required name field
+        if (!element || typeof element[nameField] !== 'string' || !element[nameField]) continue;
         
         const elementName = element[nameField];
         
-        // Generate a UUID if element doesn't have an id
-        // This is a more robust fix that ensures we always have a valid id string
-        const elementId: string = typeof element.id === 'string' ? element.id : uuidv4();
+        // Get a safe ID for the element that is guaranteed to be a string
+        const safeId = getSafeId(element);
         
         // First check for exact matches
         const { data: exactMatches, error: exactError } = await supabase
@@ -327,7 +345,7 @@ const Importer: React.FC = () => {
         const { data: similarMatches, error: similarError } = await supabase
           .from(tableName)
           .select('id, ' + nameField)
-          .neq('id', elementId)
+          .neq('id', safeId)
           .ilike(nameField, `%${elementName}%`);
           
         if (similarError) {
@@ -339,21 +357,25 @@ const Importer: React.FC = () => {
         const allMatches: DuplicateInfo[] = [];
         
         // Process exact matches
-        if (exactMatches && exactMatches.length > 0) {
+        if (exactMatches && Array.isArray(exactMatches) && exactMatches.length > 0) {
           exactMatches.forEach(match => {
-            allMatches.push({
-              id: match.id,
-              name: match[nameField],
-              match_type: 'exact',
-              similarity: 100
-            });
+            if (match && typeof match.id === 'string' && typeof match[nameField] === 'string') {
+              allMatches.push({
+                id: match.id,
+                name: match[nameField],
+                match_type: 'exact',
+                similarity: 100
+              });
+            }
           });
         }
         
         // Process similar matches
-        if (similarMatches && similarMatches.length > 0) {
+        if (similarMatches && Array.isArray(similarMatches) && similarMatches.length > 0) {
           similarMatches.forEach(match => {
-            // Skip if already added as exact match
+            // Skip if already added as exact match or if missing required fields
+            if (!match || typeof match.id !== 'string' || typeof match[nameField] !== 'string') return;
+            
             if (!allMatches.some(m => m.id === match.id)) {
               // Calculate similarity (simple version)
               const nameLower = elementName.toLowerCase();
@@ -370,10 +392,9 @@ const Importer: React.FC = () => {
           });
         }
         
-        // If matches found, store them with the element's id
+        // If matches found, store them with the element's safe id
         if (allMatches.length > 0) {
-          // Using the validated elementId to store duplicates info
-          duplicatesInfo[elementId] = allMatches;
+          duplicatesInfo[safeId] = allMatches;
         }
       }
       
@@ -393,6 +414,8 @@ const Importer: React.FC = () => {
 
   // Toggle selection of an element
   const toggleElementSelection = (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events' | 'objects', id: string) => {
+    if (!id) return; // Don't toggle empty IDs
+    
     setSelectedElements(prev => {
       if (prev[type].includes(id)) {
         return {
@@ -420,9 +443,10 @@ const Importer: React.FC = () => {
     
     setSelectedElements(prev => {
       if (select) {
+        // Use getSafeId to ensure we always have a valid ID
         return {
           ...prev,
-          [type]: extractedElements[type]?.map((item: any) => item.id) || []
+          [type]: extractedElements[type]?.map((item: any) => getSafeId(item)) || []
         };
       } else {
         return {
@@ -440,7 +464,7 @@ const Importer: React.FC = () => {
     
     // Extract all names to check
     const namesToCheck = elements
-      .filter(elem => elem && elem[nameField])
+      .filter(elem => elem && typeof elem[nameField] === 'string' && elem[nameField])
       .map(elem => elem[nameField]);
     
     if (namesToCheck.length === 0) {
@@ -468,7 +492,7 @@ const Importer: React.FC = () => {
       // Safely process data
       if (Array.isArray(data)) {
         data.forEach(item => {
-          if (item && item[nameField]) {
+          if (item && typeof item[nameField] === 'string' && item[nameField]) {
             existingNames.add(String(item[nameField]).toLowerCase());
           }
         });
@@ -482,8 +506,8 @@ const Importer: React.FC = () => {
   };
 
   // Handle discarding a duplicate element
-  const handleDiscardDuplicate = (id?: string) => {
-    if (!extractedElements || !id) return; // Ensure we have a valid id
+  const handleDiscardDuplicate = (id: string) => {
+    if (!extractedElements || !id) return; // Early exit if missing data or invalid id
     
     // Remove from selected elements
     setSelectedElements(prev => ({
@@ -497,14 +521,16 @@ const Importer: React.FC = () => {
       
       return {
         ...prev,
-        characters: prev.characters.filter(char => char.id !== id)
+        characters: prev.characters.filter(char => getSafeId(char) !== id)
       };
     });
     
     // Remove from duplicates list
     setDuplicateElements(prev => {
       const updated = { ...prev };
-      delete updated[id]; // Safe delete since we already checked for valid id
+      if (updated[id]) {
+        delete updated[id];
+      }
       return updated;
     });
   };
@@ -519,7 +545,11 @@ const Importer: React.FC = () => {
     try {
       // Get the selected elements of the current type
       const elementsToSave = extractedElements[type]
-        .filter((elem: any) => selectedElements[type].includes(elem.id));
+        .filter((elem: any) => {
+          // Use getSafeId to ensure we have a valid ID for comparison
+          const safeId = getSafeId(elem);
+          return selectedElements[type].includes(safeId);
+        });
       
       if (elementsToSave.length === 0) {
         // If nothing selected, just move to the next step
@@ -537,7 +567,7 @@ const Importer: React.FC = () => {
       const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
       
       const newElements = elementsToSave.filter(elem => {
-        if (!elem || !elem[nameField]) return false;
+        if (!elem || typeof elem[nameField] !== 'string' || !elem[nameField]) return false;
         const elemName = String(elem[nameField]).toLowerCase();
         return !existingNames.has(elemName);
       });
@@ -783,22 +813,31 @@ const Importer: React.FC = () => {
         
         {count > 0 ? (
           <div className="elements-list">
-            {elements.map((element: any) => {
-              // Safely get element ID or generate a fallback
-              const elementId = element.id || '';
-              const isSelected = selectedElements[type].includes(elementId);
+            {elements.map((element: any, idx: number) => {
+              // Always use our guaranteed-to-be-string ID function
+              const safeId = getSafeId(element);
+              const uniqueKey = `${type}-${safeId || idx}`; // Fallback to index if ID is empty
+              
+              const isSelected = selectedElements[type].includes(safeId);
               const nameProperty = getNameProperty();
               const typeProperty = getTypeProperty();
-              const hasDuplicates = duplicateElements[elementId] && duplicateElements[elementId].length > 0;
+              
+              // Safe access to duplicateElements
+              const hasDuplicates = Boolean(
+                safeId && 
+                duplicateElements[safeId] && 
+                Array.isArray(duplicateElements[safeId]) && 
+                duplicateElements[safeId].length > 0
+              );
               
               return (
                 <div 
-                  key={elementId || uuidv4()} // Safe key even if id is missing
+                  key={uniqueKey}
                   className={`element-card ${isSelected ? 'selected' : ''} ${hasDuplicates ? 'has-duplicates' : ''}`}
                 >
                   <div 
                     className="element-checkbox"
-                    onClick={(e) => handleCheckboxClick(e, type, elementId)}
+                    onClick={(e) => handleCheckboxClick(e, type, safeId)}
                   >
                     <input 
                       type="checkbox" 
@@ -807,13 +846,14 @@ const Importer: React.FC = () => {
                     />
                   </div>
                   <div className="element-details">
-                    <h3>{element[nameProperty]}</h3>
-                    {typeProperty && element[typeProperty] && (
+                    {/* Safe access to any property using optional chaining */}
+                    <h3>{element && element[nameProperty] ? element[nameProperty] : 'Unnamed'}</h3>
+                    {typeProperty && element && element[typeProperty] && (
                       <span className="element-type">{element[typeProperty]}</span>
                     )}
                     
-                    {/* Display duplicate warnings if any */}
-                    {hasDuplicates && (
+                    {/* Display duplicate warnings if any - with safe access */}
+                    {hasDuplicates && safeId && duplicateElements[safeId] && (
                       <div className="duplicate-warning" style={{
                         backgroundColor: '#fff3cd',
                         padding: '6px 8px',
@@ -822,8 +862,8 @@ const Importer: React.FC = () => {
                         fontSize: '0.85em'
                       }}>
                         <strong>Potential duplicate found: </strong>
-                        {duplicateElements[elementId].map((dup, idx) => (
-                          <span key={idx}>
+                        {duplicateElements[safeId].map((dup, dupIdx) => (
+                          <span key={dupIdx}>
                             {dup.name} 
                             ({dup.match_type === 'exact' ? 'exact match' : `${dup.similarity}% similar`})
                             <button 
@@ -837,22 +877,23 @@ const Importer: React.FC = () => {
                                 cursor: 'pointer',
                                 fontSize: '0.85em'
                               }}
-                              onClick={() => handleDiscardDuplicate(elementId)}
+                              onClick={() => handleDiscardDuplicate(safeId)}
                             >
                               Discard
                             </button>
-                            {idx < duplicateElements[elementId].length - 1 ? ', ' : ''}
+                            {dupIdx < duplicateElements[safeId].length - 1 ? ', ' : ''}
                           </span>
                         ))}
                       </div>
                     )}
                     
-                    {/* Editable logline for characters */}
+                    {/* Editable logline for characters - with safe access */}
                     {type === 'characters' && (
                       <textarea
                         className="element-logline-editor"
-                        value={editedLoglines[elementId] || element.character_logline || ''}
-                        onChange={(e) => handleLoglineChange(elementId, e.target.value)}
+                        value={safeId && editedLoglines[safeId] ? editedLoglines[safeId] : 
+                              element && element.character_logline ? element.character_logline : ''}
+                        onChange={(e) => handleLoglineChange(safeId, e.target.value)}
                         placeholder="Enter character logline..."
                         style={{ 
                           width: '100%',
