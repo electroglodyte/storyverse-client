@@ -1,6 +1,6 @@
 /**
  * This file defines the tools available in the StoryVerse MCP server
- * Version: 0.8.5
+ * Version: 0.8.6
  * 
  * STYLE ANALYSIS TOOLS
  */
@@ -92,11 +92,6 @@ interface DetectDependencyConflictsTool {
 interface SuggestMissingEventsTool {
   name: "suggest_missing_events";
   description: "Suggests potential missing events in a story";
-}
-
-interface AnalyzeStoryTool {
-  name: "analyze_story";
-  description: "Master function for analyzing an entire story and populating database";
 }
 
 /**
@@ -223,7 +218,7 @@ interface ExportFountainTool {
 }
 
 /**
- * NEW SCENE TOOLS
+ * SCENE TOOLS
  */
 
 interface SplitSceneTool {
@@ -327,7 +322,6 @@ type McpTool =
   | AnalyzeEventImpactTool
   | DetectDependencyConflictsTool
   | SuggestMissingEventsTool
-  | AnalyzeStoryTool
   | SetupStoryWorldTool
   | SetupSeriesTool
   | SetupStoryTool
@@ -385,7 +379,6 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "analyze_event_impact", description: "Analyzes how an event impacts characters and the story" },
   { name: "detect_dependency_conflicts", description: "Detects logical inconsistencies in event dependencies" },
   { name: "suggest_missing_events", description: "Suggests potential missing events in a story" },
-  { name: "analyze_story", description: "Master function for analyzing an entire story and populating database" },
   { name: "setup_story_world", description: "Set up a new story world" },
   { name: "setup_series", description: "Set up a new series and optionally link it to a story world" },
   { name: "setup_story", description: "Set up a new story and optionally link it to a story world or series" },
@@ -412,24 +405,23 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "export_project", description: "Exports a complete project as a single document" },
   { name: "export_fountain", description: "Exports scenes in Fountain format, with proper screenplay formatting" },
   
-  // New Scene Tools
+  // Scene Tools
   { name: "split_scene", description: "Splits a scene into multiple scenes at specified positions" },
   { name: "combine_scenes", description: "Combines multiple scenes into a single scene" },
   { name: "scene_to_writing_sample", description: "Creates a writing sample from a scene's content" },
   { name: "detect_storylines", description: "Analyzes a story's content and structure to identify distinct storylines and plot arcs" },
   
-  // New Scene Metadata Tools
+  // Scene Metadata Tools
   { name: "update_scene_creation_notes", description: "Adds or updates creation notes for a scene with timestamps" },
   { name: "generate_character_5q", description: "Analyzes a scene and generates 5Q answers for each character" },
   { name: "update_character_5q", description: "Updates the 5Q answers for a specific character in a scene" },
   { name: "analyze_scene_subtext", description: "Analyzes a scene and suggests possible subtexts" },
   { name: "update_scene_subtext", description: "Updates the subtext notes for a scene" },
   
-  // Import Tools (updated to new approach)
+  // Import Tools
   { name: "import_analyzed_story", description: "Imports pre-analyzed story data (produced by Claude) into the database, handling entity relationships and deduplication" },
   
   // Object (Props) Tools
-  { name: "create_object", description: "Create a new object (prop) and optionally link it to a story world or story" },
   { name: "link_object_to_character", description: "Establishes a relationship between an object and a character" },
   { name: "link_object_to_location", description: "Establishes a relationship between an object and a location" },
   { name: "track_object_appearance", description: "Records an appearance of an object in a scene or event" },
@@ -445,7 +437,6 @@ export const MCP_SERVER_LOCATION = {
 
 // Edge Function locations
 export const EDGE_FUNCTIONS = {
-  analyzeStory: "analyze-story",
   styleProfileCreator: "style-profile-creator",
   webApi: "web-api",
   serveWeb: "serve-web",
