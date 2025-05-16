@@ -1,4 +1,11 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.7';
+export const VERSION = '0.9.8';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Enhanced Character Import: Fixed JSON Import functionality to properly handle arrays of characters directly pasted from Claude. The improved Edge Function now intelligently detects the format of input data and processes it appropriately, while the UI displays helpful warnings when a story selection is required for character import. The system will correctly create factions when characters include faction_id fields, and provides more detailed logging of the import process for troubleshooting.';
+export const VERSION_NOTES = `Added Generic Entity Importer:
+- Created a flexible entity import system that works with multiple entity types (locations, factions, etc.)
+- Added TypeScript interfaces for proper type safety and validation
+- The importer handles both single entities and arrays
+- Supports enhanced preprocessing of entities before database insertion
+- Maintains backward compatibility with existing features
+- Improved error handling and user feedback through the UI
+- First implementation focusing on location imports, with framework ready for other entity types`;
