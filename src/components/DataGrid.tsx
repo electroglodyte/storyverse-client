@@ -1,52 +1,56 @@
-import React from 'react'
-import {
-  DataGrid as MuiDataGrid,
-  GridColDef,
-  GridValueGetterParams,
-  GridRenderCellParams,
-} from '@mui/x-data-grid'
+import { type FC } from 'react';
+import { DataGrid as MuiDataGrid, 
+  type GridColDef,
+  type GridEventListener,
+  type GridRenderCellParams,
+  type GridRowParams
+} from '@mui/x-data-grid';
 
-export interface DataGridProps<T = any> {
+interface DataGridProps {
   columns: GridColDef[];
-  rows: T[];
+  rows: any[];
   loading?: boolean;
-  getRowId?: (row: T) => string;
-  onRowClick?: (row: T) => void;
-  className?: string;
+  onRowClick?: (id: string) => void;
+  rowCount?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  height?: number | string;
 }
 
-export function DataGrid<T = any>({ 
-  columns, 
+export const DataGrid: FC<DataGridProps> = ({
+  columns,
   rows,
   loading = false,
-  getRowId,
   onRowClick,
-  className
-}: DataGridProps<T>) {
-  const handleRowClick = (params: GridRenderCellParams) => {
+  rowCount,
+  pageSize = 10,
+  onPageChange,
+  onPageSizeChange,
+  height = 400
+}) => {
+  const handleRowClick: GridEventListener<'rowClick'> = (
+    params: GridRowParams
+  ) => {
     if (onRowClick) {
-      onRowClick(params.row as T)
+      onRowClick(params.row.id);
     }
-  }
+  };
 
   return (
-    <div className={className} style={{ height: 400, width: '100%' }}>
+    <div style={{ height, width: '100%' }}>
       <MuiDataGrid
         rows={rows}
         columns={columns}
         loading={loading}
-        getRowId={getRowId}
         onRowClick={handleRowClick}
-        disableRowSelectionOnClick
-        pageSizeOptions={[5, 10, 25]}
-        initialState={{
-          pagination: {
-            paginationModel: {
-              pageSize: 10,
-            },
-          },
-        }}
+        rowCount={rowCount}
+        pageSize={pageSize}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+        disableSelectionOnClick
+        experimentalFeatures={{ newEditingApi: true }}
       />
     </div>
-  )
-}
+  );
+};
