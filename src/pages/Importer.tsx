@@ -17,6 +17,10 @@ interface ExtractedElements {
   events: any[];
 }
 
+// Default story and world UUIDs - use the existing records from the database
+const DEFAULT_STORYWORLD_ID = uuidv4(); // Generate a new UUID for storyworld if needed
+const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // Use the existing NoneStory ID
+
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -97,10 +101,6 @@ const Importer: React.FC = () => {
         throw new Error('File content is empty');
       }
 
-      // Create default IDs for the story and story world
-      const storyWorldId = 'none-verse'; // NoneVerse world
-      const storyId = 'none-story';      // NoneStory
-
       // Call the analyze-story edge function with a unique request ID to avoid caching
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
@@ -108,10 +108,10 @@ const Importer: React.FC = () => {
         body: {
           story_text: fileContent,
           story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
-          story_world_id: storyWorldId,
+          story_world_id: DEFAULT_STORYWORLD_ID,
           options: {
             create_project: false,
-            story_id: storyId,
+            story_id: DEFAULT_STORY_ID,
             extract_characters: true,
             extract_locations: true,
             extract_events: true,
@@ -252,10 +252,6 @@ const Importer: React.FC = () => {
         return;
       }
       
-      // Default story world ID and story ID
-      const storyWorldId = 'none-verse';
-      const storyId = 'none-story';
-      
       // Prepare elements for saving based on type
       const preparedElements = elementsToSave.map((elem: any) => {
         // Common fields for all element types
@@ -272,8 +268,8 @@ const Importer: React.FC = () => {
               ...commonFields,
               name: elem.name,
               description: elem.description || '',
-              story_world_id: storyWorldId,
-              story_id: storyId,
+              story_world_id: DEFAULT_STORYWORLD_ID,
+              story_id: DEFAULT_STORY_ID,
               role: elem.role || 'supporting',
               appearance: elem.appearance || '',
               background: elem.background || '',
@@ -285,8 +281,8 @@ const Importer: React.FC = () => {
               ...commonFields,
               name: elem.name,
               description: elem.description || '',
-              story_world_id: storyWorldId,
-              story_id: storyId,
+              story_world_id: DEFAULT_STORYWORLD_ID,
+              story_id: DEFAULT_STORY_ID,
               location_type: elem.location_type || 'other',
             };
           
@@ -295,7 +291,7 @@ const Importer: React.FC = () => {
               ...commonFields,
               title: elem.title,
               description: elem.description || '',
-              story_id: storyId,
+              story_id: DEFAULT_STORY_ID,
               plotline_type: elem.plotline_type || 'main',
             };
           
@@ -304,7 +300,7 @@ const Importer: React.FC = () => {
               ...commonFields,
               title: elem.title,
               description: elem.description || '',
-              story_id: storyId,
+              story_id: DEFAULT_STORY_ID,
               content: elem.content || '',
               type: elem.type || 'scene',
               status: 'draft',
@@ -316,7 +312,7 @@ const Importer: React.FC = () => {
               ...commonFields,
               title: elem.title || elem.name,
               description: elem.description || '',
-              story_id: storyId,
+              story_id: DEFAULT_STORY_ID,
               sequence_number: elem.sequence_number || 0,
             };
           
