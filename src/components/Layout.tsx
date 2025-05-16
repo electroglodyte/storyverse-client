@@ -24,7 +24,6 @@ export default function Layout() {
           .select('*')
           .order('name', { ascending: true });
 
-        // If error, try storyworlds
         if (error) {
           console.log('Error fetching from story_worlds:', error);
           const result = await supabase
