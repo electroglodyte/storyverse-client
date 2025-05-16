@@ -1,4 +1,4 @@
 // Version information for StoryVerse client
-export const VERSION = '0.6.17';
+export const VERSION = '0.6.18';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Fixed TypeScript type error in safeSupabaseQuery function with proper type assertion to ensure array type safety.';
+export const VERSION_NOTES = 'Added essence and interest fields to Scene interface and created StoryQuestion table for tracking narrative questions.';
