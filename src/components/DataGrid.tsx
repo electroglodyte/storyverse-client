@@ -1,60 +1,51 @@
-import { useEffect, useState } from 'react'
-import { AgGridReact } from 'ag-grid-react'
-import 'ag-grid-community/styles/ag-grid.css'
-import 'ag-grid-community/styles/ag-theme-alpine.css'
+import React from 'react'
+import {
+  DataGrid as MuiDataGrid,
+  GridColDef,
+  GridValueGetterParams,
+  GridRenderCellParams,
+} from '@mui/x-data-grid'
 
-export interface DataGridProps {
-  rows: any[]
-  columns: any[]
-  getRowId: (row: any) => string | number
-  onRowClick?: (params: any) => void
-  loading?: boolean
-  rowSelection?: 'single' | 'multiple'
-  onSelectionChanged?: () => void
-  className?: string
+export interface DataGridProps<T = any> {
+  columns: GridColDef[];
+  rows: T[];
+  loading?: boolean;
+  getRowId?: (row: T) => string;
+  onRowClick?: (row: T) => void;
+  className?: string;
 }
 
-export function DataGrid({
+export function DataGrid<T = any>({ 
+  columns, 
   rows,
-  columns,
+  loading = false,
   getRowId,
   onRowClick,
-  loading = false,
-  rowSelection = 'single',
-  onSelectionChanged,
-  className = ''
-}: DataGridProps) {
-  const [gridApi, setGridApi] = useState<any>(null)
-
-  useEffect(() => {
-    if (gridApi) {
-      gridApi.setRowData(rows)
+  className
+}: DataGridProps<T>) {
+  const handleRowClick = (params: GridRenderCellParams) => {
+    if (onRowClick) {
+      onRowClick(params.row as T)
     }
-  }, [rows, gridApi])
-
-  const onGridReady = (params: any) => {
-    setGridApi(params.api)
-    params.api.sizeColumnsToFit()
-  }
-
-  const defaultColDef = {
-    resizable: true,
-    sortable: true,
-    filter: true
   }
 
   return (
-    <div className={`ag-theme-alpine w-full h-[500px] ${className}`}>
-      <AgGridReact
-        rowData={rows}
-        columnDefs={columns}
-        defaultColDef={defaultColDef}
+    <div className={className} style={{ height: 400, width: '100%' }}>
+      <MuiDataGrid
+        rows={rows}
+        columns={columns}
+        loading={loading}
         getRowId={getRowId}
-        onGridReady={onGridReady}
-        onRowClicked={onRowClick}
-        rowSelection={rowSelection}
-        onSelectionChanged={onSelectionChanged}
-        suppressCellFocus={true}
+        onRowClick={handleRowClick}
+        disableRowSelectionOnClick
+        pageSizeOptions={[5, 10, 25]}
+        initialState={{
+          pagination: {
+            paginationModel: {
+              pageSize: 10,
+            },
+          },
+        }}
       />
     </div>
   )
