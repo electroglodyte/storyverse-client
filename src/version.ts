@@ -1,4 +1,4 @@
 // Version information for StoryVerse client
-export const VERSION = '0.6.6';
+export const VERSION = '0.6.7';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Added character_logline field to generate and store pithy one-line descriptions for each character';
+export const VERSION_NOTES = 'Enhanced character import with editable loglines, fixed checkbox selection, and added duplicate detection warnings';
