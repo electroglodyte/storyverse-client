@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 68,
+  patch: 69,
   date: '2025-05-16',
-  notes: 'Fix duplicate CreateObjectTool interface definition in mcp-tools.ts'
+  notes: 'Add duplicate detection for characters in Importer to avoid saving duplicates'
 };
