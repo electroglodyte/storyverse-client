@@ -4,7 +4,7 @@
  * Import Tool Definitions
  */
 
-// Replaced the old import tools with our new approach
+// New approach - single comprehensive tool
 const importAnalyzedStoryTool = {
   name: "import_analyzed_story",
   description: "Imports pre-analyzed story data (produced by Claude) into the database, handling entity relationships and deduplication",
@@ -87,6 +87,7 @@ const importAnalyzedStoryTool = {
   }
 };
 
+// Export only the new tool
 export default {
   importAnalyzedStoryTool
 };
