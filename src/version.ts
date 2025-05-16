@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 67,
+  patch: 68,
   date: '2025-05-16',
-  notes: 'Add Objects (props) tracking system with relationships to characters and locations'
+  notes: 'Fix duplicate CreateObjectTool interface definition in mcp-tools.ts'
 };
