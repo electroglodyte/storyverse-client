@@ -1,358 +1,39 @@
-/**
- * Formatters for different text formats (Fountain, Markdown)
- * Version: 0.1.0
- */
-import React from 'react';
+import { format, formatDistance, formatRelative } from 'date-fns'
 
-/**
- * Basic Fountain renderer for preview
- */
-export const renderFountainPreview = (content: string): React.ReactNode[] => {
-  if (!content) return [];
-  
-  const lines = content.split('\n');
-  return lines.map((line, index) => {
-    // Scene headings
-    if (line.match(/^(INT|EXT|I\/E)[\.\\s]/i) || line.startsWith('.')) {
-      return React.createElement("p", { key: index, className: "font-bold mt-4 mb-2 uppercase" }, 
-        line.startsWith('.') ? line.substring(1) : line
-      );
-    }
-    
-    // Character names
-    if (line.trim() === line.toUpperCase() && line.trim() !== '' && 
-        !line.startsWith('(') && !line.startsWith('!') && !line.startsWith('@') && 
-        !line.startsWith('#') && !line.startsWith('.') && !line.startsWith('~')) {
-      return React.createElement("p", { key: index, className: "font-bold text-center mt-4" }, line);
-    }
-    
-    // Parentheticals
-    if (line.startsWith('(') && line.endsWith(')')) {
-      return React.createElement("p", { key: index, className: "italic text-center ml-8 mr-8" }, line);
-    }
-    
-    // Dialogue - following character names
-    if (index > 0 && 
-        (lines[index-1].trim() === lines[index-1].toUpperCase() && lines[index-1].trim() !== '') || 
-        (index > 1 && lines[index-2].trim() === lines[index-2].toUpperCase() && 
-         lines[index-1].startsWith('(') && lines[index-1].endsWith(')'))) {
-      return React.createElement("p", { key: index, className: "ml-8 mr-8 text-center mb-2" }, line);
-    }
-    
-    // Transitions
-    if (line.endsWith('TO:') || line === 'FADE OUT.' || line === 'CUT TO BLACK.') {
-      return React.createElement("p", { key: index, className: "font-bold text-right mt-2 mb-2 uppercase" }, line);
-    }
-    
-    // Section headings
-    if (line.startsWith('#')) {
-      const level = line.match(/^#+/)?.[0].length || 1;
-      return React.createElement("p", { 
-        key: index, 
-        className: `font-bold mt-3 mb-2 text-${level === 1 ? 'xl' : 'lg'} text-blue-600` 
-      }, line);
-    }
-    
-    // Notes
-    if (line.startsWith('[[') && line.endsWith(']]')) {
-      return React.createElement("p", { key: index, className: "italic text-gray-500 bg-yellow-50 p-1" }, line);
-    }
-    
-    // Default (action)
-    return React.createElement("p", { key: index, className: "mb-2" }, line);
-  });
-};
+export function formatDate(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  return format(new Date(date), 'PP')
+}
 
-/**
- * Basic Markdown renderer for preview
- */
-export const renderMarkdownPreview = (content: string): React.ReactNode[] => {
-  if (!content) return [];
-  
-  const lines = content.split('\n');
-  let inList = false;
-  let listItems: React.ReactNode[] = [];
-  let result: React.ReactNode[] = [];
-  let key = 0;
-  
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    key++;
-    
-    // Handle lists
-    if (line.match(/^[\*\-\+]\s/) || line.match(/^\d+\.\s/)) {
-      if (!inList) {
-        inList = true;
-        listItems = [];
-      }
-      
-      const isOrdered = !!line.match(/^\d+\.\s/);
-      const content = line.replace(/^[\*\-\+]\s/, '').replace(/^\d+\.\s/, '');
-      
-      // Process inline formatting
-      const formattedContent = processInlineMarkdown(content);
-      
-      listItems.push(React.createElement("li", { 
-        key: `list-item-${key}`, 
-        dangerouslySetInnerHTML: { __html: formattedContent } 
-      }));
-      
-      // If next line is not a list item, close the list
-      if (i === lines.length - 1 || !(lines[i+1].match(/^[\*\-\+]\s/) || lines[i+1].match(/^\d+\.\s/))) {
-        inList = false;
-        result.push(
-          isOrdered 
-            ? React.createElement("ol", { key: `list-${key}`, className: "list-decimal ml-6 mb-4" }, listItems)
-            : React.createElement("ul", { key: `list-${key}`, className: "list-disc ml-6 mb-4" }, listItems)
-        );
-      }
-      
-      continue;
-    }
-    
-    // If we were in a list but this line is not a list item, close the list
-    if (inList) {
-      inList = false;
-      result.push(
-        lines[i-1].match(/^\d+\.\s/)
-          ? React.createElement("ol", { key: `list-${key}`, className: "list-decimal ml-6 mb-4" }, listItems)
-          : React.createElement("ul", { key: `list-${key}`, className: "list-disc ml-6 mb-4" }, listItems)
-      );
-    }
-    
-    // Headings
-    if (line.startsWith('# ')) {
-      result.push(React.createElement("h1", { 
-        key: key, 
-        className: "text-3xl font-bold mt-6 mb-3", 
-        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(2)) } 
-      }));
-      continue;
-    }
-    if (line.startsWith('## ')) {
-      result.push(React.createElement("h2", { 
-        key: key, 
-        className: "text-2xl font-bold mt-5 mb-3", 
-        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(3)) } 
-      }));
-      continue;
-    }
-    if (line.startsWith('### ')) {
-      result.push(React.createElement("h3", { 
-        key: key, 
-        className: "text-xl font-bold mt-4 mb-2", 
-        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(4)) } 
-      }));
-      continue;
-    }
-    if (line.startsWith('#### ')) {
-      result.push(React.createElement("h4", { 
-        key: key, 
-        className: "text-lg font-bold mt-3 mb-2", 
-        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(5)) } 
-      }));
-      continue;
-    }
-    
-    // Horizontal rule
-    if (line.match(/^(\*\*\*|\-\-\-|\_\_\_)$/)) {
-      result.push(React.createElement("hr", { key: key, className: "my-4 border-t-2" }));
-      continue;
-    }
-    
-    // Blockquotes
-    if (line.startsWith('> ')) {
-      result.push(
-        React.createElement("blockquote", { 
-          key: key, 
-          className: "border-l-4 border-gray-300 pl-4 py-1 italic text-gray-700", 
-          dangerouslySetInnerHTML: { __html: processInlineMarkdown(line.substring(2)) }
-        })
-      );
-      continue;
-    }
-    
-    // Code blocks (simple implementation)
-    if (line.startsWith('```')) {
-      let codeContent = '';
-      const lang = line.substring(3);
-      
-      // Find the closing code block
-      let j = i + 1;
-      while (j < lines.length && !lines[j].startsWith('```')) {
-        codeContent += lines[j] + '\n';
-        j++;
-      }
-      
-      result.push(
-        React.createElement("pre", { key: key, className: "bg-gray-100 rounded p-3 my-4 overflow-auto font-mono text-sm" },
-          React.createElement("code", {}, codeContent)
-        )
-      );
-      
-      // Skip to after the closing code block
-      i = j;
-      continue;
-    }
-    
-    // Empty line becomes a paragraph break
-    if (line.trim() === '') {
-      result.push(React.createElement("br", { key: key }));
-      continue;
-    }
-    
-    // Default paragraph
-    result.push(
-      React.createElement("p", { 
-        key: key, 
-        className: "mb-4", 
-        dangerouslySetInnerHTML: { __html: processInlineMarkdown(line) }
-      })
-    );
-  }
-  
-  return result;
-};
+export function formatTime(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  return format(new Date(date), 'p')
+}
 
-/**
- * Process inline Markdown formatting
- */
-const processInlineMarkdown = (text: string): string => {
-  // Bold
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
-  
-  // Italic
-  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  text = text.replace(/_(.*?)_/g, '<em>$1</em>');
-  
-  // Inline code
-  text = text.replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 rounded">$1</code>');
-  
-  // Links
-  text = text.replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-blue-600 hover:underline">$1</a>');
-  
-  return text;
-};
+export function formatDateTime(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  return format(new Date(date), 'PPp')
+}
 
-/**
- * Convert plain text to Fountain format
- */
-export const convertToFountain = (text: string, title: string): string => {
+export function formatTimeAgo(date: string | Date | null | undefined): string {
+  if (!date) return '';
+  return formatDistance(new Date(date), new Date(), { addSuffix: true })
+}
+
+export function formatRelativeTime(date: string | Date | null | undefined, relativeTo?: Date): string {
+  if (!date) return '';
+  return formatRelative(new Date(date), relativeTo || new Date())
+}
+
+export function wordCount(text: string | null | undefined): number {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).length
+}
+
+export function truncate(text: string | null | undefined, length: number = 100): string {
   if (!text) return '';
-  
-  // Split into paragraphs
-  const paragraphs = text.split(/\n\s*\n/);
-  let fountain = '';
-  
-  // Add title page
-  fountain += `Title: ${title || 'Untitled'}\n\n`;
-  
-  // Add scene heading if there isn't one already
-  if (!paragraphs[0].match(/^(INT|EXT|I\/E)[\.\\s]/i)) {
-    fountain += `INT. LOCATION - DAY\n\n`;
-  }
-  
-  // Add content
-  fountain += paragraphs.join('\n\n');
-  
-  return fountain;
-};
+  if (text.length <= length) return text;
+  return text.slice(0, length) + '...'
+}
 
-/**
- * Convert plain text to Markdown format
- */
-export const convertToMarkdown = (text: string, title: string): string => {
-  if (!text) return '';
-  
-  // Split into paragraphs
-  const paragraphs = text.split(/\n\s*\n/);
-  let markdown = '';
-  
-  // Add title
-  markdown += `# ${title || 'Untitled'}\n\n`;
-  
-  // Add content
-  markdown += paragraphs.join('\n\n');
-  
-  return markdown;
-};
-
-/**
- * Format detection
- */
-export const detectFormat = (text: string): 'plain' | 'fountain' | 'markdown' => {
-  if (!text) return 'plain';
-  
-  // Count Markdown elements
-  const mdElements = (text.match(/(\#{1,6}\s|\*\*.*?\*\*|__.*?__|_.*?_|\[.*?\]\(.*?\)|\`.*?\`)/g) || []).length;
-  
-  // Count Fountain elements
-  const fountainElements = (text.match(/^(INT|EXT|I\/E)[\.\\s]|^[A-Z\\s]+$|^\\(.*?\\)$|^CUT TO:|^FADE (IN|OUT):|^DISSOLVE TO:/gm) || []).length;
-  
-  if (fountainElements > mdElements && fountainElements > 3) {
-    return 'fountain';
-  } else if (mdElements > fountainElements && mdElements > 3) {
-    return 'markdown';
-  }
-  
-  return 'plain';
-};
-
-/**
- * Get diff between two text versions
- */
-export const getTextDiff = (oldText: string, newText: string): { type: 'added' | 'removed' | 'unchanged', content: string, lineNumber: number }[] => {
-  const oldLines = oldText.split('\n');
-  const newLines = newText.split('\n');
-  const result: { type: 'added' | 'removed' | 'unchanged', content: string, lineNumber: number }[] = [];
-  
-  let oldIndex = 0;
-  let newIndex = 0;
-  
-  // Simple line-by-line comparison
-  while (oldIndex < oldLines.length || newIndex < newLines.length) {
-    if (oldIndex >= oldLines.length) {
-      // All remaining lines in new are added
-      result.push({
-        type: 'added',
-        content: newLines[newIndex],
-        lineNumber: newIndex + 1
-      });
-      newIndex++;
-    } else if (newIndex >= newLines.length) {
-      // All remaining lines in old are removed
-      result.push({
-        type: 'removed',
-        content: oldLines[oldIndex],
-        lineNumber: oldIndex + 1
-      });
-      oldIndex++;
-    } else if (oldLines[oldIndex] === newLines[newIndex]) {
-      // Lines are the same
-      result.push({
-        type: 'unchanged',
-        content: oldLines[oldIndex],
-        lineNumber: oldIndex + 1
-      });
-      oldIndex++;
-      newIndex++;
-    } else {
-      // Lines are different
-      result.push({
-        type: 'removed',
-        content: oldLines[oldIndex],
-        lineNumber: oldIndex + 1
-      });
-      result.push({
-        type: 'added',
-        content: newLines[newIndex],
-        lineNumber: newIndex + 1
-      });
-      oldIndex++;
-      newIndex++;
-    }
-  }
-  
-  return result;
-};
+// Add other formatters as needed...
