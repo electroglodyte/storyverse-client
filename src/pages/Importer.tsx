@@ -35,6 +35,14 @@ interface DuplicateInfo {
   similarity: number; // 0-100 percentage
 }
 
+// Define a proper shape for errors in the application
+interface DatabaseError {
+  message: string;
+  details?: string;
+  hint?: string;
+  code?: string;
+}
+
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -181,8 +189,6 @@ const Importer: React.FC = () => {
       };
 
       // Before setting extracted elements, check for potential duplicates
-      // Fix #1: Remove the await here since checkForDuplicates returns a Promise
-      // but we don't need to await it here
       checkForDuplicates('characters', characterObjects);
       
       // Store the extracted elements and move to the first review step
@@ -264,7 +270,6 @@ const Importer: React.FC = () => {
                 console.log(`Added ${newApiCharacters.length} additional characters from API`);
                 
                 // Check these new characters for duplicates too
-                // Fix #2: Remove await here as well
                 checkForDuplicates('characters', newApiCharacters);
               }
             }
