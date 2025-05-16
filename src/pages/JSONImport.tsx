@@ -30,6 +30,7 @@ const JSONImport: React.FC = () => {
   const [selectedStoryWorldId, setSelectedStoryWorldId] = useState<string>('');
   const [selectedStoryId, setSelectedStoryId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [jsonDataType, setJsonDataType] = useState<string>('unknown');
 
   // Constants for special dropdown options
   const CREATE_NEW_WORLD_ID = "create_new_world";
@@ -68,6 +69,35 @@ const JSONImport: React.FC = () => {
     
     fetchData();
   }, []);
+
+  // Try to detect JSON format when input changes
+  useEffect(() => {
+    if (jsonInput.trim()) {
+      try {
+        const parsed = JSON.parse(jsonInput);
+        
+        if (Array.isArray(parsed)) {
+          if (parsed.length > 0 && parsed[0].name && (parsed[0].role || parsed[0].description)) {
+            setJsonDataType('characters');
+          } else {
+            setJsonDataType('array');
+          }
+        } else if (typeof parsed === 'object') {
+          if (parsed.characters || parsed.locations || parsed.events) {
+            setJsonDataType('story_data');
+          } else {
+            setJsonDataType('object');
+          }
+        } else {
+          setJsonDataType('unknown');
+        }
+      } catch (e) {
+        setJsonDataType('invalid');
+      }
+    } else {
+      setJsonDataType('unknown');
+    }
+  }, [jsonInput]);
   
   // Filter stories when story world selection changes
   useEffect(() => {
@@ -137,27 +167,46 @@ const JSONImport: React.FC = () => {
       try {
         parsedData = JSON.parse(jsonInput);
         addLog('Successfully parsed JSON input');
+        addLog(`Detected data type: ${jsonDataType}`);
       } catch (parseError) {
         throw new Error(`Invalid JSON format: ${(parseError as Error).message}`);
       }
 
-      // Add selected story world and story IDs to the data
-      if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
-        parsedData.existingStoryWorldId = selectedStoryWorldId;
-        const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
-        addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
+      // If it's a direct characters array, we don't need to wrap it
+      let dataToSend = parsedData;
+      
+      // For other data types, add context info
+      if (!Array.isArray(parsedData)) {
+        // Add selected story world and story IDs to the data
+        if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
+          parsedData.existingStoryWorldId = selectedStoryWorldId;
+          const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
+          addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
+        }
+
+        if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
+          parsedData.existingStoryId = selectedStoryId;
+          const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
+          addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
+        }
+      } else if (Array.isArray(parsedData) && jsonDataType === 'characters') {
+        // For character arrays, add story context if selected
+        if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
+          // Mark each character with the selected story ID
+          dataToSend = parsedData.map(char => ({
+            ...char,
+            story_id: selectedStoryId
+          }));
+          
+          const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
+          addLog(`Added Story ID: ${storyTitle} (${selectedStoryId}) to all characters`);
+        }
       }
 
-      if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
-        parsedData.existingStoryId = selectedStoryId;
-        const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
-        addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
-      }
-
-      // Process the data using import_analyzed_story tool
+      // Process the data using import_story tool
       addLog('Invoking import_story tool...');
       const { data, error: importError } = await supabase.functions.invoke('import-story', {
-        body: parsedData
+        body: dataToSend
       });
 
       if (importError) {
@@ -168,12 +217,12 @@ const JSONImport: React.FC = () => {
       if (data) {
         if (data.success) {
           setSuccess('Story data imported successfully!');
-          addLog(`Successfully imported story with ID: ${data.entityIds.storyId || 'N/A'}`);
+          addLog(`Successfully imported story with ID: ${data.stats?.story_id || 'N/A'}`);
           
           // Log details of what was imported
-          if (data.entityIds) {
-            Object.entries(data.entityIds).forEach(([key, value]) => {
-              if (key !== 'storyId' && key !== 'storyWorldId') {
+          if (data.stats) {
+            Object.entries(data.stats).forEach(([key, value]) => {
+              if (key !== 'story_id') {
                 addLog(`Imported ${value} ${key}`);
               }
             });
@@ -192,6 +241,9 @@ const JSONImport: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
+  // Determine if story selection is required
+  const isStoryRequired = jsonDataType === 'characters';
 
   return (
     <div className="json-import-container">
@@ -223,14 +275,16 @@ const JSONImport: React.FC = () => {
         </div>
 
         <div className="dropdown-wrapper">
-          <label htmlFor="storySelect">Story:</label>
+          <label htmlFor="storySelect">
+            Story: {isStoryRequired && <span className="required-field">(Required for Characters)</span>}
+          </label>
           <div className="custom-select-wrapper">
             <select
               id="storySelect"
               value={selectedStoryId}
               onChange={handleStoryChange}
               disabled={isLoading || isProcessing}
-              className="custom-select"
+              className={`custom-select ${isStoryRequired ? 'required' : ''}`}
             >
               <option value="">-- Select Story --</option>
               {filteredStories.map(story => (
@@ -253,11 +307,17 @@ const JSONImport: React.FC = () => {
         />
       </div>
 
+      {jsonDataType === 'characters' && !selectedStoryId && (
+        <div className="warning-message">
+          You appear to be importing characters. Please select a story to associate them with.
+        </div>
+      )}
+
       <div className="action-buttons">
         <button
           className="primary-button"
           onClick={handleProcessJSON}
-          disabled={isProcessing || !jsonInput.trim()}
+          disabled={isProcessing || !jsonInput.trim() || (isStoryRequired && !selectedStoryId)}
         >
           {isProcessing ? 'Processing...' : 'Process JSON'}
         </button>
