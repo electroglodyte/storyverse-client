@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.8.2 (2025-05-16)
+## Current Version: 0.9.0 (2025-05-16)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -65,6 +65,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Fix Supabase query handling in Importer.tsx to resolve TypeScript errors
 - [x] Add duplicate character detection during import process
 - [x] Fix Promise handling in extractor functions to properly await results
+- [x] Simplify import process with direct JSON import interface
 - [ ] Implement React Flow for story visualization
 - [ ] Create multiple interactive views:
   - [ ] Timeline View
@@ -149,6 +150,8 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Fix TypeScript errors related to Supabase promises/queries
 - [x] Implement character duplicate detection with database check
 - [x] Fix Promise handling in extractor functions for proper TypeScript support
+- [x] Remove old analyze_story tools and related importer interfaces
+- [x] Create a simplified JSON import interface
 - [ ] Refactor supabase-tables.ts to use more consistent naming
 - [ ] Complete transition from local setup to Vercel/Supabase
 - [ ] Improve test coverage
