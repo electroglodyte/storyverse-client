@@ -1,7 +1,7 @@
 export const version = {
   major: 0,
   minor: 9,
-  patch: 64,
+  patch: 65,
   date: '2025-05-16',
-  notes: 'Fix UUID format for Story Importer database insertions'
+  notes: 'Fix story_id reference in Story Importer by using proper UUID'
 };
