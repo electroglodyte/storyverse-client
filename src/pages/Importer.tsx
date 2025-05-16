@@ -17,6 +17,12 @@ interface ExtractedElements {
   events: any[];
 }
 
+// Define a type for database item
+interface DbItem {
+  id: string;
+  [key: string]: any;
+}
+
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -256,23 +262,33 @@ const Importer: React.FC = () => {
     }
     
     // Create a map of existing names to their IDs
-    const existingNamesMap = new Map();
-    if (data) {
-      data.forEach((item) => {
-        if (item && typeof item === 'object' && 'id' in item && nameField in item && item[nameField] !== null) {
-          const itemName = item[nameField];
-          const itemId = item.id;
-          if (typeof itemName === 'string' && itemId) {
-            existingNamesMap.set(itemName.toLowerCase(), itemId);
-          }
-        }
-      });
+    const existingNamesMap = new Map<string, string>();
+    
+    // Safely process data
+    const safeData = Array.isArray(data) ? data : [];
+    
+    // Process each item individually to handle null values
+    for (let i = 0; i < safeData.length; i++) {
+      const item = safeData[i];
+      // Skip null or undefined items
+      if (!item) continue;
+      
+      // Skip items without required properties
+      if (!item.id || !(nameField in item) || item[nameField] === null) continue;
+      
+      // Convert to lowercase and add to map
+      const name = String(item[nameField]).toLowerCase();
+      existingNamesMap.set(name, String(item.id));
     }
     
     // Return a list of elements that are duplicate (already exist in the database)
     return elements.filter(elem => {
-      const elemName = elem[nameField];
-      return typeof elemName === 'string' && existingNamesMap.has(elemName.toLowerCase());
+      // Skip elements with no name field
+      if (!elem || !(nameField in elem) || elem[nameField] === null) return false;
+      
+      // Check if name exists in our map
+      const elemName = String(elem[nameField]).toLowerCase();
+      return existingNamesMap.has(elemName);
     });
   };
 
@@ -300,14 +316,19 @@ const Importer: React.FC = () => {
       // Filter out duplicate elements
       const newElements = elementsToSave.filter(elem => {
         const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
-        return !duplicateElements.some(dupElem => 
-          dupElem[nameField]?.toLowerCase() === elem[nameField]?.toLowerCase()
-        );
+        return !duplicateElements.some(dupElem => {
+          if (!dupElem || !(nameField in dupElem) || !elem || !(nameField in elem)) return false;
+          
+          const dupName = dupElem[nameField] === null ? '' : String(dupElem[nameField]).toLowerCase();
+          const elemName = elem[nameField] === null ? '' : String(elem[nameField]).toLowerCase();
+          
+          return dupName === elemName;
+        });
       });
       
       if (duplicateElements.length > 0) {
         console.log(`Found ${duplicateElements.length} existing ${type} that will be skipped:`, 
-          duplicateElements.map(elem => elem.name || elem.title));
+          duplicateElements.map(elem => elem.name || elem.title || 'Unnamed'));
       }
       
       if (newElements.length === 0) {
