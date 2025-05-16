@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.3.3 (2025-05-16)
+## Current Version: 0.4.2 (2025-05-16)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -42,6 +42,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Develop tools to extract events from text descriptions
 
 ### UI Improvements
+- [x] Fix TypeScript errors in StoryImporter component
 - [ ] Implement React Flow for story visualization
 - [ ] Create multiple interactive views:
   - [ ] Timeline View
@@ -109,6 +110,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Character casting suggestions
 
 ## Technical Debt & Maintenance
+- [x] Fix TypeScript errors in StoryImporter component
 - [ ] Refactor supabase-tables.ts to use more consistent naming
 - [ ] Complete transition from local setup to Vercel/Supabase
 - [ ] Improve test coverage
