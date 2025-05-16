@@ -181,7 +181,9 @@ const Importer: React.FC = () => {
       };
 
       // Before setting extracted elements, check for potential duplicates
-      await checkForDuplicates('characters', characterObjects);
+      // Fix #1: Remove the await here since checkForDuplicates returns a Promise
+      // but we don't need to await it here
+      checkForDuplicates('characters', characterObjects);
       
       // Store the extracted elements and move to the first review step
       setExtractedElements(processedData);
@@ -262,7 +264,8 @@ const Importer: React.FC = () => {
                 console.log(`Added ${newApiCharacters.length} additional characters from API`);
                 
                 // Check these new characters for duplicates too
-                await checkForDuplicates('characters', newApiCharacters);
+                // Fix #2: Remove await here as well
+                checkForDuplicates('characters', newApiCharacters);
               }
             }
             setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
