@@ -14,7 +14,5 @@ export default {
   ...objectHandlers,
   
   // Map import tool names to handlers
-  analyze_imported_story: importHandlers.importStory,
-  extract_story_elements: importHandlers.extractStoryElements,
-  import_story_with_progress: importHandlers.importStoryWithProgress
+  import_analyzed_story: importHandlers.importAnalyzedStory
 };
