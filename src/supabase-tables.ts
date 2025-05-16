@@ -342,6 +342,18 @@ export enum SceneStatus {
   FINISHED = 'finished'
 }
 
+// Character 5Q structure for scene
+export interface Character5Q {
+  character_id: string;
+  character_name: string;
+  want: string;         // What does the character want?
+  why: string;          // Why do they want it?
+  obstacle: string;     // What stands in their way?
+  action: string;       // What are they going to do about it?
+  result?: string;      // What happens as a result? (optional)
+  updated_at?: string;  // When this 5Q was last updated
+}
+
 // Scene - a specific moment within a story, linked to an event
 export interface Scene {
   id: string;
@@ -358,6 +370,9 @@ export interface Scene {
   metadata?: Record<string, any>;
   essence?: string;  // A very simple description of what happens in the scene
   interest?: string; // Where the audience interest will lie in the scene
+  creation_notes?: string; // Notes about the writer's intent
+  character_5q?: Character5Q[]; // The 5Q answers for each character in the scene
+  subtext?: string; // Notes about the subtext of the scene
   created_at: string;
   updated_at: string;
 }
