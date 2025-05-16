@@ -107,7 +107,7 @@ const Importer: React.FC = () => {
       const response = await supabase.functions.invoke('analyze-story', {
         body: {
           story_text: fileContent,
-          story_title: files[0].file.name.replace(/\.[^/.]+$/, ""),
+          story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
           story_world_id: DEFAULT_STORYWORLD_ID,
           options: {
             create_project: false,
@@ -259,7 +259,10 @@ const Importer: React.FC = () => {
     const existingNamesMap = new Map();
     if (data) {
       data.forEach(item => {
-        existingNamesMap.set(item[nameField].toLowerCase(), item.id);
+        // Check if item has the id property before using it
+        if (item && typeof item === 'object' && 'id' in item) {
+          existingNamesMap.set(item[nameField].toLowerCase(), item.id);
+        }
       });
     }
     
