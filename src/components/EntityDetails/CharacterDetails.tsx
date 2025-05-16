@@ -1,197 +1,179 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
-import { transformResponse } from '@/lib/supabase'
-import { Input, Select, Textarea, Button } from '@/components/ui/form'
-import type { Character, StoryWorld } from '@/types/database'
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Character, StoryWorld } from '@/types/story';
+import { Input, Select, Textarea, Button } from '@/components/ui/form-elements';
 
-interface Props {
-  characterId: string
-  onSave?: (character: Character) => void
-  onCancel?: () => void
+interface CharacterDetailsProps {
+  character: Character;
+  storyWorlds: StoryWorld[];
+  onSave: (character: Character) => void;
 }
 
-export function CharacterDetails({ characterId, onSave, onCancel }: Props) {
-  const [character, setCharacter] = useState<Partial<Character>>({})
-  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([])
-  const [loading, setLoading] = useState(true)
+export const CharacterDetails: React.FC<CharacterDetailsProps> = ({
+  character,
+  storyWorlds,
+  onSave,
+}) => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<Character>(character);
+  const [charAttributes, setCharAttributes] = useState<Record<string, any>>(
+    character.attributes || {}
+  );
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        // Load storyworlds
-        const { data: worldsData } = await supabase
-          .from('story_worlds')
-          .select('*')
-          .order('name')
-
-        if (worldsData) {
-          setStoryWorlds(worldsData.map(world => transformResponse.transformObject(world)))
-        }
-
-        // Load character if editing
-        if (characterId) {
-          const { data: characterData } = await supabase
-            .from('characters')
-            .select('*')
-            .eq('id', characterId)
-            .single()
-
-          if (characterData) {
-            setCharacter(transformResponse.transformObject(characterData))
-          }
-        }
-      } catch (err) {
-        console.error('Error loading data:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [characterId])
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      if (characterId) {
-        // Update existing character
-        const { data, error } = await supabase
-          .from('characters')
-          .update(character)
-          .eq('id', characterId)
-          .select()
-          .single()
-
-        if (error) throw error
-        if (data && onSave) onSave(data)
-      } else {
-        // Create new character
-        const { data, error } = await supabase
-          .from('characters')
-          .insert([character])
-          .select()
-          .single()
-
-        if (error) throw error
-        if (data && onSave) onSave(data)
-      }
-    } catch (err) {
-      console.error('Error saving character:', err)
-    }
-  }
+    setFormData(character);
+    setCharAttributes(character.attributes || {});
+  }, [character]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setCharacter(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setCharacter(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
-  if (loading) {
-    return <div>Loading...</div>
-  }
+  const handleAttributeChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCharAttributes(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    const updatedCharacter = {
+      ...formData,
+      attributes: charAttributes
+    };
+    await onSave(updatedCharacter);
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <Input
-        label="Name"
-        name="name"
-        value={character.name || ''}
-        onChange={handleInputChange}
-        required
-      />
+    <div className="p-4 space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Name</label>
+          <Input
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Role</label>
+          <Select
+            name="role"
+            value={formData.role || ''}
+            onChange={handleSelectChange}
+            className="w-full"
+          >
+            <option value="">Select Role</option>
+            <option value="protagonist">Protagonist</option>
+            <option value="antagonist">Antagonist</option>
+            <option value="supporting">Supporting</option>
+            <option value="background">Background</option>
+          </Select>
+        </div>
+      </div>
 
-      <Select
-        label="Story World"
-        name="story_world_id"
-        value={character.story_world_id || ''}
-        onChange={handleSelectChange}
-      >
-        <option value="">Select a story world...</option>
-        {storyWorlds.map(world => (
-          <option key={world.id} value={world.id}>
-            {world.name}
-          </option>
-        ))}
-      </Select>
+      <div>
+        <label className="block text-sm font-medium mb-1">Description</label>
+        <Textarea
+          name="description"
+          value={formData.description || ''}
+          onChange={handleInputChange}
+          className="w-full h-32"
+        />
+      </div>
 
-      <Select
-        label="Role"
-        name="role"
-        value={character.role || ''}
-        onChange={handleSelectChange}
-      >
-        <option value="">Select a role...</option>
-        <option value="protagonist">Protagonist</option>
-        <option value="antagonist">Antagonist</option>
-        <option value="supporting">Supporting</option>
-        <option value="background">Background</option>
-        <option value="other">Other</option>
-      </Select>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Background</label>
+          <Textarea
+            name="background"
+            value={formData.background || ''}
+            onChange={handleInputChange}
+            className="w-full h-32"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Appearance</label>
+          <Textarea
+            name="appearance"
+            value={formData.appearance || ''}
+            onChange={handleInputChange}
+            className="w-full h-32"
+          />
+        </div>
+      </div>
 
-      <Textarea
-        label="Description"
-        name="description"
-        value={character.description || ''}
-        onChange={handleInputChange}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Personality</label>
+          <Textarea
+            name="personality"
+            value={formData.personality || ''}
+            onChange={handleInputChange}
+            className="w-full h-32"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Motivation</label>
+          <Textarea
+            name="motivation"
+            value={formData.motivation || ''}
+            onChange={handleInputChange}
+            className="w-full h-32"
+          />
+        </div>
+      </div>
 
-      <Textarea
-        label="Appearance"
-        name="appearance"
-        value={character.appearance || ''}
-        onChange={handleInputChange}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1">Age</label>
+          <Input
+            name="age"
+            value={formData.age || ''}
+            onChange={handleInputChange}
+            className="w-full"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium mb-1">Story World</label>
+          <Select
+            name="story_world_id"
+            value={formData.story_world_id || ''}
+            onChange={handleSelectChange}
+            className="w-full"
+          >
+            <option value="">Select Story World</option>
+            {storyWorlds.map((world) => (
+              <option key={world.id} value={world.id}>
+                {world.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
 
-      <Textarea
-        label="Background"
-        name="background"
-        value={character.background || ''}
-        onChange={handleInputChange}
-      />
-
-      <Input
-        label="Age"
-        name="age"
-        value={character.age || ''}
-        onChange={handleInputChange}
-      />
-
-      <Textarea
-        label="Motivation"
-        name="motivation"
-        value={character.motivation || ''}
-        onChange={handleInputChange}
-      />
-
-      <Textarea
-        label="Personality"
-        name="personality"
-        value={character.personality || ''}
-        onChange={handleInputChange}
-      />
-
-      <Textarea
-        label="Notes"
-        name="notes"
-        value={character.notes || ''}
-        onChange={handleInputChange}
-      />
-
-      <div className="flex justify-end space-x-2">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-        <Button type="submit">
-          {characterId ? 'Update' : 'Create'} Character
+      <div className="space-x-4">
+        <Button onClick={handleSave} className="bg-blue-500 text-white">
+          Save Changes
+        </Button>
+        <Button onClick={() => navigate(-1)} className="bg-gray-500 text-white">
+          Cancel
         </Button>
       </div>
-    </form>
-  )
-}
+    </div>
+  );
+};
