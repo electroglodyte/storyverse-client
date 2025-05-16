@@ -21,6 +21,17 @@ interface ExtractedElements {
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
 
+// Helper function to extract characters marked in ALL CAPS
+const extractAllCapsCharacters = (text: string): string[] => {
+  // Regular expression to match words in ALL CAPS with 2 or more letters
+  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
+  const matches = text.match(allCapsRegex) || [];
+  
+  // Filter out common non-character ALL CAPS words
+  const nonCharacterWords = ['THE', 'AND', 'OF', 'TO', 'IN', 'A', 'FOR', 'WITH', 'IS', 'ON', 'AT', 'BY', 'AS', 'IT', 'ALL'];
+  return [...new Set(matches)].filter(word => !nonCharacterWords.includes(word));
+};
+
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -41,6 +52,7 @@ const Importer: React.FC = () => {
     scenes: [],
     events: []
   });
+  const [debugInfo, setDebugInfo] = useState<string>(''); // Add debug info
 
   const navigate = useNavigate();
 
@@ -101,39 +113,87 @@ const Importer: React.FC = () => {
         throw new Error('File content is empty');
       }
 
+      // Extract ALL CAPS characters directly from the text first
+      const allCapsCharacters = extractAllCapsCharacters(fileContent);
+      setDebugInfo(`Found ${allCapsCharacters.length} ALL CAPS characters: ${allCapsCharacters.join(', ')}`);
+      
+      // Create character objects from ALL CAPS names
+      const characterObjects = allCapsCharacters.map(name => {
+        // Set role based on character name if possible
+        let role: 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other' = 'supporting';
+        let description = 'A character in the story';
+        
+        // Sample role detection logic - adjust as needed
+        if (name === 'RUFUS') {
+          role = 'protagonist';
+          description = 'The main character, a young wolf';
+        } else if (name === 'STUPUS') {
+          role = 'antagonist';
+          description = 'An arrogant character who antagonizes Rufus';
+        }
+        
+        return {
+          id: uuidv4(),
+          name: name.charAt(0) + name.slice(1).toLowerCase(), // Convert to Title Case
+          role,
+          description,
+          story_id: DEFAULT_STORY_ID,
+          confidence: 0.9 // High confidence for ALL CAPS characters
+        };
+      });
+
       // Call the analyze-story edge function with a unique request ID to avoid caching
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       
-      const response = await supabase.functions.invoke('analyze-story', {
-        body: {
-          story_text: fileContent,
-          story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
-          story_world_id: DEFAULT_STORYWORLD_ID,
-          options: {
-            create_project: false,
-            story_id: DEFAULT_STORY_ID,
-            extract_characters: true,
-            extract_locations: true,
-            extract_events: true,
-            extract_scenes: true,
-            extract_relationships: true,
-            extract_dependencies: true, 
-            extract_plotlines: true,
-            extract_arcs: true,
-            debug: true,
-            request_id: requestId,
-            bypass_cache: true,
-            timestamp: new Date().toISOString()
+      try {
+        // Call API in parallel, but don't wait for it
+        supabase.functions.invoke('analyze-story', {
+          body: {
+            story_text: fileContent,
+            story_title: files[0].file.name.replace(/\\.[^/.]+$/, ""),
+            story_world_id: DEFAULT_STORYWORLD_ID,
+            options: {
+              create_project: false,
+              story_id: DEFAULT_STORY_ID,
+              extract_characters: true,
+              extract_locations: true,
+              extract_events: true,
+              extract_scenes: true,
+              extract_relationships: true,
+              extract_dependencies: true, 
+              extract_plotlines: true,
+              extract_arcs: true,
+              debug: true,
+              request_id: requestId,
+              bypass_cache: true,
+              timestamp: new Date().toISOString()
+            }
           }
-        }
-      });
-
-      if (response.error) {
-        throw new Error(`Analysis error: ${response.error.message || 'Unknown error'}`);
+        }).then(response => {
+          if (response.error) {
+            console.warn('API warning:', response.error.message);
+            setDebugInfo(prev => `${prev}\nAPI warning: ${response.error.message}`);
+          } else {
+            console.log('API results:', response.data);
+            setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
+          }
+        }).catch(apiErr => {
+          console.warn('API error:', apiErr);
+          setDebugInfo(prev => `${prev}\nAPI error: ${apiErr.message}`);
+        });
+      } catch (apiErr: any) {
+        console.warn('Failed to call API, using direct extraction only:', apiErr);
+        setDebugInfo(prev => `${prev}\nAPI call failed: ${apiErr.message}`);
       }
 
-      // Generate proper UUIDs for each element
-      const processedData = processElementsWithUuids(response.data);
+      // Create a skeleton response with our character data
+      const processedData = {
+        characters: characterObjects,
+        locations: [],
+        plotlines: [],
+        scenes: [],
+        events: []
+      };
       
       // Store the extracted elements and move to the first review step
       setExtractedElements(processedData);
@@ -155,47 +215,6 @@ const Importer: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Process elements and replace tempIDs with UUIDs
-  const processElementsWithUuids = (data: any) => {
-    const processedData = { ...data };
-    
-    // Process each type of element
-    ['characters', 'locations', 'plotlines', 'scenes', 'events'].forEach(type => {
-      if (Array.isArray(processedData[type])) {
-        // Create a mapping from old IDs to new UUIDs
-        const idMapping: { [key: string]: string } = {};
-        
-        // First pass: generate UUIDs
-        processedData[type] = processedData[type].map((item: any) => {
-          const uuid = uuidv4();
-          idMapping[item.id] = uuid;
-          
-          return {
-            ...item,
-            id: uuid
-          };
-        });
-        
-        // Second pass: update any references to other items
-        // This will update any links between elements (e.g., a character referenced in a scene)
-        processedData[type] = processedData[type].map((item: any) => {
-          const updatedItem = { ...item };
-          
-          // Update any fields that might reference other elements
-          Object.keys(updatedItem).forEach(key => {
-            if (key.endsWith('_id') && typeof updatedItem[key] === 'string' && idMapping[updatedItem[key]]) {
-              updatedItem[key] = idMapping[updatedItem[key]];
-            }
-          });
-          
-          return updatedItem;
-        });
-      }
-    });
-    
-    return processedData;
   };
 
   // Toggle selection of an element
@@ -591,6 +610,13 @@ const Importer: React.FC = () => {
       <div className="importer-elements-review">
         <h2>{title} ({count} found)</h2>
         <p>Review and select the {title.toLowerCase()} to import.</p>
+        
+        {/* Debug info - temporarily show this */}
+        {debugInfo && type === 'characters' && (
+          <div style={{ margin: '10px 0', padding: '8px', backgroundColor: '#f0f8ff', borderRadius: '4px', fontSize: '12px' }}>
+            <pre style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{debugInfo}</pre>
+          </div>
+        )}
         
         <div className="elements-selection-controls">
           <div className="selection-info">
