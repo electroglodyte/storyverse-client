@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { FaBook, FaListUl, FaStream } from 'react-icons/fa';
+import { FaBook, FaListUl, FaStream, FaCog } from 'react-icons/fa';
+import AdminUtils from './admin/AdminUtils';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -11,6 +12,7 @@ const Dashboard = () => {
     recentStories: [],
   });
   const [loading, setLoading] = useState(true);
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,6 +42,10 @@ const Dashboard = () => {
 
     fetchStats();
   }, []);
+
+  const toggleAdminPanel = () => {
+    setShowAdminPanel(!showAdminPanel);
+  };
 
   return (
     <div>
@@ -114,6 +120,24 @@ const Dashboard = () => {
           <p className="text-gray-500 mt-4">No stories created yet.</p>
         )}
       </div>
+
+      {/* Admin Panel Toggle Button */}
+      <div className="mt-8 flex justify-end">
+        <button 
+          className="flex items-center gap-2 px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
+          onClick={toggleAdminPanel}
+        >
+          <FaCog className="text-gray-600" />
+          <span>Admin Panel</span>
+        </button>
+      </div>
+
+      {/* Admin Panel */}
+      {showAdminPanel && (
+        <div className="mt-4">
+          <AdminUtils />
+        </div>
+      )}
     </div>
   );
 };
