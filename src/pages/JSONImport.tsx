@@ -1,1 +1,136 @@
-import React, { useState } from 'react';\nimport { supabase } from '../supabaseClient';\nimport './JSONImport.css';\n\nconst JSONImport: React.FC = () => {\n  const [jsonInput, setJsonInput] = useState<string>('');\n  const [isProcessing, setIsProcessing] = useState<boolean>(false);\n  const [error, setError] = useState<string | null>(null);\n  const [success, setSuccess] = useState<string | null>(null);\n  const [logs, setLogs] = useState<string[]>([]);\n\n  // Helper function to add a log message\n  const addLog = (message: string) => {\n    setLogs(prevLogs => [...prevLogs, `${new Date().toISOString().split('T')[1].split('.')[0]} - ${message}`]);\n  };\n\n  // Process the JSON input\n  const handleProcessJSON = async () => {\n    if (!jsonInput.trim()) {\n      setError('Please enter JSON data to process');\n      return;\n    }\n\n    setIsProcessing(true);\n    setError(null);\n    setSuccess(null);\n    setLogs([]);\n\n    try {\n      // Parse the JSON input\n      let parsedData;\n      try {\n        parsedData = JSON.parse(jsonInput);\n        addLog('Successfully parsed JSON input');\n      } catch (parseError) {\n        throw new Error(`Invalid JSON format: ${(parseError as Error).message}`);\n      }\n\n      // Process the data using import_analyzed_story tool\n      addLog('Invoking import_analyzed_story tool...');\n      const { data, error: importError } = await supabase.functions.invoke('import-analyzed-story', {\n        body: { data: parsedData }\n      });\n\n      if (importError) {\n        throw new Error(`Error importing data: ${importError.message}`);\n      }\n\n      // Log the results\n      if (data) {\n        if (data.success) {\n          setSuccess('Story data imported successfully!');\n          addLog(`Successfully imported story: ${data.story?.title || 'Unnamed'}`);\n          \n          // Log details of what was imported\n          if (data.stats) {\n            Object.entries(data.stats).forEach(([key, value]) => {\n              addLog(`Imported ${value} ${key}`);\n            });\n          }\n        } else {\n          throw new Error(data.message || 'Unknown error occurred during import');\n        }\n      } else {\n        throw new Error('No response data received from import function');\n      }\n    } catch (err) {\n      const errorMessage = (err as Error).message || 'An unknown error occurred';\n      setError(errorMessage);\n      addLog(`Error: ${errorMessage}`);\n    } finally {\n      setIsProcessing(false);\n    }\n  };\n\n  return (\n    <div className=\"json-import-container\">\n      <h1>JSON Import</h1>\n      <p className=\"description\">\n        Paste JSON data exported from Claude's story analysis to import characters, locations, events, and other story elements directly into the database.\n      </p>\n\n      <div className=\"json-input-container\">\n        <textarea\n          className=\"json-input\"\n          value={jsonInput}\n          onChange={(e) => setJsonInput(e.target.value)}\n          placeholder=\"Paste your JSON data here...\"\n          disabled={isProcessing}\n        />\n      </div>\n\n      <div className=\"action-buttons\">\n        <button\n          className=\"primary-button\"\n          onClick={handleProcessJSON}\n          disabled={isProcessing || !jsonInput.trim()}\n        >\n          {isProcessing ? 'Processing...' : 'Process JSON'}\n        </button>\n        <button\n          className=\"secondary-button\"\n          onClick={() => setJsonInput('')}\n          disabled={isProcessing || !jsonInput.trim()}\n        >\n          Clear\n        </button>\n      </div>\n\n      {error && (\n        <div className=\"error-message\">\n          {error}\n        </div>\n      )}\n\n      {success && (\n        <div className=\"success-message\">\n          {success}\n        </div>\n      )}\n\n      {logs.length > 0 && (\n        <div className=\"logs-container\">\n          <h3>Import Log</h3>\n          <div className=\"logs\">\n            {logs.map((log, index) => (\n              <div key={index} className=\"log-entry\">{log}</div>\n            ))}\n          </div>\n        </div>\n      )}\n    </div>\n  );\n};\n\nexport default JSONImport;
+import React, { useState } from 'react';
+import { supabase } from '../supabaseClient';
+import './JSONImport.css';
+
+const JSONImport: React.FC = () => {
+  const [jsonInput, setJsonInput] = useState<string>('');
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [logs, setLogs] = useState<string[]>([]);
+
+  // Helper function to add a log message
+  const addLog = (message: string) => {
+    setLogs(prevLogs => [...prevLogs, `${new Date().toISOString().split('T')[1].split('.')[0]} - ${message}`]);
+  };
+
+  // Process the JSON input
+  const handleProcessJSON = async () => {
+    if (!jsonInput.trim()) {
+      setError('Please enter JSON data to process');
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+    setSuccess(null);
+    setLogs([]);
+
+    try {
+      // Parse the JSON input
+      let parsedData;
+      try {
+        parsedData = JSON.parse(jsonInput);
+        addLog('Successfully parsed JSON input');
+      } catch (parseError) {
+        throw new Error(`Invalid JSON format: ${(parseError as Error).message}`);
+      }
+
+      // Process the data using import_analyzed_story tool
+      addLog('Invoking import_analyzed_story tool...');
+      const { data, error: importError } = await supabase.functions.invoke('import-analyzed-story', {
+        body: { data: parsedData }
+      });
+
+      if (importError) {
+        throw new Error(`Error importing data: ${importError.message}`);
+      }
+
+      // Log the results
+      if (data) {
+        if (data.success) {
+          setSuccess('Story data imported successfully!');
+          addLog(`Successfully imported story: ${data.story?.title || 'Unnamed'}`);
+          
+          // Log details of what was imported
+          if (data.stats) {
+            Object.entries(data.stats).forEach(([key, value]) => {
+              addLog(`Imported ${value} ${key}`);
+            });
+          }
+        } else {
+          throw new Error(data.message || 'Unknown error occurred during import');
+        }
+      } else {
+        throw new Error('No response data received from import function');
+      }
+    } catch (err) {
+      const errorMessage = (err as Error).message || 'An unknown error occurred';
+      setError(errorMessage);
+      addLog(`Error: ${errorMessage}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="json-import-container">
+      <h1>JSON Import</h1>
+      <p className="description">
+        Paste JSON data exported from Claude's story analysis to import characters, locations, events, and other story elements directly into the database.
+      </p>
+
+      <div className="json-input-container">
+        <textarea
+          className="json-input"
+          value={jsonInput}
+          onChange={(e) => setJsonInput(e.target.value)}
+          placeholder="Paste your JSON data here..."
+          disabled={isProcessing}
+        />
+      </div>
+
+      <div className="action-buttons">
+        <button
+          className="primary-button"
+          onClick={handleProcessJSON}
+          disabled={isProcessing || !jsonInput.trim()}
+        >
+          {isProcessing ? 'Processing...' : 'Process JSON'}
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => setJsonInput('')}
+          disabled={isProcessing || !jsonInput.trim()}
+        >
+          Clear
+        </button>
+      </div>
+
+      {error && (
+        <div className="error-message">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="success-message">
+          {success}
+        </div>
+      )}
+
+      {logs.length > 0 && (
+        <div className="logs-container">
+          <h3>Import Log</h3>
+          <div className="logs">
+            {logs.map((log, index) => (
+              <div key={index} className="log-entry">{log}</div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default JSONImport;
