@@ -1,6 +1,6 @@
 // src/components/AppNav.tsx
 import React from 'react';
-import { StoryWorld, Story, Series } from '../supabase-tables';
+import type { StoryWorld, Story, Series } from '@/types/database';
 
 interface AppNavProps {
   activeStoryWorld: StoryWorld | null;
@@ -17,19 +17,39 @@ export const AppNav: React.FC<AppNavProps> = ({
   activeStoryWorld,
   activeStory,
   activeSeries,
-  storyWorlds,
-  setActiveStoryWorld,
-  setActiveStory,
-  setActiveSeries,
   loading
 }) => {
-  // Empty top bar for now, as requested
+  // Empty top bar for now, but displays current context
   return (
     <div className="flex items-center justify-between w-full">
-      {/* Left empty for now */}
-      <div></div>
+      {/* Left side - context info */}
+      <div className="flex items-center space-x-2">
+        {loading ? (
+          <div className="h-6 w-32 bg-gray-700 animate-pulse rounded"></div>
+        ) : (
+          <div className="flex items-center space-x-2 text-gray-300">
+            {activeStoryWorld && (
+              <>
+                <span>{activeStoryWorld.name}</span>
+                {activeStory && (
+                  <>
+                    <span className="text-gray-500">/</span>
+                    <span>{activeStory.title}</span>
+                  </>
+                )}
+                {activeSeries && (
+                  <>
+                    <span className="text-gray-500">/</span>
+                    <span>{activeSeries.name}</span>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
       
-      {/* Right side also left empty */}
+      {/* Right side - reserved for actions */}
       <div></div>
     </div>
   );
