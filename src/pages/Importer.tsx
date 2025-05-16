@@ -218,21 +218,21 @@ const Importer: React.FC = () => {
         throw new Error('File content is empty');
       }
 
-      // Use our modular extractors to get all entity types
-      const characterObjects = extractCharacters(fileContent, DEFAULT_STORY_ID);
-      const locationObjects = extractLocations(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
-      const plotlineObjects = extractPlotlines(fileContent, DEFAULT_STORY_ID);
-      const eventObjects = extractEvents(fileContent, DEFAULT_STORY_ID);
-      const objectObjects = extractObjects(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
-      const sceneObjects = extractScenes(fileContent, DEFAULT_STORY_ID);
+      // Use our modular extractors to get all entity types - using await since these return Promises
+      const characterObjects = await extractCharacters(fileContent, DEFAULT_STORY_ID);
+      const locationObjects = await extractLocations(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
+      const plotlineObjects = await extractPlotlines(fileContent, DEFAULT_STORY_ID);
+      const eventObjects = await extractEvents(fileContent, DEFAULT_STORY_ID);
+      const objectObjects = await extractObjects(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
+      const sceneObjects = await extractScenes(fileContent, DEFAULT_STORY_ID);
 
       // Add debug information about what was extracted
-      setDebugInfo(`Found ${characterObjects.length} characters\n` +
-                  `Found ${locationObjects.length} locations\n` +
-                  `Found ${plotlineObjects.length} plotlines\n` +
-                  `Found ${eventObjects.length} events\n` +
-                  `Found ${objectObjects.length} objects\n` +
-                  `Found ${sceneObjects.length} scenes`);
+      setDebugInfo(`Found ${Array.isArray(characterObjects) ? characterObjects.length : 0} characters\n` +
+                  `Found ${Array.isArray(locationObjects) ? locationObjects.length : 0} locations\n` +
+                  `Found ${Array.isArray(plotlineObjects) ? plotlineObjects.length : 0} plotlines\n` +
+                  `Found ${Array.isArray(eventObjects) ? eventObjects.length : 0} events\n` +
+                  `Found ${Array.isArray(objectObjects) ? objectObjects.length : 0} objects\n` +
+                  `Found ${Array.isArray(sceneObjects) ? sceneObjects.length : 0} scenes`);
 
       // Call the analyze-story edge function with a unique request ID to avoid caching
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -265,12 +265,12 @@ const Importer: React.FC = () => {
       // Initialize selected elements with all the IDs (by default all are selected)
       // Using getSafeId to ensure we always have a valid ID
       setSelectedElements({
-        characters: processedData.characters?.map((c: any) => getSafeId(c)) || [],
-        locations: processedData.locations?.map((l: any) => getSafeId(l)) || [],
-        plotlines: processedData.plotlines?.map((p: any) => getSafeId(p)) || [],
-        scenes: processedData.scenes?.map((s: any) => getSafeId(s)) || [],
-        events: processedData.events?.map((e: any) => getSafeId(e)) || [],
-        objects: processedData.objects?.map((o: any) => getSafeId(o)) || []
+        characters: characterObjects?.map((c: any) => getSafeId(c)) || [],
+        locations: locationObjects?.map((l: any) => getSafeId(l)) || [],
+        plotlines: plotlineObjects?.map((p: any) => getSafeId(p)) || [],
+        scenes: sceneObjects?.map((s: any) => getSafeId(s)) || [],
+        events: eventObjects?.map((e: any) => getSafeId(e)) || [],
+        objects: objectObjects?.map((o: any) => getSafeId(o)) || []
       });
       
       try {
