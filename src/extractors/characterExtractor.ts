@@ -148,6 +148,72 @@ export const generateCharacterDescription = (name: string, storyText: string): s
   return "A character in the story";
 };
 
+// Generate a pithy character logline based on context and character's role
+export const generateCharacterLogline = (name: string, storyText: string): string => {
+  const nameLower = name.toLowerCase();
+  const storyLower = storyText.toLowerCase();
+  
+  // Pre-defined loglines for specific characters based on story context
+  const characterLoglines: Record<string, string> = {
+    'RUFUS': 'An adolescent wolf exiled from his pack until he can complete legendary feats to prove himself',
+    'STUPUS': 'An arrogant wolf who bullies Rufus and claims Alyssa for himself',
+    'ALYSSA': 'A pretty wolf that both Rufus and Stupus are interested in',
+    'LINUS': 'Rufus\'s best friend who provides moral support from a safe distance',
+    'BODO': 'The elder wolf who tells legends and assigns Rufus his special challenge',
+    'LUPUS': 'The legendary wolf hero who supposedly devoured three pigs, seven billygoats, and Red Riding Hood',
+    'SCINTILLA': 'A sassy teenage witch with a goth style who helps Rufus infiltrate Fairy Tale City',
+    'BUFFO': 'A boy-toad hybrid resulting from a botched fairy-tale transformation',
+    'PORCINO': 'A wealthy pig who serves as the alpha-pig in charge of Fairy Tale City',
+    'FULMINELLA': 'Porcino\'s wife who owns a summer villa in the valley',
+    'ROUGE': 'A descendant of Red Riding Hood who befriends Rufus despite their traditional enmity',
+  };
+  
+  // Check for pre-defined loglines first
+  if (characterLoglines[name]) {
+    return characterLoglines[name];
+  }
+  
+  // Look for key sentences containing the character name and an action verb
+  const actionVerbs = ['wants', 'needs', 'seeks', 'finds', 'helps', 'fights', 'discovers', 'believes', 'fears', 'loves'];
+  const actionSentenceRegex = new RegExp(`[^.!?]*${nameLower}[^.!?]*(?:${actionVerbs.join('|')})[^.!?]*[.!?]`, 'gi');
+  const actionMatches = storyLower.match(actionSentenceRegex);
+  
+  if (actionMatches && actionMatches.length > 0) {
+    // Use the shortest reasonably long match as our logline
+    const goodMatches = actionMatches
+      .filter(match => match.length > 40 && match.length < 150)
+      .sort((a, b) => a.length - b.length);
+      
+    if (goodMatches.length > 0) {
+      // Clean up the match to make it third person present tense
+      let logline = goodMatches[0].trim();
+      
+      // Convert to present tense if possible
+      logline = logline
+        .replace(/\b(was|were)\b/g, 'is')
+        .replace(/\b(had)\b/g, 'has');
+        
+      return logline.charAt(0).toUpperCase() + logline.slice(1);
+    }
+  }
+  
+  // Fallback options based on character's role
+  const role = identifyCharacterRole(name, storyText);
+  
+  switch (role) {
+    case 'protagonist':
+      return `The main character who drives the story's central conflict`;
+    case 'antagonist':
+      return `An opposing force who creates obstacles for the protagonist`;
+    case 'supporting':
+      return `A key character who assists or complicates the main story`;
+    case 'background':
+      return `A minor character who adds depth to the story world`;
+    default:
+      return `A character in the story`;
+  }
+};
+
 // Identify character roles based on story context
 export const identifyCharacterRole = (name: string, storyText: string): 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other' => {
   // Handle multi-word names for context search
@@ -204,12 +270,14 @@ export const createCharacterObject = (name: string, storyId: string, storyText: 
   // Identify role and generate description
   const role = identifyCharacterRole(name, storyText);
   const description = generateCharacterDescription(name, storyText);
+  const character_logline = generateCharacterLogline(name, storyText);
   
   return {
     id: uuidv4(),
     name: formattedName,
     role,
     description,
+    character_logline,
     story_id: storyId,
     confidence: 0.9 // High confidence for ALL CAPS characters
   };
