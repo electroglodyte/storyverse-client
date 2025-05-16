@@ -2,6 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import './Importer.css';
+import { v4 as uuidv4 } from 'uuid'; // Add UUID import
 
 interface FileInfo {
   file: File;
@@ -131,16 +132,19 @@ const Importer: React.FC = () => {
         throw new Error(`Analysis error: ${response.error.message || 'Unknown error'}`);
       }
 
+      // Generate proper UUIDs for each element
+      const processedData = processElementsWithUuids(response.data);
+      
       // Store the extracted elements and move to the first review step
-      setExtractedElements(response.data);
+      setExtractedElements(processedData);
       
       // Initialize selected elements with all the IDs (by default all are selected)
       setSelectedElements({
-        characters: response.data.characters?.map((c: any) => c.id) || [],
-        locations: response.data.locations?.map((l: any) => l.id) || [],
-        plotlines: response.data.plotlines?.map((p: any) => p.id) || [],
-        scenes: response.data.scenes?.map((s: any) => s.id) || [],
-        events: response.data.events?.map((e: any) => e.id) || []
+        characters: processedData.characters?.map((c: any) => c.id) || [],
+        locations: processedData.locations?.map((l: any) => l.id) || [],
+        plotlines: processedData.plotlines?.map((p: any) => p.id) || [],
+        scenes: processedData.scenes?.map((s: any) => s.id) || [],
+        events: processedData.events?.map((e: any) => e.id) || []
       });
 
       // Move to the first review step
@@ -151,6 +155,47 @@ const Importer: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Process elements and replace tempIDs with UUIDs
+  const processElementsWithUuids = (data: any) => {
+    const processedData = { ...data };
+    
+    // Process each type of element
+    ['characters', 'locations', 'plotlines', 'scenes', 'events'].forEach(type => {
+      if (Array.isArray(processedData[type])) {
+        // Create a mapping from old IDs to new UUIDs
+        const idMapping: { [key: string]: string } = {};
+        
+        // First pass: generate UUIDs
+        processedData[type] = processedData[type].map((item: any) => {
+          const uuid = uuidv4();
+          idMapping[item.id] = uuid;
+          
+          return {
+            ...item,
+            id: uuid
+          };
+        });
+        
+        // Second pass: update any references to other items
+        // This will update any links between elements (e.g., a character referenced in a scene)
+        processedData[type] = processedData[type].map((item: any) => {
+          const updatedItem = { ...item };
+          
+          // Update any fields that might reference other elements
+          Object.keys(updatedItem).forEach(key => {
+            if (key.endsWith('_id') && typeof updatedItem[key] === 'string' && idMapping[updatedItem[key]]) {
+              updatedItem[key] = idMapping[updatedItem[key]];
+            }
+          });
+          
+          return updatedItem;
+        });
+      }
+    });
+    
+    return processedData;
   };
 
   // Toggle selection of an element
@@ -215,7 +260,7 @@ const Importer: React.FC = () => {
       const preparedElements = elementsToSave.map((elem: any) => {
         // Common fields for all element types
         const commonFields = {
-          id: elem.id,
+          id: elem.id, // Now using UUID
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
