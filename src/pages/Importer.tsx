@@ -23,6 +23,18 @@ interface DbItem {
   [key: string]: any;
 }
 
+// Type guard function to check if an object has an id property
+function hasId(obj: any): obj is { id: string } {
+  return obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string';
+}
+
+// Type guard function to check if an object has name or title properties
+function hasNameOrTitle(obj: any): obj is { name?: string; title?: string } {
+  return obj && typeof obj === 'object' && 
+    (('name' in obj && (typeof obj.name === 'string' || obj.name === null)) || 
+     ('title' in obj && (typeof obj.title === 'string' || obj.title === null)));
+}
+
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -333,8 +345,15 @@ const Importer: React.FC = () => {
       const duplicatesCount = duplicateElements.length;
       
       if (duplicatesCount > 0) {
-        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, 
-          duplicateElements.map(elem => elem.name || elem.title || 'Unnamed'));
+        // Fixed line 277 - Safely extract names/titles with type guards
+        const names = duplicateElements
+          .filter(elem => hasNameOrTitle(elem))
+          .map(elem => {
+            if ('name' in elem && elem.name) return elem.name;
+            if ('title' in elem && elem.title) return elem.title;
+            return 'Unnamed';
+          });
+        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, names);
       }
       
       if (newElements.length === 0) {
