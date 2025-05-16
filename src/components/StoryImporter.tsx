@@ -90,7 +90,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
             extract_locations: true,
             extract_plotlines: true,
             extract_scenes: true,
-            confidence_threshold: 0.4 // Lower threshold to get more results
+            confidence_threshold: 0.3 // Lower threshold to get more results
           }
         }),
       });
@@ -330,6 +330,11 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                       <Typography variant="body2">
                         {character.description || 'A character in the story'}
                       </Typography>
+                      {character.confidence && (
+                        <Typography variant="caption" color="textSecondary" display="block" mt={1}>
+                          Detection confidence: {Math.round(character.confidence * 100)}%
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Card>
@@ -409,6 +414,11 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                       <Typography variant="body2">
                         {location.description || 'A location in the story'}
                       </Typography>
+                      {location.confidence && (
+                        <Typography variant="caption" color="textSecondary" display="block" mt={1}>
+                          Detection confidence: {Math.round(location.confidence * 100)}%
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
                 </Card>
