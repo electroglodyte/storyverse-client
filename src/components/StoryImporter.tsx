@@ -42,7 +42,6 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [storyId, setStoryId] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
-  const [existingCharacters, setExistingCharacters] = useState<Character[]>([]);
 
   // Generate a UUID for new entities
   const generateUUID = (): string => {
@@ -58,13 +57,6 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       analyzeStory();
     }
   }, [storyText, storyTitle]);
-
-  // Fetch existing characters when storyWorldId changes
-  useEffect(() => {
-    if (storyWorldId) {
-      fetchExistingCharacters();
-    }
-  }, [storyWorldId]);
 
   // Select all items by default when they load
   useEffect(() => {
@@ -98,39 +90,6 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     }
   }, [plotlines]);
 
-  // Fetch existing characters from the database
-  const fetchExistingCharacters = async () => {
-    try {
-      let query = supabase.from('characters').select('*');
-      
-      // Filter by story world if provided
-      if (storyWorldId) {
-        query = query.eq('story_world_id', storyWorldId);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching existing characters:', error);
-        return;
-      }
-      
-      if (data) {
-        setExistingCharacters(data as Character[]);
-        setDebugInfo(prev => `${prev}\nFound ${data.length} existing characters in the database`);
-      }
-    } catch (err) {
-      console.error('Error in fetchExistingCharacters:', err);
-    }
-  };
-
-  // Check if a character already exists in the database
-  const checkForDuplicateCharacter = (character: CharacterWithConfidence): boolean => {
-    return existingCharacters.some(existingChar => 
-      existingChar.name.toLowerCase() === character.name.toLowerCase()
-    );
-  };
-
   const analyzeStory = async () => {
     setLoading(true);
     setError(null);
@@ -141,23 +100,15 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       setStoryId(tempStoryId);
       
       // Use the modular extractors for better detection
-      const charactersList = extractCharacters(storyText, tempStoryId);
+      // Note: extractCharacters is now asynchronous
+      const charactersList = await extractCharacters(storyText, tempStoryId, storyWorldId);
       
       // Log extracted characters for debugging
       console.log('Characters found:', charactersList);
-      setDebugInfo(`Found ${charactersList.length} characters`);
-      
-      // Check for duplicate characters
-      const processedCharacters = charactersList.map(character => {
-        const isDuplicate = checkForDuplicateCharacter(character);
-        return {
-          ...character,
-          isNew: !isDuplicate
-        };
-      });
+      setDebugInfo(`Found ${charactersList.length} characters total`);
       
       // Filter out duplicate characters if there's nothing new to show
-      const newCharacters = processedCharacters.filter(char => char.isNew);
+      const newCharacters = charactersList.filter(char => char.isNew);
       if (newCharacters.length === 0) {
         setDebugInfo(prev => `${prev}\nNo new characters detected`);
       } else {
@@ -168,13 +119,13 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       setAnalysisResults({
         story: { id: tempStoryId },
         results: {
-          characters: processedCharacters,
+          characters: charactersList,
           locations: [],  // locationsList
           plotlines: []   // plotlinesList
         }
       });
       
-      setCharacters(processedCharacters);
+      setCharacters(charactersList);
       setStep('characters');
       
       // After getting local results, try the API in parallel
@@ -489,4 +440,44 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                       onChange={() => handleCharacterToggle(character.id)}
                     />
                     <Box>
-                      <Typography
+                      <Typography variant="subtitle1" fontWeight="bold">{character.name}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Role: {character.role}
+                      </Typography>
+                      <Typography variant="body2">
+                        {character.description}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+          
+          <Box display="flex" justifyContent="flex-end" mt={3}>
+            <Button variant="outlined" onClick={handleSkip} sx={{ mr: 2 }}>
+              Skip
+            </Button>
+            <Button variant="contained" onClick={handleNextStep}>
+              {analysisResults?.results?.locations?.length > 0 ? 'Next: Locations' : 
+               analysisResults?.results?.plotlines?.length > 0 ? 'Next: Plotlines' : 
+               'Complete Import'}
+            </Button>
+          </Box>
+        </Box>
+      );
+    }
+
+    // Other steps would be implemented here
+    return null;
+  };
+
+  return (
+    <Box p={3}>
+      <Typography variant="h4" gutterBottom>
+        Import Story: {storyTitle}
+      </Typography>
+      {renderContent()}
+    </Box>
+  );
+};
