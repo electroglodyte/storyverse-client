@@ -1,4 +1,4 @@
 // Version information for StoryVerse client
-export const VERSION = '0.3.3';
+export const VERSION = '0.4.0';
 export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = 'Fixed entity pages to properly use storyWorldId from URL parameters';
+export const VERSION_NOTES = 'Added enhanced character detection and comprehensive story import functionality';
