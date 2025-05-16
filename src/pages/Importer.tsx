@@ -72,6 +72,38 @@ function safeArray<T>(array: T[] | null | undefined): T[] {
   return Array.isArray(array) ? array : [];
 }
 
+// Safe helper for accessing Supabase query results
+async function safeSupabaseQuery<T = any>(
+  query: Promise<{
+    data: T[] | null;
+    error: any;
+  }>
+): Promise<{ data: T[]; error: string | null }> {
+  try {
+    const response = await query;
+    
+    // Handle error case
+    if (response.error) {
+      return {
+        data: [],
+        error: getErrorMessage(response.error)
+      };
+    }
+    
+    // Safely handle data
+    const safeData = safeArray(response.data);
+    return {
+      data: safeData,
+      error: null
+    };
+  } catch (err) {
+    return {
+      data: [],
+      error: getErrorMessage(err)
+    };
+  }
+}
+
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -347,34 +379,31 @@ const Importer: React.FC = () => {
         // Get a safe ID for the element that is guaranteed to be a string
         const safeId = getSafeId(element);
         
-        // First check for exact matches
-        const exactResult = await supabase
-          .from(tableName)
-          .select('id, ' + nameField)
-          .eq(nameField, elementName);
+        // First check for exact matches - using our safe query helper
+        const exactResult = await safeSupabaseQuery(
+          supabase
+            .from(tableName)
+            .select('id, ' + nameField)
+            .eq(nameField, elementName)
+        );
         
-        // Use our safe accessor pattern - no direct property access
-        const exactError = exactResult.error;
-        const exactMatches = safeArray(exactResult.data);
+        // Then check for similar matches (case insensitive) - using our safe query helper
+        const similarResult = await safeSupabaseQuery(
+          supabase
+            .from(tableName)
+            .select('id, ' + nameField)
+            .neq('id', safeId)
+            .ilike(nameField, `%${elementName}%`)
+        );
         
-        if (exactError) {
-          console.error(`Error checking for exact duplicates:`, getErrorMessage(exactError));
+        // Handle errors if any
+        if (exactResult.error) {
+          console.error(`Error checking for exact duplicates:`, exactResult.error);
           continue;
         }
         
-        // Then check for similar matches (case insensitive)
-        const similarResult = await supabase
-          .from(tableName)
-          .select('id, ' + nameField)
-          .neq('id', safeId)
-          .ilike(nameField, `%${elementName}%`);
-        
-        // Use our safe accessor pattern - no direct property access
-        const similarError = similarResult.error;
-        const similarMatches = safeArray(similarResult.data);
-        
-        if (similarError) {
-          console.error(`Error checking for similar duplicates:`, getErrorMessage(similarError));
+        if (similarResult.error) {
+          console.error(`Error checking for similar duplicates:`, similarResult.error);
           continue;
         }
         
@@ -382,40 +411,37 @@ const Importer: React.FC = () => {
         const allMatches: DuplicateInfo[] = [];
         
         // Process exact matches
-        if (exactMatches.length > 0) {
-          exactMatches.forEach(match => {
-            if (match && typeof match.id === 'string' && typeof match[nameField] === 'string') {
-              allMatches.push({
-                id: match.id,
-                name: match[nameField],
-                match_type: 'exact',
-                similarity: 100
-              });
-            }
-          });
-        }
+        exactResult.data.forEach(match => {
+          // Using direct access within a guard clause
+          if (match && typeof match.id === 'string' && typeof match[nameField] === 'string') {
+            allMatches.push({
+              id: match.id,
+              name: match[nameField],
+              match_type: 'exact',
+              similarity: 100
+            });
+          }
+        });
         
         // Process similar matches
-        if (similarMatches.length > 0) {
-          similarMatches.forEach(match => {
-            // Skip if already added as exact match or if missing required fields
-            if (!match || typeof match.id !== 'string' || typeof match[nameField] !== 'string') return;
+        similarResult.data.forEach(match => {
+          // Skip if already added as exact match or if missing required fields
+          if (!match || typeof match.id !== 'string' || typeof match[nameField] !== 'string') return;
+          
+          if (!allMatches.some(m => m.id === match.id)) {
+            // Calculate similarity (simple version)
+            const nameLower = elementName.toLowerCase();
+            const matchNameLower = match[nameField].toLowerCase();
+            const similarity = matchNameLower.includes(nameLower) || nameLower.includes(matchNameLower) ? 70 : 50;
             
-            if (!allMatches.some(m => m.id === match.id)) {
-              // Calculate similarity (simple version)
-              const nameLower = elementName.toLowerCase();
-              const matchNameLower = match[nameField].toLowerCase();
-              const similarity = matchNameLower.includes(nameLower) || nameLower.includes(matchNameLower) ? 70 : 50;
-              
-              allMatches.push({
-                id: match.id,
-                name: match[nameField],
-                match_type: 'similar',
-                similarity
-              });
-            }
-          });
-        }
+            allMatches.push({
+              id: match.id,
+              name: match[nameField],
+              match_type: 'similar',
+              similarity
+            });
+          }
+        });
         
         // If matches found, store them with the element's safe id
         if (allMatches.length > 0) {
@@ -433,7 +459,7 @@ const Importer: React.FC = () => {
         console.log(`Found ${Object.keys(duplicatesInfo).length} elements with potential duplicates`);
       }
     } catch (err) {
-      console.error(`Error in checkForDuplicates:`, err);
+      console.error(`Error in checkForDuplicates:`, getErrorMessage(err));
     }
   };
 
@@ -500,18 +526,16 @@ const Importer: React.FC = () => {
       // Convert 'objects' to 'items' for the table name if necessary
       const tableName = type === 'objects' ? 'items' : type;
       
-      // Query the database for any matching names
-      const result = await supabase
-        .from(tableName)
-        .select('id, ' + nameField)
-        .in(nameField, namesToCheck);
+      // Query the database for any matching names using our safe query helper
+      const result = await safeSupabaseQuery(
+        supabase
+          .from(tableName)
+          .select('id, ' + nameField)
+          .in(nameField, namesToCheck)
+      );
       
-      // Use our safe accessor pattern - no direct property access
-      const queryError = result.error;
-      const data = safeArray(result.data);
-      
-      if (queryError) {
-        console.error(`Error checking for duplicates in ${type}:`, getErrorMessage(queryError));
+      if (result.error) {
+        console.error(`Error checking for duplicates in ${type}:`, result.error);
         return { existingNames: new Set<string>(), count: 0 };
       }
       
@@ -519,7 +543,7 @@ const Importer: React.FC = () => {
       const existingNames = new Set<string>();
       
       // Safely process data
-      data.forEach(item => {
+      result.data.forEach(item => {
         if (item && typeof item[nameField] === 'string' && item[nameField]) {
           existingNames.add(String(item[nameField]).toLowerCase());
         }
@@ -609,22 +633,19 @@ const Importer: React.FC = () => {
         return;
       }
       
-      // Insert elements into the appropriate table
-      const result = await supabase
-        .from(tableName)
-        .insert(newElements)
-        .select();
+      // Insert elements into the appropriate table using our safe query helper
+      const result = await safeSupabaseQuery(
+        supabase
+          .from(tableName)
+          .insert(newElements)
+          .select()
+      );
       
-      // Use our safe accessor pattern - no direct property access
-      const insertError = result.error;
-      const data = result.data;
-      
-      if (insertError) {
-        throw new Error(`Error saving ${type}: ${getErrorMessage(insertError)}`);
+      if (result.error) {
+        throw new Error(`Error saving ${type}: ${result.error}`);
       }
       
-      const dataLength = Array.isArray(data) ? data.length : 0;
-      console.log(`Saved ${dataLength} ${type}:`, data);
+      console.log(`Saved ${result.data.length} ${type}:`, result.data);
       
       // If some duplicates were skipped, show a message
       if (duplicatesCount > 0) {
