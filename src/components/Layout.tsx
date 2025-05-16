@@ -1,11 +1,52 @@
 // src/components/Layout.tsx
 import { Outlet } from 'react-router-dom';
 import { SideNav } from './SideNav';
-import { useProject } from '../context/ProjectContext';
+import { AppNav } from './AppNav';
+import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient';
+import { StoryWorld, Story, Series } from '../supabase-tables';
 
 export default function Layout() {
-  // Removed unused mobileMenuOpen state
-  const { activeProject } = useProject();
+  const [activeStoryWorld, setActiveStoryWorld] = useState<StoryWorld | null>(null);
+  const [activeStory, setActiveStory] = useState<Story | null>(null);
+  const [activeSeries, setActiveSeries] = useState<Series | null>(null);
+  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
+  
+  // Fetch the storyWorlds on component mount
+  useEffect(() => {
+    const fetchStoryWorlds = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('storyworlds')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) throw error;
+        setStoryWorlds(data || []);
+
+        // Set the first storyWorld as active if none is selected
+        if (data && data.length > 0 && !activeStoryWorld) {
+          setActiveStoryWorld(data[0]);
+
+          // Fetch stories from this storyworld
+          const { data: storiesData, error: storiesError } = await supabase
+            .from('stories')
+            .select('*')
+            .eq('storyworld_id', data[0].id)
+            .order('name', { ascending: true });
+
+          if (storiesError) throw storiesError;
+          if (storiesData && storiesData.length > 0) {
+            setActiveStory(storiesData[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching story worlds:', error);
+      }
+    };
+
+    fetchStoryWorlds();
+  }, []);
   
   // Direct styling with !important to override any conflicts
   const layoutStyles = `
@@ -72,30 +113,30 @@ export default function Layout() {
       <div className="layout-container">
         {/* Sidebar */}
         <aside className="sidebar">
-          <SideNav />
+          <SideNav 
+            activeStoryWorld={activeStoryWorld} 
+            activeStory={activeStory} 
+            activeSeries={activeSeries}
+            storyWorlds={storyWorlds}
+            setActiveStoryWorld={setActiveStoryWorld}
+            setActiveStory={setActiveStory}
+            setActiveSeries={setActiveSeries}
+          />
         </aside>
         
         {/* Main Content Area */}
         <div className="main-content">
           {/* Header */}
           <header className="header">
-            <div className="flex items-center">
-              <span className="mr-2">📚</span>
-              <h2 className="text-lg font-medium">{activeProject?.name || 'The Irish Mystery'}</h2>
-            </div>
-            
-            <div className="flex items-center">
-              <div className="mr-4">
-                <button style={{ backgroundColor: '#2d2e33', padding: '0.375rem 0.75rem', borderRadius: '0.375rem' }}>
-                  <span>{activeProject?.name || 'The Irish Mystery'}</span>
-                  <span className="ml-2">▼</span>
-                </button>
-              </div>
-              
-              <button style={{ width: '2rem', height: '2rem', borderRadius: '9999px', backgroundColor: '#2d2e33', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                👤
-              </button>
-            </div>
+            <AppNav 
+              activeStoryWorld={activeStoryWorld} 
+              activeStory={activeStory} 
+              activeSeries={activeSeries}
+              storyWorlds={storyWorlds}
+              setActiveStoryWorld={setActiveStoryWorld}
+              setActiveStory={setActiveStory}
+              setActiveSeries={setActiveSeries}
+            />
           </header>
           
           {/* Content Area */}
