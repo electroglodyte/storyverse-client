@@ -1,14 +1,13 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import Layout from './components/Layout';
-import './App.css';
+import { RouterProvider } from 'react-router-dom'
+import { router } from './routes'
+import { Toaster } from '@/components/ui/toaster'
+import { ThemeProvider } from '@/components/theme-provider'
 
-function App() {
+export function App() {
   return (
-    <div className="App">
-      <Layout />
-    </div>
-  );
+    <ThemeProvider defaultTheme="dark" storageKey="storyverse-theme">
+      <RouterProvider router={router} />
+      <Toaster />
+    </ThemeProvider>
+  )
 }
-
-export default App;
