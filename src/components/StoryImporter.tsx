@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Checkbox, Grid, Typography, Box, CircularProgress } from '@mui/material';
 import { supabase } from '../supabaseClient';
 import { Character, Location, Plotline } from '../supabase-tables';
+import { extractCharacters, extractLocations, extractPlotlines, extractEvents, extractObjects } from '../extractors';
 
 // Extended interfaces for API response data that includes confidence scores
 interface CharacterWithConfidence extends Character {
@@ -20,17 +21,6 @@ interface StoryImporterProps {
   storyText: string;
   storyTitle: string;
 }
-
-// Helper function to extract characters marked in ALL CAPS
-const extractAllCapsCharacters = (text: string): string[] => {
-  // Regular expression to match words in ALL CAPS with 2 or more letters
-  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
-  const matches = text.match(allCapsRegex) || [];
-  
-  // Filter out common non-character ALL CAPS words
-  const nonCharacterWords = ['THE', 'AND', 'OF', 'TO', 'IN', 'A', 'FOR', 'WITH', 'IS', 'ON', 'AT', 'BY', 'AS', 'IT', 'ALL'];
-  return [...new Set(matches)].filter(word => !nonCharacterWords.includes(word));
-};
 
 export const StoryImporter: React.FC<StoryImporterProps> = ({
   storyWorldId,
@@ -103,52 +93,31 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     setError(null);
     
     try {
-      // QUICK FIX: Skip the API for now and use direct character extraction
-      // This is a temporary solution until we fix the API integration
+      // Generate a temporary story ID
+      const tempStoryId = generateUUID();
+      setStoryId(tempStoryId);
       
-      // Extract ALL CAPS characters from the text
-      const allCapsCharacters = extractAllCapsCharacters(storyText);
-      console.log('ALL CAPS characters found:', allCapsCharacters);
-      setDebugInfo(`Found ${allCapsCharacters.length} ALL CAPS characters: ${allCapsCharacters.join(', ')}`);
+      // Use the modular extractors for better detection
+      const charactersList = extractCharacters(storyText, tempStoryId);
       
-      // Create character objects directly
-      const charactersList = allCapsCharacters.map(name => {
-        // Set role based on character name if possible (example logic)
-        let role: 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other' = 'supporting';
-        let description = 'A character in the story';
-        
-        // Detect protagonist - this is just an example, adjust based on your story
-        if (name === 'RUFUS') {
-          role = 'protagonist';
-          description = 'The main character, a young wolf';
-        } else if (name === 'STUPUS') {
-          role = 'antagonist';
-          description = 'An arrogant character who antagonizes Rufus';
-        }
-        
-        return {
-          id: generateUUID(),
-          name: name.charAt(0) + name.slice(1).toLowerCase(), // Convert to Title Case
-          role,
-          description,
-          story_id: generateUUID(), // Temporary ID until we get one from the database
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          confidence: 0.9, // High confidence for ALL CAPS characters
-        } as CharacterWithConfidence;
-      });
+      // Log extracted characters for debugging
+      console.log('Characters found:', charactersList);
+      setDebugInfo(`Found ${charactersList.length} characters`);
+      
+      // Extract other elements if needed
+      // const locationsList = extractLocations(storyText, tempStoryId);
+      // const plotlinesList = extractPlotlines(storyText, tempStoryId);
       
       // Save results
       setAnalysisResults({
-        story: { id: generateUUID() },
+        story: { id: tempStoryId },
         results: {
           characters: charactersList,
-          locations: [],
-          plotlines: []
+          locations: [],  // locationsList
+          plotlines: []   // plotlinesList
         }
       });
       
-      setStoryId(generateUUID());
       setCharacters(charactersList);
       setStep('characters');
       
@@ -473,9 +442,9 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
               disabled={countSelected(characters, selectedCharacters) === 0}
             >
               {analysisResults?.results?.locations && analysisResults.results.locations.length > 0 
-                ? 'Save Characters' 
+                ? 'Next: Locations' 
                 : analysisResults?.results?.plotlines && analysisResults.results.plotlines.length > 0
-                  ? 'Save Characters' 
+                  ? 'Next: Plotlines' 
                   : 'Save Characters'}
             </Button>
           </Box>
@@ -557,7 +526,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
               disabled={countSelected(locations, selectedLocations) === 0}
             >
               {analysisResults?.results?.plotlines && analysisResults.results.plotlines.length > 0 
-                ? 'Save Locations' 
+                ? 'Next: Plotlines' 
                 : 'Save Locations'}
             </Button>
           </Box>
@@ -633,7 +602,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
               onClick={completeImport}
               disabled={countSelected(plotlines, selectedPlotlines) === 0}
             >
-              Save Plotlines
+              Finish Import
             </Button>
           </Box>
         </Box>
