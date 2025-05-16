@@ -1,260 +1,197 @@
-import React, { useState, useEffect } from 'react';
-import { useSupabaseClient } from '@supabase/auth-helpers-react';
-import { Character, StoryWorld, Story } from '../../supabase-tables';
-import { Select, Input, Textarea, Button } from '@/components/ui/form-elements';
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+import { transformResponse } from '@/lib/supabase'
+import { Input, Select, Textarea, Button } from '@/components/ui/form'
+import type { Character, StoryWorld } from '@/types/database'
 
-interface CharacterDetailsProps {
-  characterId?: string;
+interface Props {
+  characterId: string
+  onSave?: (character: Character) => void
+  onCancel?: () => void
 }
 
-export const CharacterDetails: React.FC<CharacterDetailsProps> = ({ characterId }) => {
-  const supabase = useSupabaseClient();
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
-  const [stories, setStories] = useState<Story[]>([]);
-  const [selectedStoryWorld, setSelectedStoryWorld] = useState<string>('');
-  const [selectedStory, setSelectedStory] = useState<string>('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState<string | null>(null);
+export function CharacterDetails({ characterId, onSave, onCancel }: Props) {
+  const [character, setCharacter] = useState<Partial<Character>>({})
+  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([])
+  const [loading, setLoading] = useState(true)
 
-  // Fetch initial data
   useEffect(() => {
-    fetchStoryWorlds();
-    if (characterId) {
-      fetchCharacter(characterId);
-    }
-  }, [characterId]);
+    const loadData = async () => {
+      try {
+        // Load storyworlds
+        const { data: worldsData } = await supabase
+          .from('story_worlds')
+          .select('*')
+          .order('name')
 
-  // Fetch stories when storyworld changes
-  useEffect(() => {
-    if (selectedStoryWorld) {
-      fetchStories(selectedStoryWorld);
-    }
-  }, [selectedStoryWorld]);
+        if (worldsData) {
+          setStoryWorlds(worldsData.map(world => transformResponse.transformObject(world)))
+        }
 
-  const fetchStoryWorlds = async () => {
-    const { data, error } = await supabase
-      .from('story_worlds')
-      .select('*')
-      .order('name');
-    
-    if (error) {
-      console.error('Error fetching story worlds:', error);
-      return;
-    }
-    
-    setStoryWorlds(data);
-  };
+        // Load character if editing
+        if (characterId) {
+          const { data: characterData } = await supabase
+            .from('characters')
+            .select('*')
+            .eq('id', characterId)
+            .single()
 
-  const fetchStories = async (storyWorldId: string) => {
-    const { data, error } = await supabase
-      .from('stories')
-      .select('*')
-      .eq('story_world_id', storyWorldId)
-      .order('title');
-    
-    if (error) {
-      console.error('Error fetching stories:', error);
-      return;
-    }
-    
-    setStories(data);
-  };
-
-  const fetchCharacter = async (id: string) => {
-    const { data, error } = await supabase
-      .from('characters')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
-      console.error('Error fetching character:', error);
-      return;
-    }
-    
-    setCharacter(data);
-    setSelectedStoryWorld(data.story_world_id || '');
-    setSelectedStory(data.story_id || '');
-  };
-
-  const handleSave = async () => {
-    if (!character) return;
-
-    const { error } = await supabase
-      .from('characters')
-      .update({
-        ...character,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', character.id);
-
-    if (error) {
-      console.error('Error saving character:', error);
-      return;
+          if (characterData) {
+            setCharacter(transformResponse.transformObject(characterData))
+          }
+        }
+      } catch (err) {
+        console.error('Error loading data:', err)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    setIsEditing(false);
-    setLastCheckTime(new Date().toISOString());
-  };
+    loadData()
+  }, [characterId])
 
-  const handleInputChange = (field: keyof Character, value: any) => {
-    if (!character) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
     
-    setCharacter({
-      ...character,
-      [field]: value
-    });
-  };
+    try {
+      if (characterId) {
+        // Update existing character
+        const { data, error } = await supabase
+          .from('characters')
+          .update(character)
+          .eq('id', characterId)
+          .select()
+          .single()
 
-  if (!character) return <div>Select a character to view details</div>;
+        if (error) throw error
+        if (data && onSave) onSave(data)
+      } else {
+        // Create new character
+        const { data, error } = await supabase
+          .from('characters')
+          .insert([character])
+          .select()
+          .single()
+
+        if (error) throw error
+        if (data && onSave) onSave(data)
+      }
+    } catch (err) {
+      console.error('Error saving character:', err)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setCharacter(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setCharacter(prev => ({ ...prev, [name]: value }))
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
+  }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between mb-6">
-        <div className="space-x-4 flex">
-          <Select
-            value={selectedStoryWorld}
-            onChange={(e) => setSelectedStoryWorld(e.target.value)}
-            className="w-48"
-          >
-            <option value="">Select Story World</option>
-            {storyWorlds.map(world => (
-              <option key={world.id} value={world.id}>{world.name}</option>
-            ))}
-          </Select>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Input
+        label="Name"
+        name="name"
+        value={character.name || ''}
+        onChange={handleInputChange}
+        required
+      />
 
-          <Select
-            value={selectedStory}
-            onChange={(e) => setSelectedStory(e.target.value)}
-            className="w-48"
-            disabled={!selectedStoryWorld}
-          >
-            <option value="">Select Story</option>
-            {stories.map(story => (
-              <option key={story.id} value={story.id}>{story.title}</option>
-            ))}
-          </Select>
-        </div>
+      <Select
+        label="Story World"
+        name="story_world_id"
+        value={character.story_world_id || ''}
+        onChange={handleSelectChange}
+      >
+        <option value="">Select a story world...</option>
+        {storyWorlds.map(world => (
+          <option key={world.id} value={world.id}>
+            {world.name}
+          </option>
+        ))}
+      </Select>
 
-        <div className="space-x-4">
-          {!isEditing && (
-            <Button onClick={() => setIsEditing(true)}>Edit</Button>
-          )}
-          {isEditing && (
-            <>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-              <Button onClick={handleSave}>Save Changes</Button>
-            </>
-          )}
-        </div>
+      <Select
+        label="Role"
+        name="role"
+        value={character.role || ''}
+        onChange={handleSelectChange}
+      >
+        <option value="">Select a role...</option>
+        <option value="protagonist">Protagonist</option>
+        <option value="antagonist">Antagonist</option>
+        <option value="supporting">Supporting</option>
+        <option value="background">Background</option>
+        <option value="other">Other</option>
+      </Select>
+
+      <Textarea
+        label="Description"
+        name="description"
+        value={character.description || ''}
+        onChange={handleInputChange}
+      />
+
+      <Textarea
+        label="Appearance"
+        name="appearance"
+        value={character.appearance || ''}
+        onChange={handleInputChange}
+      />
+
+      <Textarea
+        label="Background"
+        name="background"
+        value={character.background || ''}
+        onChange={handleInputChange}
+      />
+
+      <Input
+        label="Age"
+        name="age"
+        value={character.age || ''}
+        onChange={handleInputChange}
+      />
+
+      <Textarea
+        label="Motivation"
+        name="motivation"
+        value={character.motivation || ''}
+        onChange={handleInputChange}
+      />
+
+      <Textarea
+        label="Personality"
+        name="personality"
+        value={character.personality || ''}
+        onChange={handleInputChange}
+      />
+
+      <Textarea
+        label="Notes"
+        name="notes"
+        value={character.notes || ''}
+        onChange={handleInputChange}
+      />
+
+      <div className="flex justify-end space-x-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button type="submit">
+          {characterId ? 'Update' : 'Create'} Character
+        </Button>
       </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Name</label>
-            <Input
-              value={character.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
-              disabled={!isEditing}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Role</label>
-            <Select
-              value={character.role || ''}
-              onChange={(e) => handleInputChange('role', e.target.value)}
-              disabled={!isEditing}
-            >
-              <option value="">Select Role</option>
-              <option value="protagonist">Protagonist</option>
-              <option value="antagonist">Antagonist</option>
-              <option value="supporting">Supporting</option>
-              <option value="background">Background</option>
-              <option value="other">Other</option>
-            </Select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Age</label>
-            <Input
-              value={character.age || ''}
-              onChange={(e) => handleInputChange('age', e.target.value)}
-              disabled={!isEditing}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Description</label>
-            <Textarea
-              value={character.description || ''}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Background</label>
-            <Textarea
-              value={character.background || ''}
-              onChange={(e) => handleInputChange('background', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Motivation</label>
-            <Textarea
-              value={character.motivation || ''}
-              onChange={(e) => handleInputChange('motivation', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Personality</label>
-            <Textarea
-              value={character.personality || ''}
-              onChange={(e) => handleInputChange('personality', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Appearance</label>
-            <Textarea
-              value={character.appearance || ''}
-              onChange={(e) => handleInputChange('appearance', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
-            <Textarea
-              value={character.notes || ''}
-              onChange={(e) => handleInputChange('notes', e.target.value)}
-              disabled={!isEditing}
-              rows={4}
-            />
-          </div>
-        </div>
-      </div>
-
-      {lastCheckTime && (
-        <div className="mt-6 text-sm text-gray-500">
-          Last checked: {new Date(lastCheckTime).toLocaleString()}
-        </div>
-      )}
-    </div>
-  );
-};
+    </form>
+  )
+}
