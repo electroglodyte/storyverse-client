@@ -72,14 +72,12 @@ function safeArray<T>(array: T[] | null | undefined): T[] {
   return Array.isArray(array) ? array : [];
 }
 
-// Safe helper for accessing Supabase query results
+// Safe helper for accessing Supabase query results - handles any thenable
 async function safeSupabaseQuery<T = any>(
-  query: Promise<{
-    data: T[] | null;
-    error: any;
-  }>
+  query: any // Accept any thenable object (like Supabase query builders)
 ): Promise<{ data: T[]; error: string | null }> {
   try {
+    // Await the query to get the result
     const response = await query;
     
     // Handle error case
@@ -247,7 +245,7 @@ const Importer: React.FC = () => {
       };
 
       // Before setting extracted elements, check for potential duplicates
-      checkForDuplicates('characters', characterObjects);
+      await checkForDuplicates('characters', characterObjects);
       
       // Store the extracted elements and move to the first review step
       setExtractedElements(processedData);
