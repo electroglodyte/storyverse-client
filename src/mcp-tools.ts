@@ -269,11 +269,6 @@ interface ImportStoryWithProgressTool {
  * OBJECT (PROPS) TOOLS
  */
 
-interface CreateObjectTool {
-  name: "create_object";
-  description: "Creates a new object (prop) in the story world";
-}
-
 interface LinkObjectToCharacterTool {
   name: "link_object_to_character";
   description: "Establishes a relationship between an object and a character";
@@ -375,6 +370,7 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "create_character", description: "Create a new character and optionally link it to a story world or story" },
   { name: "create_location", description: "Create a new location and optionally link it to a story world or story" },
   { name: "create_faction", description: "Create a new faction and optionally link it to a story world or story" },
+  { name: "create_object", description: "Create a new object (prop) and optionally link it to a story world or story" },
   { name: "create_relationship", description: "Create a relationship between two characters" },
   { name: "create_item", description: "Create a new item/artifact in the story world" },
   { name: "create_character_arc", description: "Create a character development arc for a story" },
@@ -406,7 +402,7 @@ export const MCP_TOOLS: McpTool[] = [
   { name: "import_story_with_progress", description: "Imports and analyzes a story with real-time progress updates on detected elements" },
   
   // Object (Props) Tools
-  { name: "create_object", description: "Creates a new object (prop) in the story world" },
+  { name: "create_object", description: "Create a new object (prop) and optionally link it to a story world or story" },
   { name: "link_object_to_character", description: "Establishes a relationship between an object and a character" },
   { name: "link_object_to_location", description: "Establishes a relationship between an object and a location" },
   { name: "track_object_appearance", description: "Records an appearance of an object in a scene or event" },
