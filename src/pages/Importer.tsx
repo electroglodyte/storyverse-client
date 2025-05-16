@@ -56,6 +56,17 @@ function getSafeId(obj: any): string {
   return uuidv4();
 }
 
+// Helper to safely handle any type of error object
+function getErrorMessage(error: any): string {
+  if (!error) return 'Unknown error';
+  
+  if (typeof error === 'string') return error;
+  
+  if (typeof error.message === 'string') return error.message;
+  
+  return 'An error occurred';
+}
+
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [isDragging, setIsDragging] = useState<boolean>(false);
@@ -242,7 +253,7 @@ const Importer: React.FC = () => {
         }).then(response => {
           if (response.error) {
             console.warn('API warning:', response.error.message);
-            setDebugInfo(prev => `${prev}\nAPI warning: ${response.error.message}`);
+            setDebugInfo(prev => `${prev}\nAPI warning: ${getErrorMessage(response.error)}`);
           } else {
             console.log('API results:', response.data);
             const apiCharacters = response.data?.characters || [];
@@ -297,14 +308,14 @@ const Importer: React.FC = () => {
         });
       } catch (apiErr: any) {
         console.warn('Failed to call API, using direct extraction only:', apiErr);
-        setDebugInfo(prev => `${prev}\nAPI call failed: ${apiErr.message}`);
+        setDebugInfo(prev => `${prev}\nAPI call failed: ${getErrorMessage(apiErr)}`);
       }
 
       // Move to the first review step
       setCurrentStep('characters');
     } catch (err: any) {
       console.error('Analysis error:', err);
-      setError(`Error analyzing file: ${err.message}`);
+      setError(`Error analyzing file: ${getErrorMessage(err)}`);
     } finally {
       setIsLoading(false);
     }
@@ -589,7 +600,7 @@ const Importer: React.FC = () => {
         .select();
       
       if (error) {
-        throw new Error(`Error saving ${type}: ${error.message}`);
+        throw new Error(`Error saving ${type}: ${getErrorMessage(error)}`);
       }
       
       console.log(`Saved ${data?.length || 0} ${type}:`, data);
@@ -604,8 +615,7 @@ const Importer: React.FC = () => {
       moveToNextStep();
     } catch (err: any) {
       console.error(`Error saving ${type}:`, err);
-      const errorMessage = err.message || 'Unknown error';
-      setError(`Error saving ${type}: ${errorMessage}`);
+      setError(`Error saving ${type}: ${getErrorMessage(err)}`);
     } finally {
       setIsLoading(false);
     }
