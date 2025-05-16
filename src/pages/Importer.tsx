@@ -258,18 +258,22 @@ const Importer: React.FC = () => {
     // Create a map of existing names to their IDs
     const existingNamesMap = new Map();
     if (data) {
-      data.forEach(item => {
-        // Check if item has the id property before using it
-        if (item && typeof item === 'object' && 'id' in item) {
-          existingNamesMap.set(item[nameField].toLowerCase(), item.id);
+      data.forEach((item) => {
+        if (item && typeof item === 'object' && 'id' in item && nameField in item && item[nameField] !== null) {
+          const itemName = item[nameField];
+          const itemId = item.id;
+          if (typeof itemName === 'string' && itemId) {
+            existingNamesMap.set(itemName.toLowerCase(), itemId);
+          }
         }
       });
     }
     
     // Return a list of elements that are duplicate (already exist in the database)
-    return elements.filter(elem => 
-      existingNamesMap.has(elem[nameField].toLowerCase())
-    );
+    return elements.filter(elem => {
+      const elemName = elem[nameField];
+      return typeof elemName === 'string' && existingNamesMap.has(elemName.toLowerCase());
+    });
   };
 
   // Save the selected elements to the database
@@ -297,7 +301,7 @@ const Importer: React.FC = () => {
       const newElements = elementsToSave.filter(elem => {
         const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
         return !duplicateElements.some(dupElem => 
-          dupElem[nameField].toLowerCase() === elem[nameField].toLowerCase()
+          dupElem[nameField]?.toLowerCase() === elem[nameField]?.toLowerCase()
         );
       });
       
@@ -391,7 +395,7 @@ const Importer: React.FC = () => {
         throw new Error(`Error saving ${type}: ${error.message}`);
       }
       
-      console.log(`Saved ${data.length} ${type}:`, data);
+      console.log(`Saved ${data?.length || 0} ${type}:`, data);
       
       // If some duplicates were skipped, show a message
       if (duplicateElements.length > 0) {
