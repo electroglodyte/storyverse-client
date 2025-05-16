@@ -6,12 +6,13 @@ import { v4 as uuidv4 } from 'uuid';
 import './StoryAnalysisProgress.css';
 
 /**
- * ULTRA ROBUST VERSION 2.1 - DOM MANIPULATION WITH PROPER UI PRESERVATION
+ * ULTRA ROBUST VERSION 2.2 - ENHANCED DOM MANIPULATION WITH GUARANTEED UI PRESERVATION
  * 
- * This version fixes three critical issues:
- * 1. Prevents instant extraction by clearing cache and forcing delays
- * 2. Improves entity deduplication with stricter database checks
- * 3. Preserves the main UI layout when showing the extraction review
+ * This version fixes critical issues in the extraction review process:
+ * 1. Eliminates flicker by using improved direct DOM manipulation techniques
+ * 2. Guarantees extraction review visibility and clickability 
+ * 3. Preserves all UI elements correctly using z-index stacking context
+ * 4. Prevents race conditions with delayed execution and promise-based rendering
  */
 
 interface AnalysisData {
@@ -30,7 +31,7 @@ const EXTRACTION_DATA_KEY = 'storyverse_extraction_data';
 const EXTRACTION_SUMMARY_KEY = 'storyverse_extraction_summary';
 const EXTRACTION_TIMESTAMP_KEY = 'storyverse_extraction_timestamp';
 const EXTRACTION_STAGE_KEY = 'storyverse_extraction_stage';
-const EXTRACTION_REVIEW_CONTAINER_ID = 'storyverse-extraction-review-container';
+const EXTRACTION_REVIEW_CONTAINER_ID = 'extraction-review-overlay';
 const EXTRACTION_CACHE_BREAKER_KEY = 'storyverse_extraction_cache_breaker';
 
 // StoryAnalysisProgress component - improved with persistent data management
@@ -112,6 +113,10 @@ const StoryAnalysisProgress: React.FC = () => {
   // Store the original body and sidebar elements
   const originalBodyStyleRef = useRef<string>('');
   const originalSidebarDisplayRef = useRef<string>('');
+  // Track if extraction review is currently showing
+  const isExtractionReviewShowingRef = useRef<boolean>(false);
+  // Ref to store the timestamp of the last DOM check
+  const lastDomCheckRef = useRef<number>(0);
   
   const navigate = useNavigate();
 
@@ -146,9 +151,20 @@ const StoryAnalysisProgress: React.FC = () => {
   };
 
   // ULTRA ROBUST VERSION: Refined DOM-based approach for extraction review screen
-  // Now preserves the rest of the UI
-  const showExtractionReviewScreen = () => {
-    logDebug("*** SHOWING EXTRACTION REVIEW SCREEN DIRECTLY IN DOM ***");
+  // Improved with guaranteed CSS rendering and element visibility
+  const showExtractionReviewScreen = async () => {
+    logDebug("*** SHOWING EXTRACTION REVIEW SCREEN WITH ULTRA ROBUST DOM APPROACH ***");
+    
+    // Check if we've recently tried this to avoid rapid re-renders
+    const now = Date.now();
+    if (now - lastDomCheckRef.current < 500) {
+      logDebug("Skipping showExtractionReviewScreen - called too frequently");
+      return;
+    }
+    lastDomCheckRef.current = now;
+    
+    // Mark that we're attempting to show the extraction review
+    isExtractionReviewShowingRef.current = true;
     
     // Safety: increment attempt counter
     overlayAttemptCountRef.current += 1;
@@ -168,237 +184,392 @@ const StoryAnalysisProgress: React.FC = () => {
                       localStorage.getItem(EXTRACTION_TIMESTAMP_KEY) || 
                       new Date().toISOString();
     
-    // Remove any existing overlay to prevent duplicates
-    const existingOverlay = document.getElementById('extraction-review-overlay');
-    if (existingOverlay) {
-      try {
-        existingOverlay.remove();
-        logDebug("Removed existing overlay before creating new one");
-      } catch (err) {
-        logDebug("Error removing existing overlay:", err);
+    try {
+      // Remove any existing overlay to prevent duplicates
+      const existingOverlay = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
+      if (existingOverlay) {
+        try {
+          existingOverlay.remove();
+          logDebug("Removed existing overlay before creating new one");
+        } catch (err) {
+          logDebug("Error removing existing overlay:", err);
+        }
       }
-    }
-    
-    // IMPORTANT: Store original body style
-    if (!originalBodyStyleRef.current) {
-      const bodyStyle = document.body.style.cssText;
-      originalBodyStyleRef.current = bodyStyle;
-      logDebug("Stored original body style:", bodyStyle);
-    }
-    
-    // Store original sidebar display state if it exists
-    const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
-    if (sidebarElement && !originalSidebarDisplayRef.current) {
-      const computedStyle = window.getComputedStyle(sidebarElement);
-      originalSidebarDisplayRef.current = computedStyle.display;
-      logDebug("Stored original sidebar display:", originalSidebarDisplayRef.current);
-    }
-    
-    // Create a new overlay container
-    const overlayContainer = document.createElement('div');
-    overlayContainer.id = 'extraction-review-overlay';
-    overlayContainer.className = 'extraction-review-overlay';
-    
-    // Set critical styles directly on the element to guarantee visibility
-    Object.assign(overlayContainer.style, {
-      position: 'fixed',
-      top: '0',
-      left: '0',
-      right: '0',
-      bottom: '0',
-      backgroundColor: 'rgba(255, 255, 255, 0.97)',
-      zIndex: '100000', // Ultra high z-index
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'flex-start',
-      overflowY: 'auto',
-      padding: '20px'
-    });
-    
-    // CRITICAL FIX: Don't mess with body overflow to preserve sidebar
-    document.body.style.overflow = originalBodyStyleRef.current ? originalBodyStyleRef.current : 'auto';
-    
-    // Generate HTML for the extraction review
-    const summaryItems = extractionSummary || 
-                        JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
-                        '{"characters":0,"locations":0,"events":0,"scenes":0,"plotlines":0,"relationships":0}');
-    
-    // Create the HTML content
-    const htmlContent = `
-      <div class="extraction-review-content" style="width:100%;max-width:800px;margin:0 auto;padding:20px;background-color:white;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
-        <div class="analysis-progress-container" style="text-align:center;">
-          <h1 style="margin-bottom:20px;color:#333;font-size:28px;">Analyzing Story</h1>
-          <div class="extraction-complete" style="padding:20px;">
-            <div class="success-icon" style="margin:0 auto 20px;width:60px;height:60px;background-color:#4CAF50;color:white;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;">✓</div>
-            <h2 style="margin-bottom:10px;color:#333;font-size:24px;">Extraction Complete!</h2>
-            <p style="margin-bottom:20px;color:#555;font-size:16px;">The narrative elements have been successfully extracted. Ready to save to database.</p>
-            
-            <div class="extraction-summary" style="margin-bottom:30px;">
-              <div class="summary" style="display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-bottom:20px;">
-                <div class="summary-item" style="padding:15px;background-color:#f8f9fa;border-radius:8px;min-width:120px;text-align:center;">
-                  <h3 style="margin-bottom:5px;font-size:16px;color:#555;">Characters</h3>
-                  <span class="count" style="font-size:24px;font-weight:bold;color:#2196F3;">${summaryItems.characters || 0}</span>
+      
+      // IMPORTANT: Store original body style
+      if (!originalBodyStyleRef.current) {
+        const bodyStyle = document.body.style.cssText;
+        originalBodyStyleRef.current = bodyStyle;
+        logDebug("Stored original body style:", bodyStyle);
+      }
+      
+      // Store original sidebar display state if it exists
+      const sidebarElement = document.querySelector('.sidebar, .side-nav, #sidebar, nav.sidebar, .nav-sidebar');
+      if (sidebarElement && !originalSidebarDisplayRef.current) {
+        const computedStyle = window.getComputedStyle(sidebarElement);
+        originalSidebarDisplayRef.current = computedStyle.display;
+        logDebug("Stored original sidebar display:", originalSidebarDisplayRef.current);
+      }
+      
+      // Create a new overlay container
+      const overlayContainer = document.createElement('div');
+      overlayContainer.id = EXTRACTION_REVIEW_CONTAINER_ID;
+      overlayContainer.className = 'extraction-review-overlay';
+      
+      // Set critical styles directly on the element to guarantee visibility
+      // Using important flags for all critical properties
+      Object.assign(overlayContainer.style, {
+        position: 'fixed !important',
+        top: '0 !important',
+        left: '0 !important',
+        right: '0 !important',
+        bottom: '0 !important',
+        backgroundColor: 'rgba(255, 255, 255, 0.98) !important',
+        zIndex: '1000000 !important', // Ultra high z-index
+        display: 'flex !important',
+        justifyContent: 'center !important',
+        alignItems: 'flex-start !important',
+        overflowY: 'auto !important',
+        padding: '20px !important',
+        transform: 'translateZ(0) !important', // Force hardware acceleration
+        backfaceVisibility: 'hidden !important', // Additional performance improvement
+        willChange: 'transform !important', // Signal to browser to optimize
+        transition: 'none !important', // Disable transitions to prevent flicker
+      });
+      
+      // Add inline !important to every style
+      for (const key in overlayContainer.style) {
+        if (typeof overlayContainer.style[key] === 'string' && overlayContainer.style[key] && !overlayContainer.style[key].includes('!important')) {
+          overlayContainer.style[key] = `${overlayContainer.style[key]} !important`;
+        }
+      }
+      
+      // Generate HTML for the extraction review
+      const summaryItems = extractionSummary || 
+                          JSON.parse(localStorage.getItem(EXTRACTION_SUMMARY_KEY) || 
+                          '{\"characters\":0,\"locations\":0,\"events\":0,\"scenes\":0,\"plotlines\":0,\"relationships\":0}');
+      
+      // Create the HTML content with inlined styles for maximum reliability
+      const htmlContent = `
+        <div class="extraction-review-content" style="width:100% !important;max-width:800px !important;margin:0 auto !important;padding:20px !important;background-color:white !important;border-radius:8px !important;box-shadow:0 4px 12px rgba(0,0,0,0.1) !important;position:relative !important;z-index:1000001 !important;">
+          <div class="analysis-progress-container" style="text-align:center !important;">
+            <h1 style="margin-bottom:20px !important;color:#333 !important;font-size:28px !important;">Analyzing Story</h1>
+            <div class="extraction-complete" style="padding:20px !important;">
+              <div class="success-icon" style="margin:0 auto 20px !important;width:60px !important;height:60px !important;background-color:#4CAF50 !important;color:white !important;border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:32px !important;">✓</div>
+              <h2 style="margin-bottom:10px !important;color:#333 !important;font-size:24px !important;">Extraction Complete!</h2>
+              <p style="margin-bottom:20px !important;color:#555 !important;font-size:16px !important;">The narrative elements have been successfully extracted. Ready to save to database.</p>
+              
+              <div class="extraction-summary" style="margin-bottom:30px !important;">
+                <div class="summary" style="display:flex !important;flex-wrap:wrap !important;justify-content:center !important;gap:20px !important;margin-bottom:20px !important;">
+                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Characters</h3>
+                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#2196F3 !important;">${summaryItems.characters || 0}</span>
+                  </div>
+                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Locations</h3>
+                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#9C27B0 !important;">${summaryItems.locations || 0}</span>
+                  </div>
+                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Events</h3>
+                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#FF9800 !important;">${summaryItems.events || 0}</span>
+                  </div>
+                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Scenes</h3>
+                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#607D8B !important;">${summaryItems.scenes || 0}</span>
+                  </div>
+                  <div class="summary-item" style="padding:15px !important;background-color:#f8f9fa !important;border-radius:8px !important;min-width:120px !important;text-align:center !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:16px !important;color:#555 !important;">Plotlines</h3>
+                    <span class="count" style="font-size:24px !important;font-weight:bold !important;color:#E91E63 !important;">${summaryItems.plotlines || 0}</span>
+                  </div>
                 </div>
-                <div class="summary-item" style="padding:15px;background-color:#f8f9fa;border-radius:8px;min-width:120px;text-align:center;">
-                  <h3 style="margin-bottom:5px;font-size:16px;color:#555;">Locations</h3>
-                  <span class="count" style="font-size:24px;font-weight:bold;color:#9C27B0;">${summaryItems.locations || 0}</span>
+                
+                <div class="extraction-timestamp" style="text-align:center !important;font-size:14px !important;color:#777 !important;margin-bottom:15px !important;">
+                  Extracted at: ${new Date(timestamp).toLocaleString()}
                 </div>
-                <div class="summary-item" style="padding:15px;background-color:#f8f9fa;border-radius:8px;min-width:120px;text-align:center;">
-                  <h3 style="margin-bottom:5px;font-size:16px;color:#555;">Events</h3>
-                  <span class="count" style="font-size:24px;font-weight:bold;color:#FF9800;">${summaryItems.events || 0}</span>
-                </div>
-                <div class="summary-item" style="padding:15px;background-color:#f8f9fa;border-radius:8px;min-width:120px;text-align:center;">
-                  <h3 style="margin-bottom:5px;font-size:16px;color:#555;">Scenes</h3>
-                  <span class="count" style="font-size:24px;font-weight:bold;color:#607D8B;">${summaryItems.scenes || 0}</span>
-                </div>
-                <div class="summary-item" style="padding:15px;background-color:#f8f9fa;border-radius:8px;min-width:120px;text-align:center;">
-                  <h3 style="margin-bottom:5px;font-size:16px;color:#555;">Plotlines</h3>
-                  <span class="count" style="font-size:24px;font-weight:bold;color:#E91E63;">${summaryItems.plotlines || 0}</span>
-                </div>
+                
+                ${debugInfo ? `
+                  <div class="debug-info" style="margin-top:20px !important;padding:15px !important;background-color:#f5f5f5 !important;border-radius:4px !important;font-size:12px !important;max-height:200px !important;overflow-y:auto !important;text-align:left !important;">
+                    <h3 style="margin-bottom:5px !important;font-size:14px !important;color:#555 !important;">Debug Information</h3>
+                    <pre style="white-space:pre-wrap !important;margin:0 !important;font-family:monospace !important;">${debugInfo}</pre>
+                  </div>
+                ` : ''}
               </div>
               
-              <div class="extraction-timestamp" style="text-align:center;font-size:14px;color:#777;margin-bottom:15px;">
-                Extracted at: ${new Date(timestamp).toLocaleString()}
+              <div class="actions-container" style="display:flex !important;justify-content:center !important;gap:15px !important;margin-top:30px !important;position:relative !important;z-index:1000002 !important;">
+                <button id="continue-to-save-btn" style="padding:12px 24px !important;background-color:#2196F3 !important;color:white !important;border:none !important;border-radius:4px !important;font-size:16px !important;cursor:pointer !important;font-weight:bold !important;position:relative !important;z-index:1000003 !important;">
+                  Continue to Save Elements
+                </button>
+                <button id="force-new-extraction-btn" style="padding:12px 24px !important;background-color:#F5F5F5 !important;color:#333 !important;border:1px solid #DDD !important;border-radius:4px !important;font-size:16px !important;cursor:pointer !important;position:relative !important;z-index:1000003 !important;">
+                  Force New Extraction
+                </button>
               </div>
-              
-              ${debugInfo ? `
-                <div class="debug-info" style="margin-top:20px;padding:15px;background-color:#f5f5f5;border-radius:4px;font-size:12px;max-height:200px;overflow-y:auto;text-align:left;">
-                  <h3 style="margin-bottom:5px;font-size:14px;color:#555;">Debug Information</h3>
-                  <pre style="white-space:pre-wrap;margin:0;font-family:monospace;">${debugInfo}</pre>
-                </div>
-              ` : ''}
-            </div>
-            
-            <div class="actions-container" style="display:flex;justify-content:center;gap:15px;margin-top:30px;">
-              <button id="continue-to-save-btn" style="padding:12px 24px;background-color:#2196F3;color:white;border:none;border-radius:4px;font-size:16px;cursor:pointer;font-weight:bold;">
-                Continue to Save Elements
-              </button>
-              <button id="force-new-extraction-btn" style="padding:12px 24px;background-color:#F5F5F5;color:#333;border:1px solid #DDD;border-radius:4px;font-size:16px;cursor:pointer;">
-                Force New Extraction
-              </button>
             </div>
           </div>
         </div>
-      </div>
-    `;
-    
-    // Set the HTML content
-    overlayContainer.innerHTML = htmlContent;
-    
-    // Append to document
-    document.body.appendChild(overlayContainer);
-    
-    // RESTORE VISIBILITY: Ensure sidebar and navigation elements are still visible
-    restoreOriginalUIElements();
-    
-    // Define the event handler functions
-    const handleContinueClick = () => {
-      logDebug("Continue button clicked via direct DOM event handler");
-      // Use the stored callback functions from the ref
-      if (handlerFunctionsRef.current.continueToSave) {
-        handlerFunctionsRef.current.continueToSave();
-      } else {
-        logDebug("WARNING: Continue handler function is null!");
-        // Fallback action
-        localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
-        setMustShowExtractionReview(false);
-        setAnalysisPhase('saving');
-        setIsAnalyzing(true);
-        // Try to hide the overlay
+      `;
+      
+      // Set the HTML content
+      overlayContainer.innerHTML = htmlContent;
+      
+      // Append to document
+      document.body.appendChild(overlayContainer);
+      
+      // CRITICAL: Add an inline stylesheet with !important rules to guarantee styles are applied
+      const styleId = 'extraction-review-critical-style';
+      let styleElement = document.getElementById(styleId);
+      if (!styleElement) {
+        styleElement = document.createElement('style');
+        styleElement.id = styleId;
+        styleElement.innerHTML = `
+          #${EXTRACTION_REVIEW_CONTAINER_ID} {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            background-color: rgba(255, 255, 255, 0.98) !important;
+            z-index: 1000000 !important;
+            display: flex !important;
+            justify-content: center !important;
+            align-items: flex-start !important;
+            overflow-y: auto !important;
+            padding: 20px !important;
+            transform: translateZ(0) !important;
+            backface-visibility: hidden !important;
+            will-change: transform !important;
+            transition: none !important;
+          }
+          
+          #${EXTRACTION_REVIEW_CONTAINER_ID} button {
+            cursor: pointer !important;
+            position: relative !important;
+            z-index: 1000003 !important;
+            transform: translateZ(0) !important;
+          }
+          
+          #${EXTRACTION_REVIEW_CONTAINER_ID} #continue-to-save-btn:hover {
+            background-color: #1976D2 !important;
+          }
+          
+          #${EXTRACTION_REVIEW_CONTAINER_ID} #force-new-extraction-btn:hover {
+            background-color: #E0E0E0 !important;
+          }
+          
+          /* Ensure proper z-index */
+          .sidebar, .side-nav, .navbar, .nav-header {
+            z-index: 1 !important;
+          }
+        `;
+        document.head.appendChild(styleElement);
+      }
+      
+      // RESTORE VISIBILITY: Ensure sidebar and navigation elements are still visible
+      await restoreOriginalUIElements();
+      
+      // Define the event handler functions
+      const handleContinueClick = () => {
+        logDebug("Continue button clicked via direct DOM event handler");
+        // Use the stored callback functions from the ref
+        if (handlerFunctionsRef.current.continueToSave) {
+          handlerFunctionsRef.current.continueToSave();
+        } else {
+          logDebug("WARNING: Continue handler function is null!");
+          // Fallback action
+          localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+          setMustShowExtractionReview(false);
+          setAnalysisPhase('saving');
+          setIsAnalyzing(true);
+          // Try to hide the overlay
+          try {
+            overlayContainer.style.display = 'none';
+          } catch (err) {
+            logDebug("Error hiding overlay:", err);
+          }
+        }
+      };
+      
+      const handleNewExtractionClick = () => {
+        logDebug("Force new extraction button clicked via direct DOM event handler");
+        // Use the stored callback function from the ref
+        if (handlerFunctionsRef.current.forceNewExtraction) {
+          handlerFunctionsRef.current.forceNewExtraction();
+        } else {
+          logDebug("WARNING: Force new extraction handler function is null!");
+          // Fallback action - reload the page
+          window.location.reload();
+        }
+      };
+      
+      // Add event listeners with a slight delay to ensure the DOM is ready
+      setTimeout(() => {
         try {
-          overlayContainer.style.display = 'none';
+          const continueBtn = document.getElementById('continue-to-save-btn');
+          const resetBtn = document.getElementById('force-new-extraction-btn');
+          
+          if (continueBtn) {
+            // Remove existing listeners if any
+            const newContinueBtn = continueBtn.cloneNode(true);
+            if (continueBtn.parentNode) {
+              continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
+            }
+            // Add the new listener
+            newContinueBtn.addEventListener('click', handleContinueClick);
+            logDebug("Successfully attached continue button event listener");
+          } else {
+            logDebug("WARNING: Could not find continue button in DOM");
+          }
+          
+          if (resetBtn) {
+            // Remove existing listeners if any
+            const newResetBtn = resetBtn.cloneNode(true);
+            if (resetBtn.parentNode) {
+              resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
+            }
+            // Add the new listener
+            newResetBtn.addEventListener('click', handleNewExtractionClick);
+            logDebug("Successfully attached reset button event listener");
+          } else {
+            logDebug("WARNING: Could not find reset button in DOM");
+          }
         } catch (err) {
-          logDebug("Error hiding overlay:", err);
+          logDebug("Error attaching event listeners to extraction review buttons:", err);
         }
-      }
-    };
-    
-    const handleNewExtractionClick = () => {
-      logDebug("Force new extraction button clicked via direct DOM event handler");
-      // Use the stored callback function from the ref
-      if (handlerFunctionsRef.current.forceNewExtraction) {
-        handlerFunctionsRef.current.forceNewExtraction();
-      } else {
-        logDebug("WARNING: Force new extraction handler function is null!");
-        // Fallback action - reload the page
-        window.location.reload();
-      }
-    };
-    
-    // Add event listeners with a slight delay to ensure the DOM is ready
-    setTimeout(() => {
+      }, 50);
+      
+      // Make sure the overlay is visible
       try {
-        const continueBtn = document.getElementById('continue-to-save-btn');
-        const resetBtn = document.getElementById('force-new-extraction-btn');
+        overlayContainer.style.display = 'flex';
         
-        if (continueBtn) {
-          // Remove existing listeners if any
-          const newContinueBtn = continueBtn.cloneNode(true);
-          if (continueBtn.parentNode) {
-            continueBtn.parentNode.replaceChild(newContinueBtn, continueBtn);
-          }
-          // Add the new listener
-          newContinueBtn.addEventListener('click', handleContinueClick);
-          logDebug("Successfully attached continue button event listener");
-        } else {
-          logDebug("WARNING: Could not find continue button in DOM");
-        }
+        // Force reflow to ensure the browser renders the overlay
+        void overlayContainer.offsetHeight;
         
-        if (resetBtn) {
-          // Remove existing listeners if any
-          const newResetBtn = resetBtn.cloneNode(true);
-          if (resetBtn.parentNode) {
-            resetBtn.parentNode.replaceChild(newResetBtn, resetBtn);
-          }
-          // Add the new listener
-          newResetBtn.addEventListener('click', handleNewExtractionClick);
-          logDebug("Successfully attached reset button event listener");
-        } else {
-          logDebug("WARNING: Could not find reset button in DOM");
-        }
+        logDebug("Extraction review overlay displayed directly in DOM");
       } catch (err) {
-        logDebug("Error attaching event listeners to extraction review buttons:", err);
+        logDebug("Error displaying overlay:", err);
       }
-    }, 50);
-    
-    // Make sure the overlay is visible
-    try {
-      overlayContainer.style.display = 'flex';
       
-      // Force reflow to ensure the browser renders the overlay
-      void overlayContainer.offsetHeight;
-      
-      logDebug("Extraction review overlay displayed directly in DOM");
-    } catch (err) {
-      logDebug("Error displaying overlay:", err);
-    }
-    
-    // Double-check to make sure overlay exists and is visible after a delay
-    setTimeout(() => {
-      const overlayCheck = document.getElementById('extraction-review-overlay');
-      if (!overlayCheck) {
-        logDebug("WARNING: Overlay not found after creation delay, retrying...");
-        
-        // Try again if we haven't reached maximum attempts
-        if (overlayAttemptCountRef.current < MAX_OVERLAY_ATTEMPTS) {
-          showExtractionReviewScreen();
-        } else {
-          logDebug("ERROR: Maximum overlay creation attempts reached");
+      // Double-check to make sure overlay exists and is visible after a delay
+      setTimeout(() => {
+        const overlayCheck = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
+        if (!overlayCheck) {
+          logDebug("WARNING: Overlay not found after creation delay, retrying...");
+          
+          // Try again if we haven't reached maximum attempts
+          if (overlayAttemptCountRef.current < MAX_OVERLAY_ATTEMPTS) {
+            showExtractionReviewScreen();
+          } else {
+            logDebug("ERROR: Maximum overlay creation attempts reached");
+          }
+        } else if (overlayCheck.style.display !== 'flex') {
+          logDebug("WARNING: Overlay exists but is not visible, fixing...");
+          overlayCheck.style.display = 'flex !important';
         }
-      } else if (overlayCheck.style.display !== 'flex') {
-        logDebug("WARNING: Overlay exists but is not visible, fixing...");
-        overlayCheck.style.display = 'flex';
-      }
+        
+        // Ensure UI elements are still visible
+        restoreOriginalUIElements();
+      }, 200);
       
-      // Ensure UI elements are still visible
-      restoreOriginalUIElements();
-    }, 200);
+      // Set up a recurring check (every 2 seconds) to ensure the overlay stays visible
+      // and the buttons remain clickable
+      const intervalId = setInterval(() => {
+        if (!isExtractionReviewShowingRef.current) {
+          clearInterval(intervalId);
+          return;
+        }
+        
+        const overlayCheck = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
+        if (!overlayCheck) {
+          logDebug("WARNING: Overlay disappeared, recreating...");
+          if (overlayAttemptCountRef.current < MAX_OVERLAY_ATTEMPTS) {
+            showExtractionReviewScreen();
+          }
+        } else {
+          // Make sure buttons are properly attached with listeners
+          const continueBtn = document.getElementById('continue-to-save-btn');
+          const resetBtn = document.getElementById('force-new-extraction-btn');
+          
+          if (!continueBtn || !resetBtn) {
+            logDebug("WARNING: Buttons missing from overlay, reattaching...");
+            // Refresh internal HTML to recreate buttons
+            overlayCheck.innerHTML = htmlContent;
+            
+            setTimeout(() => {
+              try {
+                const newContinueBtn = document.getElementById('continue-to-save-btn');
+                const newResetBtn = document.getElementById('force-new-extraction-btn');
+                
+                if (newContinueBtn) {
+                  newContinueBtn.addEventListener('click', handleContinueClick);
+                }
+                
+                if (newResetBtn) {
+                  newResetBtn.addEventListener('click', handleNewExtractionClick);
+                }
+                
+                logDebug("Reattached button event listeners");
+              } catch (err) {
+                logDebug("Error reattaching button listeners:", err);
+              }
+            }, 50);
+          }
+        }
+        
+        // Ensure UI elements are still visible
+        restoreOriginalUIElements();
+      }, 2000);
+      
+      // Clean up interval after 2 minutes (120000ms)
+      setTimeout(() => {
+        clearInterval(intervalId);
+      }, 120000);
+    } catch (err) {
+      logDebug("Error showing extraction review screen:", err);
+      
+      // Last resort fallback - try to show a minimal, reliable extraction review
+      try {
+        const fallbackDiv = document.createElement('div');
+        fallbackDiv.style.cssText = "position:fixed !important; top:0 !important; left:0 !important; right:0 !important; bottom:0 !important; background:white !important; z-index:9999999 !important; display:flex !important; flex-direction:column !important; justify-content:center !important; align-items:center !important; padding:20px !important;";
+        fallbackDiv.innerHTML = `
+          <h1 style="margin-bottom:20px !important;">Extraction Complete</h1>
+          <p style="margin-bottom:20px !important;">Ready to save ${summaryItems.characters || 0} characters, ${summaryItems.locations || 0} locations, and more.</p>
+          <div style="display:flex !important; gap:20px !important;">
+            <button id="fallback-continue" style="padding:10px 20px !important; background:#2196F3 !important; color:white !important; border:none !important; cursor:pointer !important;">Continue to Save</button>
+            <button id="fallback-retry" style="padding:10px 20px !important; background:#f5f5f5 !important; color:#333 !important; border:1px solid #ddd !important; cursor:pointer !important;">Force New Extraction</button>
+          </div>
+        `;
+        document.body.appendChild(fallbackDiv);
+        
+        document.getElementById('fallback-continue')?.addEventListener('click', () => {
+          if (handlerFunctionsRef.current.continueToSave) {
+            handlerFunctionsRef.current.continueToSave();
+          } else {
+            localStorage.removeItem(EXTRACTION_COMPLETE_KEY);
+            setMustShowExtractionReview(false);
+            setAnalysisPhase('saving');
+            window.location.reload();
+          }
+        });
+        
+        document.getElementById('fallback-retry')?.addEventListener('click', () => {
+          if (handlerFunctionsRef.current.forceNewExtraction) {
+            handlerFunctionsRef.current.forceNewExtraction();
+          } else {
+            window.location.reload();
+          }
+        });
+      } catch (fallbackErr) {
+        logDebug("Fallback extraction review also failed:", fallbackErr);
+      }
+    }
   };
   
   // Hide the extraction review overlay
   const hideExtractionReviewScreen = () => {
     try {
-      const overlayContainer = document.getElementById('extraction-review-overlay');
+      // Mark that the extraction review screen is no longer showing
+      isExtractionReviewShowingRef.current = false;
+      
+      const overlayContainer = document.getElementById(EXTRACTION_REVIEW_CONTAINER_ID);
       if (overlayContainer) {
         // First try to hide it
         overlayContainer.style.display = 'none';
@@ -415,13 +586,23 @@ const StoryAnalysisProgress: React.FC = () => {
         
         logDebug("Successfully hid extraction review overlay");
       }
+      
+      // Also remove critical style if present
+      const styleElement = document.getElementById('extraction-review-critical-style');
+      if (styleElement) {
+        try {
+          styleElement.remove();
+        } catch (err) {
+          logDebug("Error removing style element:", err);
+        }
+      }
     } catch (err) {
       logDebug("Error in hideExtractionReviewScreen:", err);
     }
   };
   
   // Restore visibility of UI elements that may have been affected
-  const restoreOriginalUIElements = () => {
+  const restoreOriginalUIElements = async () => {
     try {
       // Restore original body style if we stored it
       if (originalBodyStyleRef.current) {
@@ -444,6 +625,12 @@ const StoryAnalysisProgress: React.FC = () => {
         (nav as HTMLElement).style.visibility = 'visible';
         (nav as HTMLElement).style.display = '';
         (nav as HTMLElement).style.opacity = '1';
+      });
+      
+      // Make sure any other similar elements are visible
+      document.querySelectorAll('.layout-container, .main-content, .content-area').forEach(element => {
+        (element as HTMLElement).style.visibility = 'visible';
+        (element as HTMLElement).style.opacity = '1';
       });
       
       logDebug("Restored visibility of UI elements");
@@ -722,24 +909,34 @@ const StoryAnalysisProgress: React.FC = () => {
         right: 0 !important;
         bottom: 0 !important;
         background-color: rgba(255, 255, 255, 0.97) !important;
-        z-index: 100000 !important;
+        z-index: 1000000 !important;
         display: flex !important;
         justify-content: center !important;
         align-items: flex-start !important;
         overflow-y: auto !important;
+        transform: translateZ(0) !important;
+        will-change: transform !important;
       }
-      .extraction-review-content {
-        width: 100% !important;
-        max-width: 800px !important;
-        margin: 0 auto !important;
-        padding: 20px !important;
+      
+      #extraction-review-overlay {
+        position: fixed !important;
+        z-index: 1000000 !important;
+        display: flex !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background-color: #fff !important;
       }
+      
       #continue-to-save-btn:hover {
         background-color: #1976D2 !important;
       }
+      
       #force-new-extraction-btn:hover {
         background-color: #E0E0E0 !important;
       }
+      
       /* Fix for any UI elements that might be hidden */
       body.has-extraction-overlay .sidebar,
       body.has-extraction-overlay .side-nav,
@@ -2514,110 +2711,67 @@ const StoryAnalysisProgress: React.FC = () => {
   const getAnalysisPhaseDisplay = () => {
     switch (analysisPhase) {
       case 'extracting':
-        return 'Phase 1 of 2: Extracting narrative elements';
-      case 'extracted':
-        return 'Extraction Complete - Ready to Save';
+        return 'Extracting Narrative Elements';
       case 'saving':
-        return 'Phase 2 of 2: Saving elements to database';
+        return 'Saving To Database';
+      case 'extracted':
+        return 'Extraction Complete';
       case 'complete':
         return 'Analysis Complete';
       case 'error':
-        return 'Analysis Error';
+        return 'Error';
       default:
-        return 'Analyzing...';
+        return 'Processing';
     }
   };
-
-  // Regular component rendering
+  
+  // Render a different view for each analysis phase
   return (
     <div className="analysis-progress-container">
       <h1>Analyzing Story</h1>
       
-      {isAnalyzing ? (
+      {mustShowExtractionReview && (
+        // This renders a placeholder during the extraction review state,
+        // The actual UI is created directly in the DOM via showExtractionReviewScreen
+        <div id={EXTRACTION_REVIEW_CONTAINER_ID} style={{ display: 'none' }}>
+          <div className="extraction-review-placeholder">
+            {/* Will be replaced by DOM manipulation */}
+            Extraction review loading...
+          </div>
+        </div>
+      )}
+      
+      {!mustShowExtractionReview && (
         <>
-          <div className="progress-indicator">
-            <div className="spinner"></div>
-            <p>Analyzing: {currentFile}</p>
-            <div className="analysis-phase">{getAnalysisPhaseDisplay()}</div>
-            <div className="analysis-stage">{analysisStage}</div>
-            
-            {analysisPhase === 'extracting' && extractionProgress > 0 && (
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar" 
-                  style={{ width: `${extractionProgress}%` }}
-                ></div>
-                <span className="progress-text">{Math.round(extractionProgress)}%</span>
-              </div>
-            )}
-            
-            {analysisPhase === 'saving' && (
-              <div className="progress-bar-container">
-                <div 
-                  className="progress-bar" 
-                  style={{ width: `${savingProgress}%` }}
-                ></div>
-                <span className="progress-text">{Math.round(savingProgress)}%</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="detection-log">
-            <h3>Detection Log</h3>
-            <div className="log-entries">
-              {detectedItems.map((item) => (
-                <div key={item.id} className="log-entry">
-                  <span className={`item-type ${item.type.toLowerCase()}`}>{item.type}</span>
-                  <span className="item-name">{item.name}</span>
-                </div>
-              ))}
-              {detectedItems.length === 0 && (
-                <div className="log-entry">
-                  <span className="item-type system">System</span>
-                  <span className="item-name">Starting analysis...</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="analysis-complete">
-          {error ? (
-            <div className="error-container">
-              <div className="error-icon">!</div>
-              <h2>Analysis Error</h2>
-              <p className="error-message">{error}</p>
-              {debugInfo && (
-                <div className="debug-info">
-                  <h3>Debug Information</h3>
-                  <pre>{debugInfo}</pre>
-                </div>
-              )}
-              {fullErrorDetails && (
-                <div className="full-error-details">
-                  <h3>Detailed Error Information</h3>
-                  <pre className="error-stack">{fullErrorDetails}</pre>
-                </div>
-              )}
-              <button className="retry-button" onClick={handleRetry}>
-                {extractedElements || extractedElementsRef.current ? 'Retry Saving' : 'Retry Analysis'}
-              </button>
-              <button className="secondary-button" onClick={() => navigate('/import')}>
-                Back to Import
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="success-icon">✓</div>
-              <h2>Analysis Complete!</h2>
-              <p>Successfully analyzed all files and extracted narrative elements.</p>
+          {isAnalyzing && (
+            <div className="progress-indicator">
+              <div className="spinner"></div>
+              <p>{analysisPhase === 'extracting' ? 'Extracting narrative elements...' : 'Saving elements to database...'}</p>
               
-              {debugInfo && (
-                <div className="debug-info">
-                  <h3>Debug Information</h3>
-                  <pre>{debugInfo}</pre>
+              <div className="progress-bar-container">
+                <div 
+                  className="progress-bar" 
+                  style={{ 
+                    width: `${analysisPhase === 'extracting' ? extractionProgress : savingProgress}%` 
+                  }}
+                ></div>
+                <div className="progress-text">
+                  {analysisPhase === 'extracting' ? 
+                    `${Math.round(extractionProgress)}%` : 
+                    `${Math.round(savingProgress)}%`}
                 </div>
-              )}
+              </div>
+              
+              <div className="analysis-phase">{getAnalysisPhaseDisplay()}</div>
+              <div className="analysis-stage">{analysisStage}</div>
+            </div>
+          )}
+          
+          {!isAnalyzing && analysisPhase === 'complete' && (
+            <div className="analysis-complete">
+              <div className="success-icon">✓</div>
+              <h2>Analysis Completed Successfully!</h2>
+              <p>The narrative elements have been extracted and saved to your database.</p>
               
               <div className="summary">
                 <div className="summary-item">
@@ -2644,17 +2798,55 @@ const StoryAnalysisProgress: React.FC = () => {
               
               <div className="actions-container">
                 <button className="view-results-button" onClick={handleViewResults}>
-                  View Results
+                  View Detailed Results
                 </button>
-                {saveResults.characters === 0 && saveResults.locations === 0 && saveResults.scenes === 0 && (
-                  <button className="retry-button" onClick={handleRetry}>
-                    Retry Analysis
-                  </button>
-                )}
               </div>
-            </>
+            </div>
           )}
-        </div>
+          
+          {!isAnalyzing && analysisPhase === 'error' && (
+            <div className="analysis-complete">
+              <div className="error-icon">!</div>
+              <h2>Analysis Error</h2>
+              <p>There was an issue during the analysis process.</p>
+              
+              {error && (
+                <div className="error-message">
+                  {error}
+                </div>
+              )}
+              
+              {fullErrorDetails && (
+                <div className="debug-info">
+                  <h3>Error Details</h3>
+                  <pre>{fullErrorDetails}</pre>
+                </div>
+              )}
+              
+              <div className="actions-container">
+                <button className="retry-button" onClick={handleRetry}>
+                  Retry Analysis
+                </button>
+              </div>
+            </div>
+          )}
+          
+          <div className="detection-log">
+            <h3>Detection Log</h3>
+            <div className="log-entries">
+              {detectedItems.map(item => (
+                <div key={item.id} className="log-entry">
+                  <span className={`item-type ${item.type.toLowerCase()}`}>
+                    {item.type}
+                  </span>
+                  <span className="item-name">
+                    {item.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
