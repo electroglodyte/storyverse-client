@@ -7,7 +7,8 @@ import {
   FaChartBar, FaProjectDiagram, FaBolt, FaRobot, 
   FaCog, FaTheaterMasks, FaPen, FaFileImport, FaFileExport,
   FaHistory, FaComments, FaExchangeAlt, FaEdit, FaMagic,
-  FaUser, FaMapMarkerAlt, FaUsers, FaTools, FaCube
+  FaUser, FaMapMarkerAlt, FaUsers, FaTools, FaCube,
+  FaChartLine, FaCalendarAlt, FaStopwatch
 } from 'react-icons/fa';
 import { supabase } from '../supabaseClient';
 
@@ -508,10 +509,26 @@ export const SideNav: React.FC<SideNavProps> = ({
       <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>GENERAL</h3>
       <ul>
         <li>
-          <div style={disabledStyle}>
+          <Link
+            to="/"
+            style={isActive('/') ? activeStyle : navItemStyle}
+            onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+            onMouseOut={(e) => {if (!isActive('/')) e.currentTarget.style.backgroundColor = 'transparent'}}
+          >
             <FaHome style={{ marginRight: '0.5rem' }} />
             <span>Dashboard</span>
-          </div>
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/?tab=writing"
+            style={location.pathname === "/" && location.search === "?tab=writing" ? activeStyle : navItemStyle}
+            onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
+            onMouseOut={(e) => {if (!(location.pathname === "/" && location.search === "?tab=writing")) e.currentTarget.style.backgroundColor = 'transparent'}}
+          >
+            <FaChartLine style={{ marginRight: '0.5rem' }} />
+            <span>Writing Progress</span>
+          </Link>
         </li>
         <li>
           <Link
