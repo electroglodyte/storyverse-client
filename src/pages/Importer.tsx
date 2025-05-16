@@ -17,6 +17,11 @@ interface ExtractedElements {
   events: any[];
 }
 
+// Define the error type explicitly
+interface SupabaseError {
+  message: string;
+}
+
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -251,8 +256,10 @@ const Importer: React.FC = () => {
       .in(nameField, namesToCheck);
     
     if (error) {
-      console.error(`Error checking for duplicates in ${type}:`, error);
-      throw new Error(`Error checking for duplicates: ${error.message}`);
+      // Cast the error to our defined type to ensure TypeScript is happy
+      const supabaseError = error as SupabaseError;
+      console.error(`Error checking for duplicates in ${type}:`, supabaseError);
+      throw new Error(`Error checking for duplicates: ${supabaseError.message}`);
     }
     
     // Create a map of existing names to their IDs
@@ -385,7 +392,9 @@ const Importer: React.FC = () => {
         .select();
       
       if (error) {
-        throw new Error(`Error saving ${type}: ${error.message}`);
+        // Cast the error to our defined type to ensure TypeScript is happy
+        const supabaseError = error as SupabaseError;
+        throw new Error(`Error saving ${type}: ${supabaseError.message}`);
       }
       
       console.log(`Saved ${data.length} ${type}:`, data);
