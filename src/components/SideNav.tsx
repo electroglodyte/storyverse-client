@@ -39,6 +39,51 @@ export const SideNav: React.FC<SideNavProps> = ({
   const [stories, setStories] = useState<Story[]>([]);
   const [loadingStories, setLoadingStories] = useState(false);
 
+  // Extract storyWorldId from URL search params if present
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const storyWorldId = searchParams.get('storyWorldId');
+    const storyId = searchParams.get('storyId');
+    
+    if (storyWorldId && (!activeStoryWorld || activeStoryWorld.id !== storyWorldId)) {
+      // Find the story world in the list
+      const storyWorld = storyWorlds.find(sw => sw.id === storyWorldId);
+      if (storyWorld) {
+        setActiveStoryWorld(storyWorld);
+      }
+    }
+    
+    if (storyId && (!activeStory || activeStory.id !== storyId)) {
+      // Fetch the story by ID
+      const fetchStory = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('stories')
+            .select('*')
+            .eq('id', storyId)
+            .single();
+          
+          if (error) throw error;
+          if (data) {
+            setActiveStory(data);
+            
+            // If the story has a story_world_id, set the active story world
+            if (data.story_world_id && (!activeStoryWorld || activeStoryWorld.id !== data.story_world_id)) {
+              const sw = storyWorlds.find(sw => sw.id === data.story_world_id);
+              if (sw) {
+                setActiveStoryWorld(sw);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching story:', error);
+        }
+      };
+      
+      fetchStory();
+    }
+  }, [location.search, storyWorlds, activeStoryWorld, activeStory, setActiveStoryWorld, setActiveStory]);
+
   // Fetch stories for the current story world
   useEffect(() => {
     const fetchStories = async () => {
@@ -354,14 +399,15 @@ export const SideNav: React.FC<SideNavProps> = ({
   const renderEntityLinks = () => {
     if (!activeStoryWorld) return null;
 
+    // Use the story ID if available, otherwise use the story world ID
     const storyId = activeStory?.id;
     const storyWorldId = activeStoryWorld.id;
     
-    // Only keep links to pages that exist
     return (
       <div style={{ marginBottom: '1.5rem' }}>
         <ul>
           <li>
+            {/* Pass the selected story world ID to pre-filter the list */}
             <Link
               to={`/characters?storyWorldId=${storyWorldId}`}
               style={isActive('/characters') ? activeStyle : navItemStyle}
@@ -402,7 +448,7 @@ export const SideNav: React.FC<SideNavProps> = ({
           </li>
           <li>
             <Link
-              to={`/importer?storyWorldId=${storyWorldId}`}
+              to={`/importer?storyWorldId=${storyWorldId}${storyId ? `&storyId=${storyId}` : ''}`}
               style={isActive('/importer') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/importer')) e.currentTarget.style.backgroundColor = 'transparent'}}
