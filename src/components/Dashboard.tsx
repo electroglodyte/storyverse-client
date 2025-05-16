@@ -1,201 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import { FaBook, FaListUl, FaStream, FaCog, FaChartLine, FaPencilAlt } from 'react-icons/fa';
-import AdminUtils from './admin/AdminUtils';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import WritingDashboard from './dashboard/WritingDashboard';
+import { useState, useEffect } from 'react'
+import { TabsContent } from '@/components/ui/tabs'
+import { WritingDashboard } from './dashboard/WritingDashboard'
+import { DailyProgressChart } from './dashboard/DailyProgressChart'
+import { SessionHistory } from './dashboard/SessionHistory'
+import { GoalTracker } from './dashboard/GoalTracker'
+import { transformResponse } from '@/lib/supabase'
+import type { Story } from '@/types/database'
+import { supabase } from '@/lib/supabase'
 
-const Dashboard = () => {
-  const location = useLocation();
-  const [stats, setStats] = useState({
-    storyWorlds: 0,
-    series: 0,
-    stories: 0,
-    recentStories: [],
-  });
-  const [loading, setLoading] = useState(true);
-  const [showAdminPanel, setShowAdminPanel] = useState(false);
-  
-  // Default to overview, but check URL for tab parameter
-  const searchParams = new URLSearchParams(location.search);
-  const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam === 'writing' ? 'writing' : 'overview');
-  
-  const navigate = useNavigate();
+export function Dashboard() {
+  const [stories, setStories] = useState<Story[]>([])
+  const [loadingStories, setLoadingStories] = useState(true)
 
   useEffect(() => {
-    // Update active tab when URL changes
-    const tab = searchParams.get('tab');
-    if (tab === 'writing' && activeTab !== 'writing') {
-      setActiveTab('writing');
-    } else if (!tab && activeTab !== 'overview') {
-      setActiveTab('overview');
-    }
-  }, [location.search]);
-
-  // Handle tab change and update URL
-  const handleTabChange = (value: string) => {
-    setActiveTab(value);
-    if (value === 'writing') {
-      navigate('/?tab=writing', { replace: true });
-    } else {
-      navigate('/', { replace: true });
-    }
-  };
-
-  useEffect(() => {
-    async function fetchStats() {
-      setLoading(true);
+    const loadStories = async () => {
       try {
-        // Fetch counts
-        const [worldsResponse, seriesResponse, storiesResponse, recentResponse] = await Promise.all([
-          supabase.from('story_worlds').select('id', { count: 'exact', head: true }),
-          supabase.from('series').select('id', { count: 'exact', head: true }),
-          supabase.from('stories').select('id', { count: 'exact', head: true }),
-          supabase.from('stories').select('*').order('created_at', { ascending: false }).limit(5)
-        ]);
-        
-        setStats({
-          storyWorlds: worldsResponse.count || 0,
-          series: seriesResponse.count || 0,
-          stories: storiesResponse.count || 0,
-          recentStories: recentResponse.data || [],
-        });
-      } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        const { data, error } = await supabase
+          .from('stories')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          throw error
+        }
+
+        if (data) {
+          setStories(data.map(story => transformResponse.transformObject(story)))
+        }
+      } catch (err) {
+        console.error('Error loading stories:', err)
       } finally {
-        setLoading(false);
+        setLoadingStories(false)
       }
     }
 
-    fetchStats();
-  }, []);
-
-  const toggleAdminPanel = () => {
-    setShowAdminPanel(!showAdminPanel);
-  };
+    loadStories()
+  }, [])
 
   return (
-    <div className="container mx-auto py-6">
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-        <div className="flex justify-between items-center mb-6">
-          <TabsList>
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <FaChartLine className="h-4 w-4" />
-              <span>Overview</span>
-            </TabsTrigger>
-            <TabsTrigger value="writing" className="flex items-center gap-2">
-              <FaPencilAlt className="h-4 w-4" />
-              <span>Writing Progress</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          {activeTab === 'overview' && (
-            <button 
-              className="flex items-center gap-2 px-3 py-2 text-sm rounded bg-gray-100 hover:bg-gray-200"
-              onClick={toggleAdminPanel}
-            >
-              <FaCog className="text-gray-600" />
-              <span>Admin Panel</span>
-            </button>
-          )}
+    <div className="space-y-8">
+      <TabsContent value="writing" className="space-y-4">
+        <WritingDashboard stories={stories} isLoading={loadingStories} />
+      </TabsContent>
+
+      <TabsContent value="progress" className="space-y-4">
+        <DailyProgressChart />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+          <SessionHistory className="lg:col-span-4" />
+          <GoalTracker className="lg:col-span-3" />
         </div>
-        
-        <TabsContent value="overview">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div 
-              className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/story-worlds')}
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-800">Story Worlds</h3>
-                  <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.storyWorlds}</p>
-                </div>
-                <div className="text-3xl text-blue-500">
-                  <FaBook />
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/series')}
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-800">Series</h3>
-                  <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.series}</p>
-                </div>
-                <div className="text-3xl text-green-500">
-                  <FaStream />
-                </div>
-              </div>
-            </div>
-            
-            <div 
-              className="bg-white shadow rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow"
-              onClick={() => navigate('/stories')}
-            >
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-medium text-gray-800">Stories</h3>
-                  <p className="text-3xl font-bold mt-2">{loading ? '-' : stats.stories}</p>
-                </div>
-                <div className="text-3xl text-purple-500">
-                  <FaListUl />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Recent Stories */}
-          <div className="bg-white shadow rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4">Recent Stories</h2>
-            
-            {loading ? (
-              <div className="space-y-3 mt-4">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="h-10 bg-gray-100 rounded animate-pulse"></div>
-                ))}
-              </div>
-            ) : stats.recentStories.length > 0 ? (
-              <div className="space-y-2">
-                {stats.recentStories.map((story) => (
-                  <div 
-                    key={story.id} 
-                    className="p-3 rounded border hover:bg-gray-50 cursor-pointer transition-colors"
-                    onClick={() => navigate(`/stories/${story.id}`)}
-                  >
-                    <div className="font-medium">{story.title}</div>
-                    <div className="text-sm text-gray-500 mt-1">
-                      {story.status} • {new Date(story.created_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 mt-4">No stories created yet.</p>
-            )}
-          </div>
-
-          {/* Admin Panel */}
-          {showAdminPanel && (
-            <div className="bg-white shadow rounded-lg p-6">
-              <h2 className="text-xl font-semibold mb-4">Administration</h2>
-              <AdminUtils />
-            </div>
-          )}
-        </TabsContent>
-        
-        <TabsContent value="writing">
-          <WritingDashboard />
-        </TabsContent>
-      </Tabs>
+      </TabsContent>
     </div>
-  );
-};
-
-export default Dashboard;
+  )
+}
