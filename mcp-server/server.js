@@ -5,6 +5,7 @@ import handlersModule from './handlers/index.js';
 import express from 'express';
 import cors from 'cors';
 import analyzeRoutes from './routes/analyze-routes.js';
+import importRoutes from './routes/import-routes.js';
 
 // Initialize MCP server
 export async function setupServer() {
@@ -14,7 +15,7 @@ export async function setupServer() {
   const server = new Server(
     {
       name: "StoryVerse MCP Server",
-      version: "0.4.0",
+      version: "0.5.0",
     },
     {
       capabilities: {
@@ -77,10 +78,18 @@ function setupRestApi() {
   
   // Routes
   app.use('/', analyzeRoutes);
+  app.use('/', importRoutes);  // Add the new import routes
   
   // Default route
   app.get('/', (req, res) => {
-    res.json({ message: 'StoryVerse MCP Server API', version: '0.4.0' });
+    res.json({ 
+      message: 'StoryVerse MCP Server API', 
+      version: '0.5.0',
+      routes: {
+        analyze: ['/analyze-story'],
+        import: ['/import-story', '/extract-story-elements', '/import-story-with-progress']
+      }
+    });
   });
   
   // Start the server
