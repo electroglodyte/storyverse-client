@@ -9,6 +9,7 @@ import { extractCharacters, extractLocations, extractPlotlines, extractEvents, e
 // Extended interfaces for API response data that includes confidence scores
 interface CharacterWithConfidence extends Character {
   confidence?: number;
+  isNew?: boolean; // Added flag to identify new characters
 }
 
 interface LocationWithConfidence extends Location {
@@ -41,6 +42,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
   const [analysisResults, setAnalysisResults] = useState<any>(null);
   const [storyId, setStoryId] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
+  const [existingCharacters, setExistingCharacters] = useState<Character[]>([]);
 
   // Generate a UUID for new entities
   const generateUUID = (): string => {
@@ -57,11 +59,19 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     }
   }, [storyText, storyTitle]);
 
+  // Fetch existing characters when storyWorldId changes
+  useEffect(() => {
+    if (storyWorldId) {
+      fetchExistingCharacters();
+    }
+  }, [storyWorldId]);
+
   // Select all items by default when they load
   useEffect(() => {
     if (characters.length > 0) {
       const newSelected = characters.reduce((acc, char) => {
-        acc[char.id] = true;
+        // Only auto-select new characters
+        acc[char.id] = char.isNew !== false;
         return acc;
       }, {} as Record<string, boolean>);
       setSelectedCharacters(newSelected);
@@ -88,6 +98,39 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     }
   }, [plotlines]);
 
+  // Fetch existing characters from the database
+  const fetchExistingCharacters = async () => {
+    try {
+      let query = supabase.from('characters').select('*');
+      
+      // Filter by story world if provided
+      if (storyWorldId) {
+        query = query.eq('story_world_id', storyWorldId);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching existing characters:', error);
+        return;
+      }
+      
+      if (data) {
+        setExistingCharacters(data as Character[]);
+        setDebugInfo(prev => `${prev}\nFound ${data.length} existing characters in the database`);
+      }
+    } catch (err) {
+      console.error('Error in fetchExistingCharacters:', err);
+    }
+  };
+
+  // Check if a character already exists in the database
+  const checkForDuplicateCharacter = (character: CharacterWithConfidence): boolean => {
+    return existingCharacters.some(existingChar => 
+      existingChar.name.toLowerCase() === character.name.toLowerCase()
+    );
+  };
+
   const analyzeStory = async () => {
     setLoading(true);
     setError(null);
@@ -104,21 +147,34 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       console.log('Characters found:', charactersList);
       setDebugInfo(`Found ${charactersList.length} characters`);
       
-      // Extract other elements if needed
-      // const locationsList = extractLocations(storyText, tempStoryId);
-      // const plotlinesList = extractPlotlines(storyText, tempStoryId);
+      // Check for duplicate characters
+      const processedCharacters = charactersList.map(character => {
+        const isDuplicate = checkForDuplicateCharacter(character);
+        return {
+          ...character,
+          isNew: !isDuplicate
+        };
+      });
+      
+      // Filter out duplicate characters if there's nothing new to show
+      const newCharacters = processedCharacters.filter(char => char.isNew);
+      if (newCharacters.length === 0) {
+        setDebugInfo(prev => `${prev}\nNo new characters detected`);
+      } else {
+        setDebugInfo(prev => `${prev}\nFound ${newCharacters.length} new characters`);
+      }
       
       // Save results
       setAnalysisResults({
         story: { id: tempStoryId },
         results: {
-          characters: charactersList,
+          characters: processedCharacters,
           locations: [],  // locationsList
           plotlines: []   // plotlinesList
         }
       });
       
-      setCharacters(charactersList);
+      setCharacters(processedCharacters);
       setStep('characters');
       
       // After getting local results, try the API in parallel
@@ -236,7 +292,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       }
       
       // Save selected characters to database
-      const selectedCharsArray = characters.filter(char => selectedCharacters[char.id]);
+      const selectedCharsArray = characters.filter(char => selectedCharacters[char.id] && char.isNew !== false);
       
       for (const char of selectedCharsArray) {
         const { error: charError } = await supabase
@@ -296,7 +352,8 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
   const selectAll = (type: 'characters' | 'locations' | 'plotlines') => {
     if (type === 'characters') {
       const newSelected = characters.reduce((acc, char) => {
-        acc[char.id] = true;
+        // Only allow selecting new characters
+        acc[char.id] = char.isNew !== false;
         return acc;
       }, {} as Record<string, boolean>);
       setSelectedCharacters(newSelected);
@@ -330,6 +387,11 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
     return items.filter(item => selectedMap[item.id]).length;
   };
 
+  // Count new characters
+  const countNewCharacters = () => {
+    return characters.filter(char => char.isNew).length;
+  };
+
   // Render content based on current step
   const renderContent = () => {
     if (loading && step === 'analyzing') {
@@ -359,11 +421,32 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
       );
     }
 
-    if (step === 'characters' && characters.length > 0) {
+    if (step === 'characters') {
+      // Filter to show only new characters if there are any
+      const newCharacters = characters.filter(char => char.isNew);
+      
+      // If no new characters are found, show a message
+      if (newCharacters.length === 0) {
+        return (
+          <Box p={4} textAlign="center">
+            <Typography variant="h6" gutterBottom>
+              No New Characters Detected
+            </Typography>
+            <Typography variant="body1" paragraph>
+              All characters in this story already exist in your database.
+            </Typography>
+            <Button variant="contained" onClick={handleNextStep}>
+              Continue to Next Step
+            </Button>
+          </Box>
+        );
+      }
+      
+      // Otherwise, show the new characters
       return (
         <Box>
           <Typography variant="h6" gutterBottom>
-            Characters ({characters.length} found)
+            Characters ({newCharacters.length} new found)
           </Typography>
           <Typography variant="body2" paragraph>
             Review and select the characters to import.
@@ -380,7 +463,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
           
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
             <Typography variant="body2">
-              {countSelected(characters, selectedCharacters)} of {characters.length} selected
+              {countSelected(newCharacters, selectedCharacters)} of {newCharacters.length} selected
             </Typography>
             <Box>
               <Button size="small" onClick={() => selectAll('characters')} sx={{ mr: 1 }}>
@@ -393,7 +476,7 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
           </Box>
           
           <Grid container spacing={2}>
-            {characters.map(character => (
+            {newCharacters.map(character => (
               <Grid item xs={12} sm={6} key={character.id}>
                 <Card variant="outlined" sx={{ 
                   p: 2, 
@@ -406,226 +489,4 @@ export const StoryImporter: React.FC<StoryImporterProps> = ({
                       onChange={() => handleCharacterToggle(character.id)}
                     />
                     <Box>
-                      <Typography variant="h6">{character.name}</Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ 
-                        display: 'inline-block', 
-                        bgcolor: 'rgba(0, 0, 0, 0.08)', 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 1,
-                        mb: 1
-                      }}>
-                        {character.role}
-                      </Typography>
-                      <Typography variant="body2">
-                        {character.description || 'A character in the story'}
-                      </Typography>
-                      {character.confidence !== undefined && (
-                        <Typography variant="caption" color="textSecondary" display="block" mt={1}>
-                          Detection confidence: {Math.round(character.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          
-          <Box display="flex" justifyContent="space-between" mt={4}>
-            <Button variant="outlined" onClick={handleSkip}>
-              Skip
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={handleNextStep}
-              disabled={countSelected(characters, selectedCharacters) === 0}
-            >
-              {analysisResults?.results?.locations && analysisResults.results.locations.length > 0 
-                ? 'Next: Locations' 
-                : analysisResults?.results?.plotlines && analysisResults.results.plotlines.length > 0
-                  ? 'Next: Plotlines' 
-                  : 'Save Characters'}
-            </Button>
-          </Box>
-        </Box>
-      );
-    }
-
-    if (step === 'locations' && locations.length > 0) {
-      return (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Locations ({locations.length} found)
-          </Typography>
-          <Typography variant="body2" paragraph>
-            Review and select the locations to import.
-          </Typography>
-          
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="body2">
-              {countSelected(locations, selectedLocations)} of {locations.length} selected
-            </Typography>
-            <Box>
-              <Button size="small" onClick={() => selectAll('locations')} sx={{ mr: 1 }}>
-                Select All
-              </Button>
-              <Button size="small" onClick={() => deselectAll('locations')}>
-                Deselect All
-              </Button>
-            </Box>
-          </Box>
-          
-          <Grid container spacing={2}>
-            {locations.map(location => (
-              <Grid item xs={12} sm={6} key={location.id}>
-                <Card variant="outlined" sx={{ 
-                  p: 2, 
-                  bgcolor: selectedLocations[location.id] ? 'rgba(33, 150, 243, 0.08)' : 'transparent',
-                  border: selectedLocations[location.id] ? '1px solid #2196f3' : '1px solid rgba(0, 0, 0, 0.12)'
-                }}>
-                  <Box display="flex" alignItems="flex-start">
-                    <Checkbox 
-                      checked={!!selectedLocations[location.id]} 
-                      onChange={() => handleLocationToggle(location.id)}
-                    />
-                    <Box>
-                      <Typography variant="h6">{location.name}</Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ 
-                        display: 'inline-block', 
-                        bgcolor: 'rgba(0, 0, 0, 0.08)', 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 1,
-                        mb: 1
-                      }}>
-                        {location.location_type || 'location'}
-                      </Typography>
-                      <Typography variant="body2">
-                        {location.description || 'A location in the story'}
-                      </Typography>
-                      {location.confidence !== undefined && (
-                        <Typography variant="caption" color="textSecondary" display="block" mt={1}>
-                          Detection confidence: {Math.round(location.confidence * 100)}%
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          
-          <Box display="flex" justifyContent="space-between" mt={4}>
-            <Button variant="outlined" onClick={handleSkip}>
-              Skip
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={handleNextStep}
-              disabled={countSelected(locations, selectedLocations) === 0}
-            >
-              {analysisResults?.results?.plotlines && analysisResults.results.plotlines.length > 0 
-                ? 'Next: Plotlines' 
-                : 'Save Locations'}
-            </Button>
-          </Box>
-        </Box>
-      );
-    }
-
-    if (step === 'plotlines' && plotlines.length > 0) {
-      return (
-        <Box>
-          <Typography variant="h6" gutterBottom>
-            Plotlines ({plotlines.length} found)
-          </Typography>
-          <Typography variant="body2" paragraph>
-            Review and select the plotlines to import.
-          </Typography>
-          
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="body2">
-              {countSelected(plotlines, selectedPlotlines)} of {plotlines.length} selected
-            </Typography>
-            <Box>
-              <Button size="small" onClick={() => selectAll('plotlines')} sx={{ mr: 1 }}>
-                Select All
-              </Button>
-              <Button size="small" onClick={() => deselectAll('plotlines')}>
-                Deselect All
-              </Button>
-            </Box>
-          </Box>
-          
-          <Grid container spacing={2}>
-            {plotlines.map(plotline => (
-              <Grid item xs={12} sm={6} key={plotline.id}>
-                <Card variant="outlined" sx={{ 
-                  p: 2, 
-                  bgcolor: selectedPlotlines[plotline.id] ? 'rgba(33, 150, 243, 0.08)' : 'transparent',
-                  border: selectedPlotlines[plotline.id] ? '1px solid #2196f3' : '1px solid rgba(0, 0, 0, 0.12)'
-                }}>
-                  <Box display="flex" alignItems="flex-start">
-                    <Checkbox 
-                      checked={!!selectedPlotlines[plotline.id]} 
-                      onChange={() => handlePlotlineToggle(plotline.id)}
-                    />
-                    <Box>
-                      <Typography variant="h6">{plotline.title}</Typography>
-                      <Typography variant="body2" color="textSecondary" sx={{ 
-                        display: 'inline-block', 
-                        bgcolor: 'rgba(0, 0, 0, 0.08)', 
-                        px: 1, 
-                        py: 0.5, 
-                        borderRadius: 1,
-                        mb: 1
-                      }}>
-                        {plotline.plotline_type || 'plotline'}
-                      </Typography>
-                      <Typography variant="body2">
-                        {plotline.description || 'A plotline in the story'}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-          
-          <Box display="flex" justifyContent="space-between" mt={4}>
-            <Button variant="outlined" onClick={handleSkip}>
-              Skip
-            </Button>
-            <Button 
-              variant="contained" 
-              onClick={completeImport}
-              disabled={countSelected(plotlines, selectedPlotlines) === 0}
-            >
-              Finish Import
-            </Button>
-          </Box>
-        </Box>
-      );
-    }
-
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" p={4}>
-        <Button variant="contained" onClick={analyzeStory} disabled={loading}>
-          Start Analysis
-        </Button>
-      </Box>
-    );
-  };
-
-  return (
-    <Box sx={{ maxWidth: 1200, margin: '0 auto', p: 2 }}>
-      <Typography variant="h5" gutterBottom>
-        Story Importer
-      </Typography>
-      {renderContent()}
-    </Box>
-  );
-};
-
-export default StoryImporter;
+                      <Typography
