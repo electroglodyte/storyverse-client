@@ -14,7 +14,10 @@ const NON_CHARACTER_WORDS = [
   'CONTINUOUS', 'LATER', 'MOMENTS', 'SAME', 'TIME', 'BEAT', 'PAUSE', 'SOUND',
   'DOOR', 'WINDOW', 'STREET', 'ROOM', 'HOUSE', 'CAR', 'PHONE', 'NEXT', 'OVER',
   // Sound effects often in ALL CAPS
-  'BOOM', 'CRASH', 'BANG', 'RING', 'THUD', 'CLICK', 'CLACK', 'WHOOSH', 'SLAM'
+  'BOOM', 'CRASH', 'BANG', 'RING', 'THUD', 'CLICK', 'CLACK', 'WHOOSH', 'SLAM',
+  // Additional common screenplay elements
+  'VOICE', 'VOICES', 'CAMERA', 'SERIES', 'LIGHT', 'LIGHTS', 'SHADOW', 'SHADOWS',
+  'CLOSE', 'CLOSER', 'CLOSER', 'WIDE', 'WIDER', 'TIGHTER', 'MOVING', 'FOLLOWING'
 ];
 
 // Common words that often appear in sluglines
@@ -22,6 +25,104 @@ const SLUGLINE_WORDS = [
   'INT', 'EXT', 'DAY', 'NIGHT', 'CONTINUOUS', 'LATER', 'MOMENTS', 'MORNING', 
   'AFTERNOON', 'EVENING', 'DAWN', 'DUSK'
 ];
+
+// Common location words that might be confused with characters
+const LOCATION_WORDS = [
+  'ROOM', 'HOUSE', 'APARTMENT', 'BUILDING', 'OFFICE', 'BEDROOM', 'KITCHEN', 'BATHROOM',
+  'HALL', 'HALLWAY', 'CORRIDOR', 'LOBBY', 'HOTEL', 'MOTEL', 'HOSPITAL', 'CHURCH',
+  'STREET', 'ROAD', 'AVENUE', 'HIGHWAY', 'PARK', 'GARDEN', 'FOREST', 'BEACH',
+  'MOUNTAIN', 'HILL', 'VALLEY', 'RIVER', 'LAKE', 'OCEAN', 'SEA', 'ISLAND',
+  'RESTAURANT', 'CAFE', 'BAR', 'PUB', 'CLUB', 'STORE', 'SHOP', 'MALL',
+  'SCHOOL', 'COLLEGE', 'UNIVERSITY', 'LIBRARY', 'MUSEUM', 'THEATER', 'CINEMA',
+  'STATION', 'AIRPORT', 'HARBOR', 'PORT', 'DOCK', 'DECK', 'PORCH', 'BALCONY',
+  'STAIRS', 'ELEVATOR', 'BRIDGE', 'TUNNEL', 'ALLEY', 'PATH', 'TRAIL'
+];
+
+// Common object words that might be confused with characters
+const OBJECT_WORDS = [
+  'DOOR', 'WINDOW', 'TABLE', 'CHAIR', 'DESK', 'BED', 'COUCH', 'SOFA',
+  'LAMP', 'LIGHT', 'CANDLE', 'PHONE', 'CELL', 'COMPUTER', 'LAPTOP', 'TABLET',
+  'TV', 'TELEVISION', 'RADIO', 'CLOCK', 'WATCH', 'RING', 'RINGS', 'NECKLACE',
+  'CAR', 'TRUCK', 'BUS', 'TRAIN', 'PLANE', 'BOAT', 'SHIP', 'BICYCLE',
+  'GUN', 'RIFLE', 'PISTOL', 'KNIFE', 'SWORD', 'WEAPON', 'BOMB', 'MISSILE',
+  'BOOK', 'PAPER', 'LETTER', 'NOTE', 'DOCUMENT', 'FILE', 'FOLDER', 'BRIEFCASE',
+  'BAG', 'PURSE', 'WALLET', 'KEYS', 'BOTTLE', 'GLASS', 'CUP', 'PLATE',
+  'JACKET', 'COAT', 'SHIRT', 'PANTS', 'DRESS', 'SUIT', 'HAT', 'SHOES'
+];
+
+// Common action or description phrases that might be mistaken for characters
+const ACTION_DESCRIPTION_PHRASES = [
+  'DARK FIGURE', 'FEMININE FIGURE', 'SHADOWY FIGURE', 'MYSTERIOUS FIGURE',
+  'FANGS BARED', 'TEETH BARED', 'CLAWS OUT', 'ARMS RAISED',
+  'EYES OPEN', 'EYES CLOSED', 'MOUTH OPEN', 'DOOR OPENS', 'DOOR CLOSES',
+  'BODY FALLS', 'HEAD TURNS', 'HAND REACHES', 'FIGURE APPEARS',
+  'BLOOD SPLATTER', 'LIGHT FLASHES', 'THUNDER CLAPS', 'LIGHTNING STRIKES',
+  'WIND HOWLS', 'RAIN POURS', 'SNOW FALLS', 'GROUND SHAKES',
+  'HORRENDOUS CREAK', 'UNGODLY CREAK', 'TERRIBLE SOUND', 'DISTANT SCREAM',
+  'WEDDING CRASHERS', 'PARTY GUESTS', 'ONLOOKERS', 'PASSERSBY'
+];
+
+// Common name prefixes that strongly indicate a character
+const NAME_PREFIXES = [
+  'MR', 'MS', 'MRS', 'DR', 'PROF', 'CAPTAIN', 'LIEUTENANT', 'SERGEANT', 'OFFICER',
+  'GENERAL', 'COLONEL', 'MAJOR', 'ADMIRAL', 'COMMANDER', 'CHIEF', 'PRESIDENT',
+  'KING', 'QUEEN', 'PRINCE', 'PRINCESS', 'DUKE', 'DUCHESS', 'LORD', 'LADY',
+  'SIR', 'DAME', 'FATHER', 'MOTHER', 'BROTHER', 'SISTER', 'UNCLE', 'AUNT',
+  'GRANDPA', 'GRANDMA', 'JUDGE', 'MAYOR', 'GOVERNOR', 'SENATOR', 'POPE', 'BISHOP'
+];
+
+// Helper function to check if a name contains common character name elements
+const isLikelyCharacterName = (name: string): boolean => {
+  // Split the name by spaces
+  const words = name.split(/\s+/);
+  
+  // Check for name prefixes that strongly indicate a character
+  for (const prefix of NAME_PREFIXES) {
+    if (words[0] === prefix) {
+      return true;
+    }
+  }
+  
+  // Check for location words that suggest this isn't a character
+  for (const locationWord of LOCATION_WORDS) {
+    for (const word of words) {
+      if (word === locationWord) {
+        return false;
+      }
+    }
+  }
+  
+  // Check for object words that suggest this isn't a character
+  for (const objectWord of OBJECT_WORDS) {
+    for (const word of words) {
+      if (word === objectWord) {
+        return false;
+      }
+    }
+  }
+  
+  // Check for action/description phrases
+  for (const phrase of ACTION_DESCRIPTION_PHRASES) {
+    if (name === phrase || name.includes(phrase)) {
+      return false;
+    }
+  }
+  
+  // Check for common name patterns (e.g., "FIRST LAST" format)
+  if (words.length === 2 && words[0].length > 1 && words[1].length > 1) {
+    // Two words, both reasonably long, could be first and last name
+    return true;
+  }
+  
+  // Looks like a proper name (doesn't contain common non-character elements)
+  const hasNonNameWords = words.some(word => 
+    NON_CHARACTER_WORDS.includes(word) || 
+    SLUGLINE_WORDS.includes(word) ||
+    word.match(/^[0-9]+$/) // Numbers
+  );
+  
+  return !hasNonNameWords;
+};
 
 // Helper function to extract characters marked in ALL CAPS with improved screenplay awareness
 export const extractAllCapsCharacters = (text: string): string[] => {
@@ -61,8 +162,8 @@ export const extractAllCapsCharacters = (text: string): string[] => {
                                  !sluglineRegex.test(scriptLines[lineIndex + 1]) &&
                                  scriptLines[lineIndex + 1].trim().length > 0;
         
-        // Higher confidence if it has dialogue after
-        if (hasDialogueAfter) {
+        // Higher confidence if it has dialogue after - use our plausibility check
+        if (hasDialogueAfter && isLikelyCharacterName(name)) {
           if (name.includes(' ')) {
             multiWordNames.push(name);
           } else {
@@ -70,7 +171,7 @@ export const extractAllCapsCharacters = (text: string): string[] => {
           }
         }
         // Still add it even without dialogue, but only if it looks like a proper name
-        else if (name.length >= 3 && !/^[A-Z]+S$/.test(name)) { // Avoid possessive forms like "JOHN'S"
+        else if (name.length >= 3 && !/^[A-Z]+S$/.test(name) && isLikelyCharacterName(name)) {
           if (name.includes(' ')) {
             multiWordNames.push(name);
           } else {
@@ -122,11 +223,16 @@ export const extractAllCapsCharacters = (text: string): string[] => {
       
       // Skip words that look like technical terms or sound effects
       if (/^[A-Z]+[0-9]+$/.test(word) || // Skip things like "RT66" 
-          /^[A-Z]{2,5}$/.test(word)) {   // Skip short acronyms like "FBI"
+          /^[A-Z]{2,5}$/.test(word) ||   // Skip short acronyms like "FBI"
+          OBJECT_WORDS.includes(word) || // Skip object words
+          LOCATION_WORDS.includes(word)) { // Skip location words
         continue;
       }
       
-      potentialNames.push(word);
+      // Apply our plausibility check
+      if (isLikelyCharacterName(word)) {
+        potentialNames.push(word);
+      }
     }
   }
   
@@ -139,7 +245,21 @@ export const extractAllCapsCharacters = (text: string): string[] => {
     const words = multiWord.split(/\s+/);
     const isNonCharacter = words.some(word => NON_CHARACTER_WORDS.includes(word));
     
-    if (!isNonCharacter && words.length <= 3) { // Limit to reasonable name length
+    // Apply our more aggressive filtering
+    const isActionDescription = ACTION_DESCRIPTION_PHRASES.some(phrase => 
+      multiWord === phrase || multiWord.includes(phrase)
+    );
+    
+    const containsLocationWord = words.some(word => LOCATION_WORDS.includes(word));
+    const containsObjectWord = words.some(word => OBJECT_WORDS.includes(word));
+    
+    if (!isNonCharacter && 
+        !isActionDescription && 
+        !containsLocationWord && 
+        !containsObjectWord && 
+        words.length <= 3 && // Limit to reasonable name length
+        isLikelyCharacterName(multiWord)) {
+      
       // Check if this is a title or slugline element
       const lowerMultiWord = multiWord.toLowerCase();
       if (!lowerMultiWord.includes("tale") && 
@@ -164,13 +284,18 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   let titleMatch;
   while ((titleMatch = titleLineRegex.exec(text)) !== null) {
     const name = titleMatch[1];
-    if (name.length > 1 && !NON_CHARACTER_WORDS.includes(name)) {
+    if (name.length > 1 && 
+        !NON_CHARACTER_WORDS.includes(name) && 
+        isLikelyCharacterName(name)) {
       potentialNames.push(name);
     }
   }
   
   // Combine single and multi-word names, remove duplicates
-  return [...new Set([...potentialNames, ...multiWordNames])];
+  const combinedNames = [...new Set([...potentialNames, ...multiWordNames])];
+  
+  // Final plausibility check on the entire list
+  return combinedNames.filter(name => isLikelyCharacterName(name));
 };
 
 // Generate a meaningful character description based on their name and context
