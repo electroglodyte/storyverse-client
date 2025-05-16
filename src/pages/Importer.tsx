@@ -267,7 +267,7 @@ const Importer: React.FC = () => {
             }
             setDebugInfo(prev => `${prev}\nAPI returned ${response.data?.characters?.length || 0} characters`);
           }
-        }).catch((apiErr: Error) => { // Fix error #1
+        }).catch((apiErr: Error) => {
           console.warn('API error:', apiErr);
           setDebugInfo(prev => `${prev}\nAPI error: ${apiErr.message}`);
         });
@@ -314,10 +314,13 @@ const Importer: React.FC = () => {
         }
         
         // Then check for similar matches (case insensitive)
+        // Create a safe id for the query - if element.id doesn't exist, use a random UUID
+        const safeElementId = element.id || uuidv4(); // Fix for line 335
+        
         const { data: similarMatches, error: similarError } = await supabase
           .from(tableName)
           .select('id, ' + nameField)
-          .neq('id', element.id) // Skip self
+          .neq('id', safeElementId) // Using the safe ID here
           .ilike(nameField, `%${elementName}%`);
           
         if (similarError) {
@@ -361,7 +364,7 @@ const Importer: React.FC = () => {
         }
         
         // If matches found, store them
-        if (allMatches.length > 0) {
+        if (allMatches.length > 0 && element.id) { // Fix for line 347
           duplicatesInfo[element.id] = allMatches;
         }
       }
@@ -493,7 +496,7 @@ const Importer: React.FC = () => {
     // Remove from duplicates list
     setDuplicateElements(prev => {
       const updated = { ...prev };
-      delete updated[id];
+      delete updated[id]; // Fix for line 354
       return updated;
     });
   };
