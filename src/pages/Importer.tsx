@@ -252,7 +252,7 @@ const Importer: React.FC = () => {
     
     if (error) {
       console.error(`Error checking for duplicates in ${type}:`, error);
-      throw error;
+      throw new Error(`Error checking for duplicates: ${error.message}`);
     }
     
     // Create a map of existing names to their IDs
@@ -385,7 +385,7 @@ const Importer: React.FC = () => {
         .select();
       
       if (error) {
-        throw error;
+        throw new Error(`Error saving ${type}: ${error.message}`);
       }
       
       console.log(`Saved ${data.length} ${type}:`, data);
