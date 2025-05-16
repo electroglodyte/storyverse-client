@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.7.0 (2025-05-16)
+## Current Version: 0.8.0 (2025-05-16)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -34,6 +34,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Create character-event junction table
 - [ ] Add sequence numbering to events
 - [x] Add essence and interest fields to scenes table
+- [x] Add creation_notes, 5Q, and subtext fields to scenes table
 - [x] Create story_questions table for tracking narrative questions
 - [x] Create writing_goals, writing_sessions, and daily_progress tables for progress tracking
 
@@ -51,6 +52,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [ ] Create generative story element tools
 - [ ] Develop journey comparison functionality
 - [ ] Develop tools to extract events from text descriptions
+- [x] Develop tools for scene metadata: creation_notes, 5Q, and subtext
 
 ### UI Improvements
 - [x] Fix TypeScript errors in StoryImporter component
