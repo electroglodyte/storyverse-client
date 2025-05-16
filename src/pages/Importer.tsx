@@ -2,7 +2,17 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import './Importer.css';
-import { v4 as uuidv4 } from 'uuid'; // Add UUID import
+import { v4 as uuidv4 } from 'uuid';
+
+// Import the new extractors
+import {
+  extractCharacters,
+  extractLocations,
+  extractPlotlines,
+  extractEvents,
+  extractObjects,
+  extractScenes
+} from '../extractors';
 
 interface FileInfo {
   file: File;
@@ -21,214 +31,6 @@ interface ExtractedElements {
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
-
-// Helper function to extract characters marked in ALL CAPS
-const extractAllCapsCharacters = (text: string): string[] => {
-  // Regular expression to match words in ALL CAPS with 2 or more letters
-  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
-  const matches = text.match(allCapsRegex) || [];
-  
-  // Filter out common non-character ALL CAPS words
-  const nonCharacterWords = ['THE', 'AND', 'OF', 'TO', 'IN', 'A', 'FOR', 'WITH', 'IS', 'ON', 'AT', 'BY', 'AS', 'IT', 'ALL'];
-  return [...new Set(matches)].filter(word => !nonCharacterWords.includes(word));
-};
-
-// Helper function to extract locations based on patterns
-const extractLocations = (text: string): string[] => {
-  // Common location indicators
-  const locationPrefixes = ['at', 'in', 'to', 'from', 'near', 'around', 'inside', 'outside'];
-  const locationIndicators = ['street', 'avenue', 'road', 'lane', 'drive', 'boulevard', 'highway', 
-                             'park', 'building', 'house', 'apartment', 'office', 'room', 'city', 
-                             'town', 'village', 'country', 'kingdom', 'castle', 'palace', 'mountain',
-                             'river', 'lake', 'ocean', 'sea', 'forest', 'desert', 'cafe', 'restaurant',
-                             'bar', 'pub', 'hotel', 'motel', 'school', 'university', 'college', 'hospital'];
-  
-  // Find potential locations: capitalized words after location prefixes
-  const locations = new Set<string>();
-  
-  // Check for "INT." and "EXT." in screenplay format (interior/exterior locations)
-  const scriptLocationRegex = /\b(INT\.|EXT\.)\s+([A-Z][A-Za-z0-9\s']+)(?:\s*-\s*|\s*–\s*|$)/g;
-  let match;
-  while ((match = scriptLocationRegex.exec(text)) !== null) {
-    if (match[2] && match[2].trim().length > 0) {
-      locations.add(match[2].trim());
-    }
-  }
-  
-  // Look for capitalized phrases after location prefixes
-  const lines = text.split('\n');
-  for (const line of lines) {
-    for (const prefix of locationPrefixes) {
-      const regex = new RegExp(`\\b${prefix}\\s+([A-Z][A-Za-z0-9\\s']+)\\b`, 'g');
-      while ((match = regex.exec(line)) !== null) {
-        if (match[1] && match[1].trim().length > 0) {
-          locations.add(match[1].trim());
-        }
-      }
-    }
-  }
-  
-  // Look for capitalized phrases containing location indicators
-  for (const indicator of locationIndicators) {
-    const regex = new RegExp(`\\b([A-Z][A-Za-z0-9\\s']*\\s+${indicator})\\b`, 'gi');
-    while ((match = regex.exec(text)) !== null) {
-      if (match[1] && match[1].trim().length > 0) {
-        locations.add(match[1].trim());
-      }
-    }
-  }
-  
-  return [...locations];
-};
-
-// Helper function to extract plotlines based on recurring themes and section headers
-const extractPlotlines = (text: string): string[] => {
-  const plotlines = new Set<string>();
-  
-  // Look for section headers (e.g., "CHAPTER 1", "ACT I", etc.)
-  const sectionRegex = /\b(CHAPTER|ACT|PART|BOOK)\s+([IVX0-9]+)(?:\s*:\s*|\s+)([A-Z][A-Za-z0-9\s']+)/gi;
-  let match;
-  while ((match = sectionRegex.exec(text)) !== null) {
-    if (match[3] && match[3].trim().length > 0) {
-      plotlines.add(match[0].trim());
-    }
-  }
-  
-  // Look for theme indicators like "SUBPLOT:" or "STORY ARC:"
-  const themeRegex = /\b(SUBPLOT|STORY ARC|PLOTLINE|ARC|THREAD)(?:\s*:\s*|\s+)([A-Z][A-Za-z0-9\s']+)/gi;
-  while ((match = themeRegex.exec(text)) !== null) {
-    if (match[2] && match[2].trim().length > 0) {
-      plotlines.add(match[2].trim());
-    }
-  }
-  
-  // If no explicit plotlines found, generate a main plotline from the title or first ALL CAPS phrase
-  if (plotlines.size === 0) {
-    // Try to find a title-like phrase at the beginning
-    const titleRegex = /^(?:\s*)((?:[A-Z][A-Za-z0-9\s']+){2,})(?:\s*$)/m;
-    match = titleRegex.exec(text);
-    if (match && match[1]) {
-      plotlines.add(`Main Plot: ${match[1].trim()}`);
-    } else {
-      // Fallback to first ALL CAPS phrase if found
-      const capsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/;
-      match = capsRegex.exec(text);
-      if (match && match[0]) {
-        plotlines.add(`Main Plot: ${match[0]} Journey`);
-      } else {
-        // Last resort
-        plotlines.add("Main Plot");
-      }
-    }
-  }
-  
-  return [...plotlines];
-};
-
-// Helper function to extract events based on time markers and action sequences
-const extractEvents = (text: string): string[] => {
-  const events = new Set<string>();
-  
-  // Common time and event markers
-  const timeMarkers = ['suddenly', 'later', 'meanwhile', 'after', 'before', 'during', 'when', 
-                      'next day', 'that night', 'morning', 'afternoon', 'evening', 'midnight',
-                      'yesterday', 'tomorrow', 'last week', 'next month'];
-  
-  // Look for capitalized actions after time markers
-  const lines = text.split('\n');
-  for (const line of lines) {
-    for (const marker of timeMarkers) {
-      const regex = new RegExp(`\\b${marker}\\b.*?([A-Z][a-z]+(?:\\s+[a-z]+){2,})`, 'gi');
-      let match;
-      while ((match = regex.exec(line)) !== null) {
-        if (match[1] && match[1].trim().length > 0) {
-          events.add(`${marker.charAt(0).toUpperCase() + marker.slice(1)}: ${match[1].trim()}`);
-        }
-      }
-    }
-  }
-  
-  // Look for sentences with strong action verbs in ALL CAPS
-  const actionRegex = /\b([A-Z]{3,}S|ATTACK|FIGHT|BATTLE|CONFRONT|REVEAL|DISCOVER|ESCAPE|ENTER|EXIT|ARRIVE|LEAVE)\b[^.!?]*[.!?]/gi;
-  let match;
-  while ((match = actionRegex.exec(text)) !== null) {
-    if (match[0]) {
-      const eventText = match[0].trim();
-      if (eventText.length > 10 && eventText.length < 100) {
-        events.add(eventText);
-      }
-    }
-  }
-  
-  // Look for explicit "EVENT:" markers
-  const eventMarkerRegex = /\bEVENT\s*:\s*([^.!?]+)/gi;
-  while ((match = eventMarkerRegex.exec(text)) !== null) {
-    if (match[1] && match[1].trim().length > 0) {
-      events.add(match[1].trim());
-    }
-  }
-  
-  return [...events];
-};
-
-// Helper function to extract important objects mentioned in the text
-const extractObjects = (text: string): string[] => {
-  const objects = new Set<string>();
-  
-  // Common object indicators
-  const objectIndicators = ['holds', 'carries', 'picks up', 'puts down', 'takes', 'drops', 'finds', 
-                           'sees', 'looks at', 'examines', 'opens', 'closes', 'wears', 'carrying'];
-  
-  // Object types that are commonly important in stories
-  const objectTypes = ['sword', 'gun', 'knife', 'book', 'letter', 'key', 'map', 'phone', 'computer',
-                      'necklace', 'ring', 'amulet', 'crown', 'scepter', 'wand', 'staff', 'shield',
-                      'armor', 'robe', 'cloak', 'hat', 'mask', 'potion', 'scroll', 'artifact'];
-  
-  // Look for objects after object indicators
-  const lines = text.split('\n');
-  for (const line of lines) {
-    for (const indicator of objectIndicators) {
-      // Object is often a noun phrase after the indicator
-      const regex = new RegExp(`\\b${indicator}\\s+(?:a|an|the|his|her|their|its)\\s+([a-z]+(?:\\s+[a-z]+){0,2})`, 'gi');
-      let match;
-      while ((match = regex.exec(line)) !== null) {
-        if (match[1] && match[1].trim().length > 0) {
-          objects.add(match[1].trim());
-        }
-      }
-    }
-  }
-  
-  // Look for specific object types
-  for (const type of objectTypes) {
-    const regex = new RegExp(`\\b(?:a|an|the|his|her|their|its)\\s+([a-z]+\\s+)?${type}\\b`, 'gi');
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-      const objectName = match[1] ? `${match[1].trim()} ${type}` : type;
-      objects.add(objectName);
-    }
-  }
-  
-  // Look for objects in ALL CAPS that aren't character names
-  const allCapsCharacters = extractAllCapsCharacters(text);
-  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
-  const allCapsMatches = text.match(allCapsRegex) || [];
-  
-  for (const match of allCapsMatches) {
-    // If it's not already detected as a character and not a common word
-    if (!allCapsCharacters.includes(match) && match.length > 2) {
-      // Check if it's mentioned with object verbs
-      for (const indicator of objectIndicators) {
-        if (text.includes(`${indicator} ${match}`) || text.includes(`${match} is`)) {
-          objects.add(match);
-          break;
-        }
-      }
-    }
-  }
-  
-  return [...objects];
-};
 
 const Importer: React.FC = () => {
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -313,100 +115,21 @@ const Importer: React.FC = () => {
         throw new Error('File content is empty');
       }
 
-      // Extract ALL CAPS characters directly from the text first
-      const allCapsCharacters = extractAllCapsCharacters(fileContent);
-      setDebugInfo(`Found ${allCapsCharacters.length} ALL CAPS characters: ${allCapsCharacters.join(', ')}`);
-      
-      // Create character objects from ALL CAPS names
-      const characterObjects = allCapsCharacters.map(name => {
-        // Set role based on character name if possible
-        let role: 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other' = 'supporting';
-        let description = 'A character in the story';
-        
-        // Sample role detection logic - adjust as needed
-        if (name === 'RUFUS') {
-          role = 'protagonist';
-          description = 'The main character, a young wolf';
-        } else if (name === 'STUPUS') {
-          role = 'antagonist';
-          description = 'An arrogant character who antagonizes Rufus';
-        }
-        
-        return {
-          id: uuidv4(),
-          name: name.charAt(0) + name.slice(1).toLowerCase(), // Convert to Title Case
-          role,
-          description,
-          story_id: DEFAULT_STORY_ID,
-          confidence: 0.9 // High confidence for ALL CAPS characters
-        };
-      });
-      
-      // Extract locations
-      const extractedLocations = extractLocations(fileContent);
-      setDebugInfo(prev => `${prev}\nFound ${extractedLocations.length} locations: ${extractedLocations.join(', ')}`);
-      
-      // Create location objects
-      const locationObjects = extractedLocations.map(name => {
-        return {
-          id: uuidv4(),
-          name: name,
-          description: `A location in the story: ${name}`,
-          location_type: 'other',
-          story_id: DEFAULT_STORY_ID,
-          story_world_id: DEFAULT_STORYWORLD_ID,
-          confidence: 0.75
-        };
-      });
-      
-      // Extract plotlines
-      const extractedPlotlines = extractPlotlines(fileContent);
-      setDebugInfo(prev => `${prev}\nFound ${extractedPlotlines.length} plotlines: ${extractedPlotlines.join(', ')}`);
-      
-      // Create plotline objects
-      const plotlineObjects = extractedPlotlines.map(title => {
-        return {
-          id: uuidv4(),
-          title: title,
-          description: `Plotline: ${title}`,
-          plotline_type: title.toLowerCase().includes('main') ? 'main' : 'subplot',
-          story_id: DEFAULT_STORY_ID,
-          confidence: 0.6
-        };
-      });
-      
-      // Extract events
-      const extractedEvents = extractEvents(fileContent);
-      setDebugInfo(prev => `${prev}\nFound ${extractedEvents.length} events: ${extractedEvents.join(', ')}`);
-      
-      // Create event objects
-      const eventObjects = extractedEvents.map((title, index) => {
-        return {
-          id: uuidv4(),
-          title: title,
-          description: title,
-          story_id: DEFAULT_STORY_ID,
-          sequence_number: index * 10, // Simple sequential ordering
-          confidence: 0.5
-        };
-      });
-      
-      // Extract objects
-      const extractedObjects = extractObjects(fileContent);
-      setDebugInfo(prev => `${prev}\nFound ${extractedObjects.length} objects: ${extractedObjects.join(', ')}`);
-      
-      // Create object objects
-      const objectObjects = extractedObjects.map(name => {
-        return {
-          id: uuidv4(),
-          name: name.charAt(0).toUpperCase() + name.slice(1), // Capitalize
-          description: `An item in the story: ${name}`,
-          item_type: 'other',
-          story_id: DEFAULT_STORY_ID,
-          story_world_id: DEFAULT_STORYWORLD_ID,
-          confidence: 0.6
-        };
-      });
+      // Use our modular extractors to get all entity types
+      const characterObjects = extractCharacters(fileContent, DEFAULT_STORY_ID);
+      const locationObjects = extractLocations(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
+      const plotlineObjects = extractPlotlines(fileContent, DEFAULT_STORY_ID);
+      const eventObjects = extractEvents(fileContent, DEFAULT_STORY_ID);
+      const objectObjects = extractObjects(fileContent, DEFAULT_STORY_ID, DEFAULT_STORYWORLD_ID);
+      const sceneObjects = extractScenes(fileContent, DEFAULT_STORY_ID);
+
+      // Add debug information about what was extracted
+      setDebugInfo(`Found ${characterObjects.length} characters\n` +
+                  `Found ${locationObjects.length} locations\n` +
+                  `Found ${plotlineObjects.length} plotlines\n` +
+                  `Found ${eventObjects.length} events\n` +
+                  `Found ${objectObjects.length} objects\n` +
+                  `Found ${sceneObjects.length} scenes`);
 
       // Call the analyze-story edge function with a unique request ID to avoid caching
       const requestId = `req_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
@@ -452,12 +175,12 @@ const Importer: React.FC = () => {
         setDebugInfo(prev => `${prev}\nAPI call failed: ${apiErr.message}`);
       }
 
-      // Create a skeleton response with our character data
+      // Create a data structure with all our extracted entities
       const processedData = {
         characters: characterObjects,
         locations: locationObjects,
         plotlines: plotlineObjects,
-        scenes: [], // We'll implement direct scene extraction in a future update
+        scenes: sceneObjects,
         events: eventObjects,
         objects: objectObjects
       };
@@ -612,90 +335,10 @@ const Importer: React.FC = () => {
         return;
       }
       
-      // Prepare elements for saving based on type
-      const preparedElements = newElements.map((elem: any) => {
-        // Common fields for all element types
-        const commonFields = {
-          id: elem.id, // Now using UUID
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        
-        // Add type-specific fields
-        switch (type) {
-          case 'characters':
-            return {
-              ...commonFields,
-              name: elem.name,
-              description: elem.description || '',
-              story_world_id: DEFAULT_STORYWORLD_ID,
-              story_id: DEFAULT_STORY_ID,
-              role: elem.role || 'supporting',
-              appearance: elem.appearance || '',
-              background: elem.background || '',
-              personality: elem.personality || '',
-            };
-          
-          case 'locations':
-            return {
-              ...commonFields,
-              name: elem.name,
-              description: elem.description || '',
-              story_world_id: DEFAULT_STORYWORLD_ID,
-              story_id: DEFAULT_STORY_ID,
-              location_type: elem.location_type || 'other',
-            };
-          
-          case 'plotlines':
-            return {
-              ...commonFields,
-              title: elem.title,
-              description: elem.description || '',
-              story_id: DEFAULT_STORY_ID,
-              plotline_type: elem.plotline_type || 'main',
-            };
-          
-          case 'scenes':
-            return {
-              ...commonFields,
-              title: elem.title,
-              description: elem.description || '',
-              story_id: DEFAULT_STORY_ID,
-              content: elem.content || '',
-              type: elem.type || 'scene',
-              status: 'draft',
-              is_visible: true,
-            };
-          
-          case 'events':
-            return {
-              ...commonFields,
-              title: elem.title || elem.name,
-              description: elem.description || '',
-              story_id: DEFAULT_STORY_ID,
-              sequence_number: elem.sequence_number || 0,
-            };
-          
-          case 'objects':
-            return {
-              ...commonFields,
-              name: elem.name,
-              description: elem.description || '',
-              story_world_id: DEFAULT_STORYWORLD_ID,
-              story_id: DEFAULT_STORY_ID,
-              item_type: elem.item_type || 'other',
-              significance: elem.significance || '',
-            };
-          
-          default:
-            return elem;
-        }
-      });
-      
       // Insert elements into the appropriate table
       const { data, error } = await supabase
         .from(tableName)
-        .insert(preparedElements)
+        .insert(newElements)
         .select();
       
       if (error) {
