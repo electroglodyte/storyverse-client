@@ -1,3 +1,7 @@
+// handlers/object-handlers.js
+import { supabase } from '../config.js';
+import { v4 as uuidv4 } from 'uuid';
+
 // Extend extractObjects function to identify and extract objects/props from the story text
 const extractObjects = async (text, storyId, characters = [], locations = []) => {
   // Extract object names and information from text
@@ -225,244 +229,440 @@ const detectObjectLocationRelationships = async (objects, locations, text) => {
   return relationships;
 };
 
-// Modify the existing analyzeStory function to include object extraction
-const analyzeStory = async (args) => {
+// Create a new object and optionally link it to characters and locations
+const createObject = async (args) => {
   try {
     const {
-      story_text,
-      story_title,
-      options = {}
+      object_data,
+      character_links = [],
+      location_links = []
     } = args;
     
-    const {
-      create_project = true,
-      story_id = null,
-      story_world_id = null,
-      extract_characters = true,
-      extract_locations = true,
-      extract_events = true,
-      extract_objects = true,
-      extract_relationships = true,
-      interactive_mode = true,
-      resolution_threshold = 0.7
-    } = options;
+    // Generate a new ID if not provided
+    const objectId = object_data.id || uuidv4();
     
-    // Step 1: Initialize project if needed
-    const storyId = create_project || !story_id 
-      ? await createOrGetStory(story_title, story_world_id)
-      : story_id;
+    // Create the object
+    const objectToInsert = {
+      id: objectId,
+      ...object_data,
+      created_at: new Date().toISOString()
+    };
     
-    // Step 2: Initial text processing
-    const processedText = preprocessText(story_text);
+    const { data: createdObject, error: objectError } = await supabase
+      .from('objects')
+      .insert(objectToInsert)
+      .select()
+      .single();
     
-    // Step 3: Entity extraction
-    let extractedCharacters = [];
-    let extractedLocations = [];
-    let extractedEvents = [];
-    let extractedObjects = [];
-    let extractedPlotlines = [];
-    
-    if (extract_characters) {
-      console.log('Extracting characters...');
-      extractedCharacters = await extractCharacters(processedText, storyId);
-      
-      // Store characters in database
-      if (extractedCharacters.length > 0) {
-        await storeEntities(extractedCharacters, 'characters');
-      }
+    if (objectError) {
+      throw objectError;
     }
     
-    if (extract_locations) {
-      console.log('Extracting locations...');
-      extractedLocations = await extractLocations(processedText, storyId);
-      
-      // Store locations in database
-      if (extractedLocations.length > 0) {
-        await storeEntities(extractedLocations, 'locations');
-      }
-    }
-    
-    if (extract_objects) {
-      console.log('Extracting objects...');
-      extractedObjects = await extractObjects(processedText, storyId, extractedCharacters, extractedLocations);
-      
-      // Store objects in database
-      if (extractedObjects.length > 0) {
-        await storeEntities(extractedObjects, 'objects');
-      }
-    }
-    
-    if (extract_events) {
-      console.log('Extracting events...');
-      extractedEvents = await extractEvents(processedText, storyId, extractedCharacters, extractedLocations);
-      
-      // Store events in database
-      if (extractedEvents.length > 0) {
-        const eventsToStore = extractedEvents.map(event => {
-          const { involved_characters, locations, ...eventData } = event;
-          return eventData;
-        });
-        
-        await storeEntities(eventsToStore, 'events');
-        
-        // Store character-event relationships
-        for (const event of extractedEvents) {
-          if (event.involved_characters && event.involved_characters.length > 0) {
-            const characterEvents = event.involved_characters.map(ce => ({
-              id: uuidv4(),
-              character_id: ce.character_id,
-              event_id: event.id,
-              importance: ce.importance,
-              experience_type: ce.experience_type,
-              character_sequence_number: 10, // Default value
-              created_at: new Date().toISOString()
-            }));
-            
-            await storeEntities(characterEvents, 'character_events');
-          }
-        }
-        
-        // Track objects in events
-        if (extractedObjects.length > 0) {
-          // For each event, check if objects are mentioned
-          for (const event of extractedEvents) {
-            const objectAppearances = [];
-            
-            for (const object of extractedObjects) {
-              // Check if the object is mentioned in this event
-              if (event.description && new RegExp(`\\b${object.name}\\b`, 'i').test(event.description)) {
-                objectAppearances.push({
-                  id: uuidv4(),
-                  object_id: object.id,
-                  event_id: event.id,
-                  importance: event.description.toLowerCase().split(object.name.toLowerCase()).length > 2 ? 'primary' : 'secondary',
-                  description: `${object.name} appears in event: ${event.title}`,
-                  created_at: new Date().toISOString()
-                });
-              }
-            }
-            
-            if (objectAppearances.length > 0) {
-              await storeEntities(objectAppearances, 'object_appearances');
-            }
-          }
-        }
-      }
-    }
-    
-    // Step 4: Relationship detection
-    let characterRelationships = [];
+    // Create character relationships if provided
     let objectCharacterRelationships = [];
-    let objectLocationRelationships = [];
-    let eventDependencies = [];
+    if (character_links && character_links.length > 0) {
+      const charLinks = character_links.map(link => ({
+        id: uuidv4(),
+        object_id: objectId,
+        character_id: link.character_id,
+        relationship_type: link.relationship_type || 'associated',
+        description: link.description || undefined,
+        created_at: new Date().toISOString()
+      }));
+      
+      const { data: insertedLinks, error: linkError } = await supabase
+        .from('object_character_relationships')
+        .insert(charLinks)
+        .select();
+      
+      if (linkError) {
+        console.error('Error creating character relationships:', linkError);
+      } else {
+        objectCharacterRelationships = insertedLinks;
+      }
+    }
     
-    if (extract_relationships) {
-      console.log('Detecting character relationships...');
-      characterRelationships = await detectCharacterRelationships(extractedCharacters, processedText);
+    // Create location relationships if provided
+    let objectLocationRelationships = [];
+    if (location_links && location_links.length > 0) {
+      const locLinks = location_links.map(link => ({
+        id: uuidv4(),
+        object_id: objectId,
+        location_id: link.location_id,
+        relationship_type: link.relationship_type || 'located',
+        description: link.description || undefined,
+        created_at: new Date().toISOString()
+      }));
       
-      // Store character relationships
-      if (characterRelationships.length > 0) {
-        const relationshipsToStore = characterRelationships.map(rel => {
-          const { interaction_count, ...relData } = rel;
-          return {
-            ...relData,
-            story_id: storyId
-          };
-        });
-        
-        await storeEntities(relationshipsToStore, 'character_relationships');
-      }
+      const { data: insertedLinks, error: linkError } = await supabase
+        .from('object_location_relationships')
+        .insert(locLinks)
+        .select();
       
-      // Detect and store object-character relationships
-      if (extractedObjects.length > 0 && extractedCharacters.length > 0) {
-        console.log('Detecting object-character relationships...');
-        objectCharacterRelationships = await detectObjectCharacterRelationships(extractedObjects, extractedCharacters, processedText);
-        
-        if (objectCharacterRelationships.length > 0) {
-          await storeEntities(objectCharacterRelationships, 'object_character_relationships');
-        }
-      }
-      
-      // Detect and store object-location relationships
-      if (extractedObjects.length > 0 && extractedLocations.length > 0) {
-        console.log('Detecting object-location relationships...');
-        objectLocationRelationships = await detectObjectLocationRelationships(extractedObjects, extractedLocations, processedText);
-        
-        if (objectLocationRelationships.length > 0) {
-          await storeEntities(objectLocationRelationships, 'object_location_relationships');
-        }
-      }
-      
-      console.log('Detecting event dependencies...');
-      eventDependencies = await detectEventDependencies(extractedEvents);
-      
-      // Store event dependencies
-      if (eventDependencies.length > 0) {
-        await storeEntities(eventDependencies, 'event_dependencies');
-      }
-      
-      // Detect and store plotlines
-      console.log('Detecting plotlines...');
-      extractedPlotlines = await detectStorylines(extractedEvents, extractedCharacters, storyId);
-      
-      if (extractedPlotlines.length > 0) {
-        // Separate plotline_events many-to-many relationships
-        const plotlinesToStore = extractedPlotlines.map(plotline => {
-          const { events, characters, ...plotlineData } = plotline;
-          return plotlineData;
-        });
-        
-        await storeEntities(plotlinesToStore, 'plotlines');
-        
-        // Store plotline-event relationships
-        for (const plotline of extractedPlotlines) {
-          if (plotline.events && plotline.events.length > 0) {
-            const plotlineEvents = plotline.events.map(eventId => ({
-              id: uuidv4(),
-              plotline_id: plotline.id,
-              event_id: eventId,
-              created_at: new Date().toISOString()
-            }));
-            
-            await storeEntities(plotlineEvents, 'plotline_events');
-          }
-          
-          // Store plotline-character relationships
-          if (plotline.characters && plotline.characters.length > 0) {
-            const plotlineCharacters = plotline.characters.map(charId => ({
-              id: uuidv4(),
-              plotline_id: plotline.id,
-              character_id: charId,
-              created_at: new Date().toISOString()
-            }));
-            
-            await storeEntities(plotlineCharacters, 'plotline_characters');
-          }
-        }
+      if (linkError) {
+        console.error('Error creating location relationships:', linkError);
+      } else {
+        objectLocationRelationships = insertedLinks;
       }
     }
     
     return {
       success: true,
-      story_id: storyId,
-      title: story_title,
-      characters: extractedCharacters,
-      locations: extractedLocations,
-      objects: extractedObjects,
-      events: extractedEvents.map(event => {
-        const { involved_characters, locations, ...eventData } = event;
-        return eventData;
-      }),
-      relationships: {
-        character_relationships: characterRelationships,
-        object_character_relationships: objectCharacterRelationships,
-        object_location_relationships: objectLocationRelationships
-      },
-      dependencies: eventDependencies,
-      plotlines: extractedPlotlines
+      object: createdObject,
+      character_relationships: objectCharacterRelationships,
+      location_relationships: objectLocationRelationships
     };
   } catch (error) {
-    console.error('Error in analyzeStory:', error);
+    console.error('Error in createObject:', error);
     throw error;
   }
+};
+
+// Link an object to a character
+const linkObjectToCharacter = async (args) => {
+  try {
+    const {
+      object_id,
+      character_id,
+      relationship_type = 'associated',
+      description = ''
+    } = args;
+    
+    // First, verify both the object and character exist
+    const { data: object, error: objectError } = await supabase
+      .from('objects')
+      .select('id, name')
+      .eq('id', object_id)
+      .single();
+    
+    if (objectError) {
+      throw new Error(`Object with ID ${object_id} not found`);
+    }
+    
+    const { data: character, error: characterError } = await supabase
+      .from('characters')
+      .select('id, name')
+      .eq('id', character_id)
+      .single();
+    
+    if (characterError) {
+      throw new Error(`Character with ID ${character_id} not found`);
+    }
+    
+    // Create the relationship
+    const relationship = {
+      id: uuidv4(),
+      object_id,
+      character_id,
+      relationship_type,
+      description: description || `Relationship between ${object.name} and ${character.name}`,
+      created_at: new Date().toISOString()
+    };
+    
+    const { data: createdRelationship, error: relationshipError } = await supabase
+      .from('object_character_relationships')
+      .insert(relationship)
+      .select()
+      .single();
+    
+    if (relationshipError) {
+      throw relationshipError;
+    }
+    
+    return {
+      success: true,
+      relationship: createdRelationship,
+      object,
+      character
+    };
+  } catch (error) {
+    console.error('Error in linkObjectToCharacter:', error);
+    throw error;
+  }
+};
+
+// Link an object to a location
+const linkObjectToLocation = async (args) => {
+  try {
+    const {
+      object_id,
+      location_id,
+      relationship_type = 'located',
+      description = ''
+    } = args;
+    
+    // First, verify both the object and location exist
+    const { data: object, error: objectError } = await supabase
+      .from('objects')
+      .select('id, name')
+      .eq('id', object_id)
+      .single();
+    
+    if (objectError) {
+      throw new Error(`Object with ID ${object_id} not found`);
+    }
+    
+    const { data: location, error: locationError } = await supabase
+      .from('locations')
+      .select('id, name')
+      .eq('id', location_id)
+      .single();
+    
+    if (locationError) {
+      throw new Error(`Location with ID ${location_id} not found`);
+    }
+    
+    // Create the relationship
+    const relationship = {
+      id: uuidv4(),
+      object_id,
+      location_id,
+      relationship_type,
+      description: description || `${object.name} is ${relationship_type} in ${location.name}`,
+      created_at: new Date().toISOString()
+    };
+    
+    const { data: createdRelationship, error: relationshipError } = await supabase
+      .from('object_location_relationships')
+      .insert(relationship)
+      .select()
+      .single();
+    
+    if (relationshipError) {
+      throw relationshipError;
+    }
+    
+    return {
+      success: true,
+      relationship: createdRelationship,
+      object,
+      location
+    };
+  } catch (error) {
+    console.error('Error in linkObjectToLocation:', error);
+    throw error;
+  }
+};
+
+// Track an object's appearance in a scene or event
+const trackObjectAppearance = async (args) => {
+  try {
+    const {
+      object_id,
+      scene_id = null,
+      event_id = null,
+      importance = 'secondary',
+      description = ''
+    } = args;
+    
+    if (!scene_id && !event_id) {
+      throw new Error('Either scene_id or event_id must be provided');
+    }
+    
+    // Verify the object exists
+    const { data: object, error: objectError } = await supabase
+      .from('objects')
+      .select('id, name, appearance_count')
+      .eq('id', object_id)
+      .single();
+    
+    if (objectError) {
+      throw new Error(`Object with ID ${object_id} not found`);
+    }
+    
+    // Create the appearance record
+    const appearance = {
+      id: uuidv4(),
+      object_id,
+      scene_id,
+      event_id,
+      importance,
+      description: description || `${object.name} appears in the ${scene_id ? 'scene' : 'event'}`,
+      created_at: new Date().toISOString()
+    };
+    
+    const { data: createdAppearance, error: appearanceError } = await supabase
+      .from('object_appearances')
+      .insert(appearance)
+      .select()
+      .single();
+    
+    if (appearanceError) {
+      throw appearanceError;
+    }
+    
+    // Update the object's appearance_count
+    const { data: updatedObject, error: updateError } = await supabase
+      .from('objects')
+      .update({ 
+        appearance_count: (object.appearance_count || 0) + 1
+      })
+      .eq('id', object_id)
+      .select()
+      .single();
+    
+    if (updateError) {
+      console.error('Error updating object appearance count:', updateError);
+    }
+    
+    return {
+      success: true,
+      appearance: createdAppearance,
+      object: updatedObject || object
+    };
+  } catch (error) {
+    console.error('Error in trackObjectAppearance:', error);
+    throw error;
+  }
+};
+
+// Analyze how objects are used throughout a story
+const analyzeObjectUsage = async (args) => {
+  try {
+    const {
+      story_id
+    } = args;
+    
+    // Get all objects for the story
+    const { data: objects, error: objectsError } = await supabase
+      .from('objects')
+      .select('*')
+      .eq('story_id', story_id);
+    
+    if (objectsError) {
+      throw objectsError;
+    }
+    
+    if (!objects || objects.length === 0) {
+      return {
+        success: false,
+        message: 'No objects found for this story',
+        objects: []
+      };
+    }
+    
+    // Get object appearances
+    const objectIds = objects.map(obj => obj.id);
+    const { data: appearances, error: appearancesError } = await supabase
+      .from('object_appearances')
+      .select('*, scene:scenes(id, title), event:events(id, title, sequence_number)')
+      .in('object_id', objectIds);
+    
+    if (appearancesError) {
+      throw appearancesError;
+    }
+    
+    // Get object-character relationships
+    const { data: characterRelationships, error: charRelError } = await supabase
+      .from('object_character_relationships')
+      .select('*, character:characters(id, name, role)')
+      .in('object_id', objectIds);
+    
+    if (charRelError) {
+      throw charRelError;
+    }
+    
+    // Get object-location relationships
+    const { data: locationRelationships, error: locRelError } = await supabase
+      .from('object_location_relationships')
+      .select('*, location:locations(id, name, location_type)')
+      .in('object_id', objectIds);
+    
+    if (locRelError) {
+      throw locRelError;
+    }
+    
+    // Compile object usage data
+    const objectsWithUsage = objects.map(object => {
+      const objectAppearances = appearances ? appearances.filter(a => a.object_id === object.id) : [];
+      const objectCharRelationships = characterRelationships ? characterRelationships.filter(r => r.object_id === object.id) : [];
+      const objectLocRelationships = locationRelationships ? locationRelationships.filter(r => r.object_id === object.id) : [];
+      
+      // Determine the progression of object appearances through the story
+      const eventAppearances = objectAppearances
+        .filter(a => a.event_id)
+        .map(a => ({
+          event_id: a.event_id,
+          event_title: a.event.title,
+          sequence_number: a.event.sequence_number,
+          importance: a.importance
+        }))
+        .sort((a, b) => a.sequence_number - b.sequence_number);
+      
+      // Identify potential character arcs involving this object
+      const characterArcs = [];
+      for (const charRel of objectCharRelationships) {
+        const charEvents = eventAppearances.filter(ea => 
+          appearances.some(a => 
+            a.event_id === ea.event_id && 
+            characterRelationships.some(cr => 
+              cr.character_id === charRel.character_id && 
+              cr.object_id === object.id
+            )
+          )
+        );
+        
+        if (charEvents.length >= 2) {
+          characterArcs.push({
+            character_id: charRel.character_id,
+            character_name: charRel.character.name,
+            relationship_type: charRel.relationship_type,
+            event_count: charEvents.length,
+            first_appearance: charEvents[0],
+            last_appearance: charEvents[charEvents.length - 1]
+          });
+        }
+      }
+      
+      return {
+        id: object.id,
+        name: object.name,
+        description: object.description,
+        object_type: object.object_type,
+        is_macguffin: object.is_macguffin,
+        appearance_count: objectAppearances.length,
+        appearances: {
+          scenes: objectAppearances.filter(a => a.scene_id).length,
+          events: objectAppearances.filter(a => a.event_id).length,
+          progression: eventAppearances
+        },
+        relationships: {
+          characters: objectCharRelationships.map(r => ({
+            character_id: r.character_id,
+            character_name: r.character.name,
+            character_role: r.character.role,
+            relationship_type: r.relationship_type
+          })),
+          locations: objectLocRelationships.map(r => ({
+            location_id: r.location_id,
+            location_name: r.location.name,
+            location_type: r.location.location_type,
+            relationship_type: r.relationship_type
+          }))
+        },
+        character_arcs: characterArcs
+      };
+    });
+    
+    return {
+      success: true,
+      story_id,
+      object_count: objects.length,
+      objects: objectsWithUsage
+    };
+  } catch (error) {
+    console.error('Error in analyzeObjectUsage:', error);
+    throw error;
+  }
+};
+
+export default {
+  createObject,
+  linkObjectToCharacter,
+  linkObjectToLocation,
+  trackObjectAppearance,
+  analyzeObjectUsage,
+  extractObjects,
+  detectObjectCharacterRelationships,
+  detectObjectLocationRelationships
 };
