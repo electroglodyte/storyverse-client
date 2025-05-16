@@ -17,15 +17,6 @@ interface ExtractedElements {
   events: any[];
 }
 
-// Define a type for database item
-interface DbItem {
-  id: string;
-  name?: string;
-  title?: string;
-  description?: string;
-  [key: string]: any;
-}
-
 // Default story and world UUIDs - use the existing records from the database
 const DEFAULT_STORYWORLD_ID = 'bb4e4c55-0280-4ba1-985b-1590e3270d65'; // NoneVerse UUID
 const DEFAULT_STORY_ID = '02334755-067a-44b2-bb58-9c8aa24ac667'; // NoneStory UUID
@@ -243,59 +234,49 @@ const Importer: React.FC = () => {
     });
   };
 
-  // Check if an element already exists in the database
-  const checkDuplicates = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events', elements: any[]) => {
+  // New simplified approach: just get existing names/titles as strings
+  const getExistingNameMap = async (type: 'characters' | 'locations' | 'plotlines' | 'scenes' | 'events', elements: any[]) => {
     // Define the name field based on the type
     const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
     
     // Extract all names to check
-    const namesToCheck = elements.map(elem => elem[nameField]);
+    const namesToCheck = elements
+      .filter(elem => elem && elem[nameField])
+      .map(elem => elem[nameField]);
     
-    if (namesToCheck.length === 0) return [];
-    
-    // Query the database for any matching names
-    const { data, error } = await supabase
-      .from(type)
-      .select('id, ' + nameField)
-      .in(nameField, namesToCheck);
-    
-    if (error) {
-      console.error(`Error checking for duplicates in ${type}:`, error);
-      throw new Error(`Error checking for duplicates: ${error.message}`);
+    if (namesToCheck.length === 0) {
+      return { existingNames: new Set<string>(), count: 0 };
     }
     
-    // Create a map of existing names to their IDs
-    const existingNamesMap = new Map<string, string>();
-    
-    // Safely process data
-    const safeData = Array.isArray(data) ? data : [];
-    
-    // Process each item individually to handle null values
-    for (let i = 0; i < safeData.length; i++) {
-      const item = safeData[i];
-      // Skip null or undefined items
-      if (!item) continue;
+    try {
+      // Query the database for any matching names
+      const { data, error } = await supabase
+        .from(type)
+        .select('id, ' + nameField)
+        .in(nameField, namesToCheck);
       
-      // Skip items without required properties
-      if (!item.id || !(nameField in item) || item[nameField] === null) continue;
+      if (error) {
+        console.error(`Error checking for duplicates in ${type}:`, error);
+        return { existingNames: new Set<string>(), count: 0 };
+      }
       
-      // Convert to lowercase and add to map
-      const name = String(item[nameField]).toLowerCase();
-      existingNamesMap.set(name, String(item.id));
+      // Create a set of existing names (lowercase for case-insensitive comparison)
+      const existingNames = new Set<string>();
+      
+      // Safely process data
+      if (Array.isArray(data)) {
+        data.forEach(item => {
+          if (item && item[nameField]) {
+            existingNames.add(String(item[nameField]).toLowerCase());
+          }
+        });
+      }
+      
+      return { existingNames, count: existingNames.size };
+    } catch (err) {
+      console.error(`Error in getExistingNameMap:`, err);
+      return { existingNames: new Set<string>(), count: 0 };
     }
-    
-    // Return a list of elements that are duplicate (already exist in the database)
-    const duplicateElements = elements.filter(elem => {
-      // Skip elements with no name field
-      if (!elem || !(nameField in elem) || elem[nameField] === null) return false;
-      
-      // Check if name exists in our map
-      const elemName = String(elem[nameField]).toLowerCase();
-      return existingNamesMap.has(elemName);
-    });
-    
-    // Return the array with explicit cast to DbItem[]
-    return duplicateElements as DbItem[];
   };
 
   // Save the selected elements to the database
@@ -316,42 +297,21 @@ const Importer: React.FC = () => {
         return;
       }
       
-      // Check for duplicates in the database
-      const duplicatesResult = await checkDuplicates(type, elementsToSave);
-      
-      // Always cast the result to an explicitly defined type array
-      const duplicateElements = duplicatesResult as DbItem[];
-      
-      // Log duplicate items safely
-      const duplicatesCount = duplicateElements.length;
-      
-      if (duplicatesCount > 0) {
-        // Safely log skipped elements without accessing properties directly
-        const duplicateNames: string[] = [];
-        duplicateElements.forEach(elem => {
-          if (elem && typeof elem === 'object') {
-            const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
-            const name = elem[nameField] || 'Unnamed';
-            duplicateNames.push(typeof name === 'string' ? name : 'Unnamed');
-          }
-        });
-        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, duplicateNames);
-      }
+      // Check for duplicates using our simplified approach
+      const { existingNames, count: duplicatesCount } = await getExistingNameMap(type, elementsToSave);
       
       // Filter out duplicate elements
+      const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
+      
       const newElements = elementsToSave.filter(elem => {
-        const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
-        return !duplicateElements.some(dupElem => {
-          if (!dupElem || typeof dupElem !== 'object' || !(nameField in dupElem) || !elem || !(nameField in elem)) {
-            return false;
-          }
-          
-          const dupName = dupElem[nameField] === null ? '' : String(dupElem[nameField]).toLowerCase();
-          const elemName = elem[nameField] === null ? '' : String(elem[nameField]).toLowerCase();
-          
-          return dupName === elemName;
-        });
+        if (!elem || !elem[nameField]) return false;
+        const elemName = String(elem[nameField]).toLowerCase();
+        return !existingNames.has(elemName);
       });
+      
+      if (duplicatesCount > 0) {
+        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped.`);
+      }
       
       if (newElements.length === 0) {
         console.log(`All ${type} already exist in the database. Skipping.`);
