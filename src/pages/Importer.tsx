@@ -20,19 +20,10 @@ interface ExtractedElements {
 // Define a type for database item
 interface DbItem {
   id: string;
+  name?: string;
+  title?: string;
+  description?: string;
   [key: string]: any;
-}
-
-// Type guard function to check if an object has an id property
-function hasId(obj: any): obj is { id: string } {
-  return obj && typeof obj === 'object' && 'id' in obj && typeof obj.id === 'string';
-}
-
-// Type guard function to check if an object has name or title properties
-function hasNameOrTitle(obj: any): obj is { name?: string; title?: string } {
-  return obj && typeof obj === 'object' && 
-    (('name' in obj && (typeof obj.name === 'string' || obj.name === null)) || 
-     ('title' in obj && (typeof obj.title === 'string' || obj.title === null)));
 }
 
 // Default story and world UUIDs - use the existing records from the database
@@ -294,7 +285,7 @@ const Importer: React.FC = () => {
     }
     
     // Return a list of elements that are duplicate (already exist in the database)
-    return elements.filter(elem => {
+    const duplicateElements = elements.filter(elem => {
       // Skip elements with no name field
       if (!elem || !(nameField in elem) || elem[nameField] === null) return false;
       
@@ -302,6 +293,9 @@ const Importer: React.FC = () => {
       const elemName = String(elem[nameField]).toLowerCase();
       return existingNamesMap.has(elemName);
     });
+    
+    // Return the array with explicit cast to DbItem[]
+    return duplicateElements as DbItem[];
   };
 
   // Save the selected elements to the database
@@ -325,14 +319,32 @@ const Importer: React.FC = () => {
       // Check for duplicates in the database
       const duplicatesResult = await checkDuplicates(type, elementsToSave);
       
-      // Ensure duplicatesResult is an array (for proper TypeScript handling)
-      const duplicateElements = Array.isArray(duplicatesResult) ? duplicatesResult : [];
+      // Always cast the result to an explicitly defined type array
+      const duplicateElements = duplicatesResult as DbItem[];
+      
+      // Log duplicate items safely
+      const duplicatesCount = duplicateElements.length;
+      
+      if (duplicatesCount > 0) {
+        // Safely log skipped elements without accessing properties directly
+        const duplicateNames: string[] = [];
+        duplicateElements.forEach(elem => {
+          if (elem && typeof elem === 'object') {
+            const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
+            const name = elem[nameField] || 'Unnamed';
+            duplicateNames.push(typeof name === 'string' ? name : 'Unnamed');
+          }
+        });
+        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, duplicateNames);
+      }
       
       // Filter out duplicate elements
       const newElements = elementsToSave.filter(elem => {
         const nameField = type === 'plotlines' || type === 'scenes' || type === 'events' ? 'title' : 'name';
         return !duplicateElements.some(dupElem => {
-          if (!dupElem || !(nameField in dupElem) || !elem || !(nameField in elem)) return false;
+          if (!dupElem || typeof dupElem !== 'object' || !(nameField in dupElem) || !elem || !(nameField in elem)) {
+            return false;
+          }
           
           const dupName = dupElem[nameField] === null ? '' : String(dupElem[nameField]).toLowerCase();
           const elemName = elem[nameField] === null ? '' : String(elem[nameField]).toLowerCase();
@@ -340,21 +352,6 @@ const Importer: React.FC = () => {
           return dupName === elemName;
         });
       });
-      
-      // Safely access duplicateElements length
-      const duplicatesCount = duplicateElements.length;
-      
-      if (duplicatesCount > 0) {
-        // Fixed line 277 - Safely extract names/titles with type guards
-        const names = duplicateElements
-          .filter(elem => hasNameOrTitle(elem))
-          .map(elem => {
-            if ('name' in elem && elem.name) return elem.name;
-            if ('title' in elem && elem.title) return elem.title;
-            return 'Unnamed';
-          });
-        console.log(`Found ${duplicatesCount} existing ${type} that will be skipped:`, names);
-      }
       
       if (newElements.length === 0) {
         console.log(`All ${type} already exist in the database. Skipping.`);
