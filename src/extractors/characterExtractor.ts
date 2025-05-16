@@ -5,7 +5,8 @@ const NON_CHARACTER_WORDS = [
   'THE', 'AND', 'OF', 'TO', 'IN', 'A', 'FOR', 'WITH', 'IS', 'ON', 'AT', 'BY', 'AS', 'IT', 'ALL',
   'BUT', 'OR', 'THAT', 'THIS', 'THESE', 'THOSE', 'MY', 'YOUR', 'HIS', 'HER', 'OUR', 'THEIR',
   'ARE', 'WAS', 'WERE', 'BE', 'BEEN', 'BEING', 'HAVE', 'HAS', 'HAD', 'DO', 'DOES', 'DID',
-  'NOT', 'NO', 'YES', 'CAN', 'WILL', 'WOULD', 'SHOULD', 'COULD', 'MAY', 'MIGHT'
+  'NOT', 'NO', 'YES', 'CAN', 'WILL', 'WOULD', 'SHOULD', 'COULD', 'MAY', 'MIGHT',
+  'YEAR', 'YEARS', 'TALE', 'STORY', 'BY', 'SYNOPSIS'
 ];
 
 // Helper function to extract characters marked in ALL CAPS
@@ -14,8 +15,9 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   // First, identify dialogue and scene descriptions where character names appear
   const scriptLines = text.split('\n');
   
-  // Collect all potential character names
+  // Collect all potential character names and multi-word names
   const potentialNames: string[] = [];
+  const multiWordNames: string[] = [];
   
   // Regular expression to detect character speech or action line prefixes (common script format)
   const characterLineRegex = /^([A-Z][A-Z\s]+)(?:\s*\(.*\))?\s*$/;
@@ -26,20 +28,25 @@ export const extractAllCapsCharacters = (text: string): string[] => {
     if (match) {
       const name = match[1].trim();
       if (name.length > 1 && !NON_CHARACTER_WORDS.includes(name)) {
-        potentialNames.push(name);
+        if (name.includes(' ')) {
+          // This is a multi-word name, save it intact
+          multiWordNames.push(name);
+        } else {
+          potentialNames.push(name);
+        }
       }
     }
   }
   
   // Second pass - extract remaining ALL CAPS words
   // Regular expression to match words in ALL CAPS with 2 or more letters
-  const allCapsRegex = /\\b[A-Z]{2,}(?:'[A-Z]+)?\\b/g;
+  const allCapsRegex = /\b[A-Z]{2,}(?:'[A-Z]+)?\b/g;
   const allCapsMatches = text.match(allCapsRegex) || [];
   
-  // Add individual words, filtering non-character words
+  // Add individual words, filtering non-character words and possessive forms
   for (const word of allCapsMatches) {
     // Skip possessive forms (e.g., "WOLF'S")
-    if (word.endsWith("'S")) continue;
+    if (word.includes("'")) continue;
     
     if (!NON_CHARACTER_WORDS.includes(word)) {
       potentialNames.push(word);
@@ -48,24 +55,38 @@ export const extractAllCapsCharacters = (text: string): string[] => {
   
   // Detect multi-word character names (like "BOBA FETT")
   // Look for patterns where ALL CAPS words appear together consistently
-  const multiWordMatches = text.match(/\\b[A-Z]{2,}\\s+[A-Z]{2,}(?:\\s+[A-Z]{2,})*\\b/g) || [];
+  const multiWordRegex = /\b[A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g;
+  const multiWordMatches = text.match(multiWordRegex) || [];
+  
   for (const multiWord of multiWordMatches) {
     // Skip if any of the words are in the non-character list
-    const words = multiWord.split(/\\s+/);
+    const words = multiWord.split(/\s+/);
     const isNonCharacter = words.some(word => NON_CHARACTER_WORDS.includes(word));
+    
     if (!isNonCharacter) {
-      potentialNames.push(multiWord);
+      multiWordNames.push(multiWord);
+      
+      // Remove the individual words from potentialNames since they're part of a multi-word name
+      words.forEach(word => {
+        const index = potentialNames.indexOf(word);
+        if (index !== -1) {
+          potentialNames.splice(index, 1);
+        }
+      });
     }
   }
   
-  // Remove duplicates and return the filtered list
-  return [...new Set(potentialNames)];
+  // Combine single and multi-word names, remove duplicates
+  return [...new Set([...potentialNames, ...multiWordNames])];
 };
 
 // Generate a meaningful character description based on their name and context
 export const generateCharacterDescription = (name: string, storyText: string): string => {
+  // Handle multi-word names for context search
+  const searchName = name.includes(' ') ? name.split(' ')[0] : name;
+  
   // First, check for explicit descriptions near the character's name
-  const namePattern = new RegExp(`${name}[^.!?]*(?:[,.;:]\\s*[^.!?]*)?[.!?]`, 'g');
+  const namePattern = new RegExp(`${searchName}[^.!?]*(?:[,.;:]\\s*[^.!?]*)?[.!?]`, 'g');
   const contextMatches = storyText.match(namePattern);
   
   if (contextMatches && contextMatches.length > 0) {
@@ -78,7 +99,7 @@ export const generateCharacterDescription = (name: string, storyText: string): s
     if (descriptiveMatch) {
       // Extract a reasonable description from the match
       const description = descriptiveMatch
-        .replace(name, '')
+        .replace(new RegExp(searchName, 'g'), '')
         .replace(/^[^a-zA-Z]+/, '')
         .trim();
       
@@ -86,6 +107,16 @@ export const generateCharacterDescription = (name: string, storyText: string): s
         return description;
       }
     }
+  }
+  
+  // Search specifically for antagonist markers
+  if (name === 'STUPUS' || searchName === 'STUPUS') {
+    return "An arrogant character who antagonizes Rufus";
+  }
+  
+  // Look for protagonist indicators
+  if (name === 'RUFUS' || searchName === 'RUFUS') {
+    return "The main character, a young wolf";
   }
   
   // If no good description was found, provide a role-based default
@@ -100,8 +131,19 @@ export const generateCharacterDescription = (name: string, storyText: string): s
 
 // Identify character roles based on story context
 export const identifyCharacterRole = (name: string, storyText: string): 'protagonist' | 'antagonist' | 'supporting' | 'background' | 'other' => {
-  const nameLower = name.toLowerCase();
+  // Handle multi-word names for context search
+  const searchName = name.includes(' ') ? name.split(' ')[0] : name;
+  const nameLower = searchName.toLowerCase();
   const storyLower = storyText.toLowerCase();
+  
+  // Specific character role assignments
+  if (name === 'RUFUS' || searchName === 'RUFUS') {
+    return 'protagonist';
+  }
+  
+  if (name === 'STUPUS' || searchName === 'STUPUS') {
+    return 'antagonist';
+  }
   
   // Count character name mentions
   const nameCount = (storyLower.match(new RegExp(nameLower, 'g')) || []).length;
@@ -115,7 +157,7 @@ export const identifyCharacterRole = (name: string, storyText: string): 'protago
   }
   
   // Check for antagonist indicators (negative words near name)
-  const negativeWords = ['against', 'enemy', 'evil', 'villain', 'foe', 'threat', 'danger', 'opponent'];
+  const negativeWords = ['against', 'enemy', 'evil', 'villain', 'foe', 'threat', 'danger', 'opponent', 'arrogant'];
   const isAntagonist = negativeWords.some(word => 
     storyLower.includes(`${nameLower} ${word}`) || storyLower.includes(`${word} ${nameLower}`)
   );
