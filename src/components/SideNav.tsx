@@ -116,6 +116,13 @@ export const SideNav: React.FC<SideNavProps> = ({
     paddingLeft: '2.5rem'
   };
 
+  // Styling for disabled menu items
+  const disabledStyle = {
+    ...navItemStyle,
+    color: 'rgba(255, 255, 255, 0.4)',
+    cursor: 'not-allowed'
+  };
+
   const toggleStoryWorldDropdown = () => {
     setShowStoryWorldDropdown(!showStoryWorldDropdown);
   };
@@ -349,18 +356,14 @@ export const SideNav: React.FC<SideNavProps> = ({
 
     const storyId = activeStory?.id;
     const storyWorldId = activeStoryWorld.id;
-    const baseUrl = storyId ? `/stories/${storyId}` : `/story-worlds/${storyWorldId}`;
-    const queryParam = storyId ? `?storyId=${storyId}` : `?storyWorldId=${storyWorldId}`;
-
+    
+    // Only keep links to pages that exist
     return (
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>
-          {activeStory ? activeStory.title : 'ENTITIES'}
-        </h3>
         <ul>
           <li>
             <Link
-              to={`${baseUrl}/characters`}
+              to={`/characters?storyWorldId=${storyWorldId}`}
               style={isActive('/characters') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/characters')) e.currentTarget.style.backgroundColor = 'transparent'}}
@@ -371,7 +374,7 @@ export const SideNav: React.FC<SideNavProps> = ({
           </li>
           <li>
             <Link
-              to={`${baseUrl}/locations`}
+              to={`/locations?storyWorldId=${storyWorldId}`}
               style={isActive('/locations') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/locations')) e.currentTarget.style.backgroundColor = 'transparent'}}
@@ -382,7 +385,7 @@ export const SideNav: React.FC<SideNavProps> = ({
           </li>
           <li>
             <Link
-              to={`${baseUrl}/factions`}
+              to={`/factions?storyWorldId=${storyWorldId}`}
               style={isActive('/factions') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/factions')) e.currentTarget.style.backgroundColor = 'transparent'}}
@@ -392,19 +395,14 @@ export const SideNav: React.FC<SideNavProps> = ({
             </Link>
           </li>
           <li>
-            <Link
-              to={`${baseUrl}/objects`}
-              style={isActive('/objects') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/objects')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
+            <div style={disabledStyle}>
               <FaCube style={{ marginRight: '0.5rem' }} />
               <span>Objects</span>
-            </Link>
+            </div>
           </li>
           <li>
             <Link
-              to={`/importer${queryParam}`}
+              to={`/importer?storyWorldId=${storyWorldId}`}
               style={isActive('/importer') ? activeStyle : navItemStyle}
               onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
               onMouseOut={(e) => {if (!isActive('/importer')) e.currentTarget.style.backgroundColor = 'transparent'}}
@@ -422,58 +420,35 @@ export const SideNav: React.FC<SideNavProps> = ({
   const renderProjectFunctions = () => {
     if (!activeStoryWorld) return null;
     
-    const storyId = activeStory?.id;
-    const storyWorldId = activeStoryWorld.id;
-    const queryParam = storyId ? `?storyId=${storyId}` : `?storyWorldId=${storyWorldId}`;
-
     return (
       <div style={{ marginBottom: '1.5rem' }}>
         <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>PROJECT FUNCTIONS</h3>
         <ul>
+          {/* Temporarily disabled for now since they lead to Page Not Found */}
           <li>
-            <Link
-              to={`/consistency-check${queryParam}`}
-              style={isActive('/consistency-check') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/consistency-check')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
+            <div style={disabledStyle}>
               <FaBolt style={{ marginRight: '0.5rem' }} />
               <span>Consistency Check</span>
-            </Link>
+            </div>
           </li>
           <li>
-            <Link
-              to={`/plot-mapping${queryParam}`}
-              style={isActive('/plot-mapping') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/plot-mapping')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
+            <div style={disabledStyle}>
               <FaProjectDiagram style={{ marginRight: '0.5rem' }} />
               <span>Plot Mapping</span>
-            </Link>
+            </div>
           </li>
           <li>
-            <Link
-              to={`/timeline${queryParam}`}
-              style={isActive('/timeline') ? activeStyle : navItemStyle}
-              onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-              onMouseOut={(e) => {if (!isActive('/timeline')) e.currentTarget.style.backgroundColor = 'transparent'}}
-            >
+            <div style={disabledStyle}>
               <FaHistory style={{ marginRight: '0.5rem' }} />
               <span>Timeline</span>
-            </Link>
+            </div>
           </li>
           {activeStory && (
             <li>
-              <Link
-                to={`/scenes?storyId=${activeStory.id}`}
-                style={isActive('/scenes') ? activeStyle : navItemStyle}
-                onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-                onMouseOut={(e) => {if (!isActive('/scenes')) e.currentTarget.style.backgroundColor = 'transparent'}}
-              >
+              <div style={disabledStyle}>
                 <FaTheaterMasks style={{ marginRight: '0.5rem' }} />
                 <span>Scenes</span>
-              </Link>
+              </div>
             </li>
           )}
         </ul>
@@ -487,15 +462,10 @@ export const SideNav: React.FC<SideNavProps> = ({
       <h3 style={{ padding: '0 1.5rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'rgba(252, 211, 77, 0.7)', fontWeight: '500', marginBottom: '0.5rem' }}>GENERAL</h3>
       <ul>
         <li>
-          <Link
-            to="/dashboard"
-            style={isActive('/dashboard') || location.pathname === '/' ? activeStyle : navItemStyle}
-            onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-            onMouseOut={(e) => {if (!isActive('/dashboard') && location.pathname !== '/') e.currentTarget.style.backgroundColor = 'transparent'}}
-          >
+          <div style={disabledStyle}>
             <FaHome style={{ marginRight: '0.5rem' }} />
             <span>Dashboard</span>
-          </Link>
+          </div>
         </li>
         <li>
           <Link
@@ -520,15 +490,10 @@ export const SideNav: React.FC<SideNavProps> = ({
           </Link>
         </li>
         <li>
-          <Link
-            to="/search"
-            style={isActive('/search') ? activeStyle : navItemStyle}
-            onMouseOver={(e) => {e.currentTarget.style.backgroundColor = '#2d2e33'}}
-            onMouseOut={(e) => {if (!isActive('/search')) e.currentTarget.style.backgroundColor = 'transparent'}}
-          >
+          <div style={disabledStyle}>
             <FaSearch style={{ marginRight: '0.5rem' }} />
             <span>Search</span>
-          </Link>
+          </div>
         </li>
         <li>
           <Link
@@ -559,7 +524,7 @@ export const SideNav: React.FC<SideNavProps> = ({
       {/* Story Selector (only if multiple stories) */}
       {renderStorySelector()}
       
-      {/* Entity Links */}
+      {/* Entity Links - No header as requested */}
       {renderEntityLinks()}
       
       {/* Project Functions */}
