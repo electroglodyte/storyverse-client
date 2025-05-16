@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 import './JSONImport.css';
 
 // Define interfaces for story worlds and stories
@@ -15,6 +16,7 @@ interface Story {
 }
 
 const JSONImport: React.FC = () => {
+  const navigate = useNavigate();
   const [jsonInput, setJsonInput] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,10 @@ const JSONImport: React.FC = () => {
   const [selectedStoryWorldId, setSelectedStoryWorldId] = useState<string>('');
   const [selectedStoryId, setSelectedStoryId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Constants for special dropdown options
+  const CREATE_NEW_WORLD_ID = "create_new_world";
+  const CREATE_NEW_STORY_ID = "create_new_story";
 
   // Fetch story worlds and stories on component mount
   useEffect(() => {
@@ -65,12 +71,12 @@ const JSONImport: React.FC = () => {
   
   // Filter stories when story world selection changes
   useEffect(() => {
-    if (selectedStoryWorldId) {
+    if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
       const filtered = stories.filter(story => story.story_world_id === selectedStoryWorldId);
       setFilteredStories(filtered);
       
       // Clear story selection if the current selection is not in the filtered list
-      if (selectedStoryId && !filtered.some(story => story.id === selectedStoryId)) {
+      if (selectedStoryId && !filtered.some(story => story.id === selectedStoryId) && selectedStoryId !== CREATE_NEW_STORY_ID) {
         setSelectedStoryId('');
       }
     } else {
@@ -86,12 +92,31 @@ const JSONImport: React.FC = () => {
 
   // Handle story world selection
   const handleStoryWorldChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStoryWorldId(e.target.value);
+    const value = e.target.value;
+    
+    if (value === CREATE_NEW_WORLD_ID) {
+      // Navigate to story world creation page
+      navigate('/story-worlds/new');
+      return;
+    }
+    
+    setSelectedStoryWorldId(value);
   };
 
   // Handle story selection
   const handleStoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedStoryId(e.target.value);
+    const value = e.target.value;
+    
+    if (value === CREATE_NEW_STORY_ID) {
+      // Navigate to story creation page, pass the selected story world ID if available
+      const path = selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID
+        ? `/stories/new?world=${selectedStoryWorldId}`
+        : '/stories/new';
+      navigate(path);
+      return;
+    }
+    
+    setSelectedStoryId(value);
   };
 
   // Process the JSON input
@@ -117,14 +142,16 @@ const JSONImport: React.FC = () => {
       }
 
       // Add selected story world and story IDs to the data
-      if (selectedStoryWorldId) {
+      if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
         parsedData.storyWorldId = selectedStoryWorldId;
-        addLog(`Using Story World ID: ${selectedStoryWorldId}`);
+        const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
+        addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
       }
 
-      if (selectedStoryId) {
+      if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
         parsedData.storyId = selectedStoryId;
-        addLog(`Using Story ID: ${selectedStoryId}`);
+        const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
+        addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
       }
 
       // Process the data using import_analyzed_story tool
@@ -175,34 +202,42 @@ const JSONImport: React.FC = () => {
       <div className="dropdowns-container">
         <div className="dropdown-wrapper">
           <label htmlFor="storyWorldSelect">Story World:</label>
-          <select
-            id="storyWorldSelect"
-            value={selectedStoryWorldId}
-            onChange={handleStoryWorldChange}
-            disabled={isLoading || isProcessing}
-            className="dropdown-select"
-          >
-            <option value="">-- Select Story World (optional) --</option>
-            {storyWorlds.map(world => (
-              <option key={world.id} value={world.id}>{world.name}</option>
-            ))}
-          </select>
+          <div className="custom-select-wrapper">
+            <select
+              id="storyWorldSelect"
+              value={selectedStoryWorldId}
+              onChange={handleStoryWorldChange}
+              disabled={isLoading || isProcessing}
+              className="custom-select"
+            >
+              <option value="">-- Select Story World --</option>
+              {storyWorlds.map(world => (
+                <option key={world.id} value={world.id}>{world.name}</option>
+              ))}
+              <option value={CREATE_NEW_WORLD_ID} className="create-new-option">+ Create New Story World</option>
+            </select>
+            <div className="select-arrow"></div>
+          </div>
         </div>
 
         <div className="dropdown-wrapper">
           <label htmlFor="storySelect">Story:</label>
-          <select
-            id="storySelect"
-            value={selectedStoryId}
-            onChange={handleStoryChange}
-            disabled={isLoading || isProcessing}
-            className="dropdown-select"
-          >
-            <option value="">-- Select Story (optional) --</option>
-            {filteredStories.map(story => (
-              <option key={story.id} value={story.id}>{story.title}</option>
-            ))}
-          </select>
+          <div className="custom-select-wrapper">
+            <select
+              id="storySelect"
+              value={selectedStoryId}
+              onChange={handleStoryChange}
+              disabled={isLoading || isProcessing}
+              className="custom-select"
+            >
+              <option value="">-- Select Story --</option>
+              {filteredStories.map(story => (
+                <option key={story.id} value={story.id}>{story.title}</option>
+              ))}
+              <option value={CREATE_NEW_STORY_ID} className="create-new-option">+ Create New Story</option>
+            </select>
+            <div className="select-arrow"></div>
+          </div>
         </div>
       </div>
 
