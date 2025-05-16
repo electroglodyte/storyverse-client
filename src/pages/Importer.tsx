@@ -88,8 +88,8 @@ async function safeSupabaseQuery<T = any>(
       };
     }
     
-    // Safely handle data
-    const safeData = safeArray(response.data);
+    // Safely handle data and add type assertion for TypeScript
+    const safeData = safeArray(response.data) as T[];
     return {
       data: safeData,
       error: null
