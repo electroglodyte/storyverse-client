@@ -13,6 +13,6 @@ export default {
   ...sceneHandlers,
   ...objectHandlers,
   
-  // Map import tool names to handlers
+  // Map import tool names to handlers - only the new one
   import_analyzed_story: importHandlers.importAnalyzedStory
 };
