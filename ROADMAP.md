@@ -7,6 +7,25 @@ This document outlines the planned features, improvements, and milestones for th
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
 
+## Interface Architecture Vision
+
+### Current Mode (Interim Solution)
+* Entity pages accessible from the sidebar with story world pre-selected
+* But still allowing selection changes via the dropdown
+* Works for now as a flexible approach
+
+### Future Architecture Vision
+1. **Project-Focused View** (accessed from sidebar)
+   * Entity pages (Characters, Locations, etc.) locked to the current story world
+   * No story world selector visible - purely working within the context of the selected project
+   * Cleaner, more focused interface for story development
+2. **Admin/Database View** (separate navigation)
+   * Comprehensive tables with full filtering options
+   * Story world selection and cross-project capabilities
+   * More powerful for data management across the entire system
+
+This distinction makes perfect sense from a UX perspective. It separates the creative workflow (staying within one story world) from the administrative/data management workflow (working across all story worlds).
+
 ## Short-Term Goals (1-3 Months)
 
 ### Database Enhancements
