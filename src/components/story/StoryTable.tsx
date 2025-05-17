@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { transformResponse } from '@/lib/supabase'
 import type { Story } from '@/types/database'
 import { formatDate, formatTimeAgo } from '@/utils/formatters'
+import { GridColDef } from '@mui/x-data-grid'
 
 const statusColors: Record<string, string> = {
   'concept': 'bg-gray-100',
@@ -71,16 +72,16 @@ export function StoryTable({ storyWorldId, seriesId }: Props) {
     loadStories()
   }, [storyWorldId, seriesId])
 
-  const handleStoryClick = (id: string) => {
-    navigate(`/stories/${id}`)
+  const handleStoryClick = (params: any) => {
+    navigate(`/stories/${params.row.id}`)
   }
 
-  const columns = [
+  const columns: GridColDef[] = [
     {
       field: 'title',
       headerName: 'Title',
       width: 200,
-      renderCell: (params: { row: ExtendedStory }) => (
+      renderCell: (params) => (
         <span className="text-blue-600 hover:text-blue-800 cursor-pointer">
           {params.row.title}
         </span>
@@ -90,7 +91,7 @@ export function StoryTable({ storyWorldId, seriesId }: Props) {
       field: 'status',
       headerName: 'Status',
       width: 120,
-      renderCell: (params: { row: ExtendedStory }) => (
+      renderCell: (params) => (
         <span className={`px-2 py-1 rounded ${params.row.statusClass}`}>
           {params.row.status}
         </span>
@@ -106,7 +107,7 @@ export function StoryTable({ storyWorldId, seriesId }: Props) {
       field: 'target_date',
       headerName: 'Target Date',
       width: 120,
-      renderCell: (params: { row: ExtendedStory }) => (
+      renderCell: (params) => (
         <span>{params.row.targetDateFormatted}</span>
       )
     },
@@ -114,19 +115,19 @@ export function StoryTable({ storyWorldId, seriesId }: Props) {
       field: 'created_at',
       headerName: 'Created',
       width: 120,
-      renderCell: (params: { row: ExtendedStory }) => (
+      renderCell: (params) => (
         <span>{params.row.createdTimeAgo}</span>
       )
     }
   ]
 
   return (
-    <DataGrid
+    <DataGrid<ExtendedStory>
       rows={stories}
       columns={columns}
       loading={loading}
-      getRowId={(row: ExtendedStory) => row.id}
-      onRowClick={(params) => handleStoryClick(params.row.id)}
+      getRowId={(row) => row.id}
+      onRowClick={handleStoryClick}
     />
   )
 }
