@@ -1,7 +1,17 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.19';
+export const VERSION = '0.9.20';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Added TypeScript verification and testing:
+export const VERSION_NOTES = `Improved JSON Import functionality:
+- Added Supabase Edge Function for story import
+- Implemented intelligent entity type detection
+- Fixed issue with factions incorrectly identified as characters
+- Added support for importing complex entity types like scenes and story questions
+- Enhanced error handling and logging
+- Improved JSON data type detection
+- Added ability to import complete story data structures
+- Preserved context (story and story world IDs) across imports
+
+Previous (0.9.19): Added TypeScript verification and testing:
 - Enhanced TypeScript configuration:
   * Enabled strict mode with all strict flags
   * Added strict null checks and function types
@@ -22,20 +32,4 @@ export const VERSION_NOTES = `Added TypeScript verification and testing:
   * Faction operation tests
   * Location operation tests
   * Error case handling
-  * Null relationship handling
-
-Previous (0.9.18): Added comprehensive database queries and UI components:
-- Implemented proper table relationship queries:
-  * Character queries with relationships, events, and arcs
-  * Faction queries with members, leader, and headquarters
-  * Location queries with parent/child relationships
-- Added shadcn/ui components:
-  * Button component with variants and sizes
-  * Select component with full functionality
-  * Proper styling utilities
-- Enhanced data fetching:
-  * Type-safe queries using Supabase client
-  * Proper error handling
-  * Relationship handling through join tables
-  * Consistent ordering of related data
-  * Proper null handling for optional relationships`;
+  * Null relationship handling`;
