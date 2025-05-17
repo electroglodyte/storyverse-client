@@ -1,38 +1,27 @@
-// Supabase client configuration and helpers
 import { createClient } from '@supabase/supabase-js'
-import type { Tables } from '@/types/database'
+import { Database } from '@/types/database'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = 'https://gtnyfxhcrikjrlxprpxp.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnlmeGhjcmlranJseHBycHhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3MDYyMzQsImV4cCI6MjA2MjI4MjIzNH0.aY-qIeOjoLlDnhF36Sm5PWdPazhQAmSiJdbpWbXdgH0'
 
-// Type-safe Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
-// Helper functions for consistent transformations on database responses
-export const transformResponse = {
-  fromNull: <T>(value: T | null): T | undefined => value === null ? undefined : value,
-  
-  toNull: <T>(value: T | undefined): T | null => value === undefined ? null : value,
+// Helper type for table names
+type TableName = keyof Database['public']['Tables']
 
-  transformObject: <T extends Record<string, any>>(obj: T): T => {
-    const transformed: any = {}
-    for (const [key, value] of Object.entries(obj)) {
-      transformed[key] = value === null ? undefined : value
-    }
-    return transformed
-  }
+// Generic function to get typed table reference
+export function getTable<T extends TableName>(tableName: T) {
+  return supabase.from(tableName)
 }
 
-// Base table helper that transforms nulls to undefined
-export const getTable = <T extends keyof Tables>(tableName: T) => {
-  return supabase.from(tableName).select('*').then(({ data, error }) => {
-    if (error) throw error
-    return data?.map(row => transformResponse.transformObject(row))
-  }) 
+// Type helper for select queries
+export type DBResponse<T> = {
+  data: T | null
+  error: Error | null
 }
 
-// Export types for use in components
-export type SupabaseClient = typeof supabase
-export type TablesInsert<T extends keyof Tables> = Tables[T]['Insert']
-export type TablesUpdate<T extends keyof Tables> = Tables[T]['Update']
-export type TablesRow<T extends keyof Tables> = Tables[T]['Row']
+// Type helper for joint queries
+export type JointResponse<T, U> = {
+  data: (T & { [key: string]: U | U[] | null })[] | null
+  error: Error | null
+}
