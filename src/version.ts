@@ -1,7 +1,13 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.10';
-export const VERSION_DATE = '2025-05-16';
-export const VERSION_NOTES = `Fixed dependency issues for Vercel deployment:
+export const VERSION = '0.9.11';
+export const VERSION_DATE = '2025-05-17';
+export const VERSION_NOTES = `Fixed dependency conflicts for Vercel deployment:
+- Updated React and TypeScript type definitions to resolve version conflicts
+- Added .npmrc file with legacy-peer-deps=true for better compatibility
+- Reset package-lock.json to allow Vercel to generate a fresh dependency tree
+- Fixed TypeScript ESLint plugin dependencies to ensure build compatibility
+
+Previous (0.9.10): Fixed dependency issues for Vercel deployment:
 - Removed @types/react-dropzone as react-dropzone now includes its own TypeScript types
 - This fixes the build error during npm install on Vercel
 
