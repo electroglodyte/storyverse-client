@@ -1,15 +1,18 @@
-import { Tables } from '@/types/database';
-import { supabase } from '@/services/supabase';
+import { Scene, SceneVersion, SceneComment } from '@/types/database'
+import { ExtendedScene } from '@/types/extended'
+import { supabase } from '@/lib/supabase'
+import { DBResponse } from '@/lib/supabase'
 
-type Scene = Tables['scenes']
-type SceneVersion = Tables['scene_versions']
-type SceneComment = Tables['scene_comments']
-
-export async function getScene(sceneId: string): Promise<Scene | null> {
+export async function getSceneWithDetails(id: string): Promise<ExtendedScene | null> {
   const { data, error } = await supabase
     .from('scenes')
-    .select('*')
-    .eq('id', sceneId)
+    .select(`
+      *,
+      story:stories(*),
+      comments:scene_comments(*),
+      versions:scene_versions(*)
+    `)
+    .eq('id', id)
     .single()
 
   if (error) {
@@ -17,7 +20,49 @@ export async function getScene(sceneId: string): Promise<Scene | null> {
     return null
   }
 
-  return data
+  return data as ExtendedScene
+}
+
+export async function createScene(scene: Partial<Scene>): Promise<DBResponse<Scene>> {
+  const { data, error } = await supabase
+    .from('scenes')
+    .insert([scene])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateScene(id: string, updates: Partial<Scene>): Promise<DBResponse<Scene>> {
+  const { data, error } = await supabase
+    .from('scenes')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteScene(id: string): Promise<DBResponse<Scene>> {
+  const { data, error } = await supabase
+    .from('scenes')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function createSceneVersion(version: Partial<SceneVersion>): Promise<DBResponse<SceneVersion>> {
+  const { data, error } = await supabase
+    .from('scene_versions')
+    .insert([version])
+    .select()
+    .single()
+
+  return { data, error }
 }
 
 export async function getSceneVersions(sceneId: string): Promise<SceneVersion[]> {
@@ -32,38 +77,28 @@ export async function getSceneVersions(sceneId: string): Promise<SceneVersion[]>
     return []
   }
 
-  return data || []
+  return data
 }
 
-export async function createSceneVersion(scene: Scene, notes?: string): Promise<SceneVersion | null> {
-  const { data: existingVersions } = await supabase
-    .from('scene_versions')
-    .select('version_number')
-    .eq('scene_id', scene.id)
-    .order('version_number', { ascending: false })
-    .limit(1)
-
-  const nextVersionNumber = existingVersions && existingVersions[0] 
-    ? existingVersions[0].version_number + 1 
-    : 1
-
+export async function createSceneComment(comment: Partial<SceneComment>): Promise<DBResponse<SceneComment>> {
   const { data, error } = await supabase
-    .from('scene_versions')
-    .insert({
-      scene_id: scene.id,
-      content: scene.content || '',
-      version_number: nextVersionNumber,
-      notes: notes
-    })
+    .from('scene_comments')
+    .insert([comment])
     .select()
     .single()
 
-  if (error) {
-    console.error('Error creating scene version:', error)
-    return null
-  }
+  return { data, error }
+}
 
-  return data
+export async function updateSceneComment(id: string, updates: Partial<SceneComment>): Promise<DBResponse<SceneComment>> {
+  const { data, error } = await supabase
+    .from('scene_comments')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
 }
 
 export async function getSceneComments(sceneId: string): Promise<SceneComment[]> {
@@ -78,61 +113,5 @@ export async function getSceneComments(sceneId: string): Promise<SceneComment[]>
     return []
   }
 
-  return data || []
-}
-
-export async function createSceneComment(
-  sceneId: string,
-  content: string,
-  position?: Record<string, any>
-): Promise<SceneComment | null> {
-  const { data, error } = await supabase
-    .from('scene_comments')
-    .insert({
-      scene_id: sceneId,
-      content,
-      position
-    })
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating scene comment:', error)
-    return null
-  }
-
   return data
-}
-
-export async function updateSceneComment(
-  commentId: string,
-  updates: Partial<SceneComment>
-): Promise<SceneComment | null> {
-  const { data, error } = await supabase
-    .from('scene_comments')
-    .update(updates)
-    .eq('id', commentId)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating scene comment:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function deleteSceneComment(commentId: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('scene_comments')
-    .delete()
-    .eq('id', commentId)
-
-  if (error) {
-    console.error('Error deleting scene comment:', error)
-    return false
-  }
-
-  return true
 }
