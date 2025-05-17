@@ -1,36 +1,60 @@
 import React from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 
-// Custom error component
-const ErrorBoundary = ({ error }: { error: Error }) => {
-  return (
-    <div className="error-container p-4 text-center">
-      <h2 className="text-xl font-bold text-red-600 mb-2">Something went wrong</h2>
-      <p className="mb-4">{error.message}</p>
-      <button 
-        onClick={() => window.location.href = '/'}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        Go back to homepage
-      </button>
-    </div>
-  );
-};
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
 
-// Create a separate component that renders when a route doesn't match any defined route
-const NotFound = () => {
-  return (
-    <div className="not-found-container p-4 text-center">
-      <h2 className="text-xl font-bold text-amber-600 mb-2">Page Not Found</h2>
-      <p className="mb-4">Sorry, we couldn't find the page you're looking for.</p>
-      <button 
-        onClick={() => window.location.href = '/'}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        Go back to homepage
-      </button>
-    </div>
-  );
-};
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
 
-export { ErrorBoundary, NotFound };
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = {
+      hasError: false,
+      error: null
+    };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return {
+      hasError: true,
+      error
+    };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Card className="p-6 m-4 bg-red-50">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500" />
+            <h2 className="text-xl font-semibold text-red-700">Something went wrong</h2>
+            <p className="text-red-600">
+              {this.state.error?.message || 'An unexpected error occurred'}
+            </p>
+            <Button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+            >
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+
+    return this.props.children;
+  }
+}
