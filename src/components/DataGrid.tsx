@@ -2,23 +2,26 @@ import { type FC } from 'react';
 import { DataGrid as MuiDataGrid, 
   type GridColDef,
   type GridEventListener,
-  type GridRenderCellParams,
-  type GridRowParams
+  type GridRowParams,
+  type GridPaginationModel,
+  type GridRowId
 } from '@mui/x-data-grid';
 
-interface DataGridProps {
+interface DataGridProps<T = any> {
   columns: GridColDef[];
-  rows: any[];
+  rows: T[];
   loading?: boolean;
-  onRowClick?: (id: string) => void;
+  onRowClick?: (params: GridRowParams<T>) => void;
   rowCount?: number;
   pageSize?: number;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   height?: number | string;
+  getRowId?: (row: T) => GridRowId;
+  paginationModel?: GridPaginationModel;
 }
 
-export const DataGrid: FC<DataGridProps> = ({
+export const DataGrid = <T extends object>({
   columns,
   rows,
   loading = false,
@@ -27,13 +30,15 @@ export const DataGrid: FC<DataGridProps> = ({
   pageSize = 10,
   onPageChange,
   onPageSizeChange,
-  height = 400
-}) => {
+  height = 400,
+  getRowId,
+  paginationModel
+}: DataGridProps<T>) => {
   const handleRowClick: GridEventListener<'rowClick'> = (
-    params: GridRowParams
+    params
   ) => {
     if (onRowClick) {
-      onRowClick(params.row.id);
+      onRowClick(params);
     }
   };
 
@@ -45,11 +50,22 @@ export const DataGrid: FC<DataGridProps> = ({
         loading={loading}
         onRowClick={handleRowClick}
         rowCount={rowCount}
-        pageSize={pageSize}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
-        disableSelectionOnClick
-        experimentalFeatures={{ newEditingApi: true }}
+        initialState={{
+          pagination: {
+            paginationModel: paginationModel || { pageSize, page: 0 },
+          },
+        }}
+        pageSizeOptions={[5, 10, 25, 50, 100]} 
+        onPaginationModelChange={(model) => {
+          if (onPageChange) {
+            onPageChange(model.page);
+          }
+          if (onPageSizeChange) {
+            onPageSizeChange(model.pageSize);
+          }
+        }}
+        disableRowSelectionOnClick
+        getRowId={getRowId}
       />
     </div>
   );
