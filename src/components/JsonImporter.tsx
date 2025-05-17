@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import './JsonImporter.css';
 
 interface JsonImporterProps {
   // Optional props can be added here if needed
