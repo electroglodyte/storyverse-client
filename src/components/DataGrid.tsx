@@ -1,56 +1,42 @@
-import { type FC } from 'react';
-import { DataGrid as MuiDataGrid, 
-  type GridColDef,
-  type GridEventListener,
-  type GridRenderCellParams,
-  type GridRowParams
-} from '@mui/x-data-grid';
+import { DataGrid as MuiDataGrid, GridColDef, GridRenderCellParams, GridValueGetterParams } from '@mui/x-data-grid'
 
-interface DataGridProps {
-  columns: GridColDef[];
-  rows: any[];
-  loading?: boolean;
-  onRowClick?: (id: string) => void;
-  rowCount?: number;
-  pageSize?: number;
-  onPageChange?: (page: number) => void;
-  onPageSizeChange?: (pageSize: number) => void;
-  height?: number | string;
+export interface DataGridProps {
+  rows: any[]
+  columns: GridColDef[]
+  loading?: boolean
+  onRowClick?: (params: any) => void
+  pageSize?: number
+  autoHeight?: boolean
+  checkboxSelection?: boolean
+  disableSelectionOnClick?: boolean
+  hideFooter?: boolean
 }
 
-export const DataGrid: FC<DataGridProps> = ({
-  columns,
+export function DataGrid({
   rows,
+  columns,
   loading = false,
   onRowClick,
-  rowCount,
   pageSize = 10,
-  onPageChange,
-  onPageSizeChange,
-  height = 400
-}) => {
-  const handleRowClick: GridEventListener<'rowClick'> = (
-    params: GridRowParams
-  ) => {
-    if (onRowClick) {
-      onRowClick(params.row.id);
-    }
-  };
-
+  autoHeight = true,
+  checkboxSelection = false,
+  disableSelectionOnClick = true,
+  hideFooter = false,
+}: DataGridProps) {
   return (
-    <div style={{ height, width: '100%' }}>
-      <MuiDataGrid
-        rows={rows}
-        columns={columns}
-        loading={loading}
-        onRowClick={handleRowClick}
-        rowCount={rowCount}
-        pageSize={pageSize}
-        onPageChange={onPageChange}
-        onPageSizeChange={onPageSizeChange}
-        disableSelectionOnClick
-        experimentalFeatures={{ newEditingApi: true }}
-      />
-    </div>
-  );
-};
+    <MuiDataGrid
+      rows={rows}
+      columns={columns}
+      loading={loading}
+      onRowClick={onRowClick}
+      pageSize={pageSize}
+      autoHeight={autoHeight}
+      checkboxSelection={checkboxSelection}
+      disableSelectionOnClick={disableSelectionOnClick}
+      hideFooter={hideFooter}
+      getRowId={(row) => row.id || Math.random().toString()}
+    />
+  )
+}
+
+export type { GridColDef, GridRenderCellParams, GridValueGetterParams }
