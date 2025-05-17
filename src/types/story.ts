@@ -1,202 +1,126 @@
-import { Json } from './database';
+import {
+  StoryWorld,
+  Series,
+  Story,
+  Character,
+  Location,
+  Faction,
+  Object,
+  CharacterRelationship,
+  CharacterEvent,
+  CharacterArc,
+  Event,
+  Plotline,
+  Scene,
+  SceneVersion,
+  SceneComment,
+  StoryQuestion,
+  EventDependency,
+  WritingSample,
+  StyleProfile
+} from '../supabase-tables';
 
-export interface Character {
+// Extended types with additional type safety
+
+export interface ExtendedCharacter extends Character {
+  relationships?: CharacterRelationship[];
+  events?: (CharacterEvent & { event: Event })[];
+  arcs?: CharacterArc[];
+}
+
+export interface ExtendedLocation extends Location {
+  children?: Location[];
+  parent?: Location | null;
+}
+
+export interface ExtendedFaction extends Faction {
+  members?: { character: Character; role: string }[];
+  leader?: Character | null;
+  headquarters?: Location | null;
+}
+
+export interface ExtendedEvent extends Event {
+  dependencies?: EventDependency[];
+  characters?: (CharacterEvent & { character: Character })[];
+  plotlines?: Plotline[];
+  scene?: Scene;
+}
+
+export interface ExtendedScene extends Scene {
+  version_history?: SceneVersion[];
+  comments?: SceneComment[];
+  characters?: { character: Character; importance: string }[];
+  locations?: Location[];
+  event?: Event;
+}
+
+export interface ExtendedPlotline extends Plotline {
+  events?: Event[];
+  characters?: Character[];
+  starting_event?: Event;
+  climax_event?: Event;
+  resolution_event?: Event;
+}
+
+export interface ExtendedStoryQuestion extends StoryQuestion {
+  origin_scene?: Scene;
+  resolution_scene?: Scene;
+}
+
+// Type guards
+export const isCharacter = (obj: any): obj is Character => {
+  return obj && typeof obj === 'object' && 'name' in obj && (!('type' in obj) || obj.type === 'character');
+};
+
+export const isLocation = (obj: any): obj is Location => {
+  return obj && typeof obj === 'object' && 'name' in obj && (!('type' in obj) || obj.type === 'location');
+};
+
+export const isFaction = (obj: any): obj is Faction => {
+  return obj && typeof obj === 'object' && 'name' in obj && (!('type' in obj) || obj.type === 'faction');
+};
+
+export const isEvent = (obj: any): obj is Event => {
+  return obj && typeof obj === 'object' && 'title' in obj && 'sequence_number' in obj;
+};
+
+export const isScene = (obj: any): obj is Scene => {
+  return obj && typeof obj === 'object' && 'title' in obj && 'type' in obj && obj.type.startsWith('scene');
+};
+
+// Utility types
+export type EntityType = 'character' | 'location' | 'faction' | 'object' | 'event' | 'scene';
+
+export type EntityBase = Character | Location | Faction | Object | Event | Scene;
+
+export type ExtendedEntityBase = 
+  | ExtendedCharacter 
+  | ExtendedLocation 
+  | ExtendedFaction 
+  | Object 
+  | ExtendedEvent 
+  | ExtendedScene;
+
+export interface EntityReference {
   id: string;
+  type: EntityType;
   name: string;
-  description?: string;
-  background?: string;
-  appearance?: string;
-  personality?: string;
-  motivation?: string;
-  role?: string;
-  age?: string;
-  faction_id?: string;
-  story_world_id?: string;
-  story_id?: string;
-  attributes?: Json;
-  image_url?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
 }
 
-export interface Location {
-  id: string;
+// Form-related types
+export interface FormField {
   name: string;
-  description?: string;
-  story_world_id?: string;
-  story_id?: string;
-  location_type?: string;
-  parent_location_id?: string;
-  climate?: string;
-  culture?: string;
-  map_coordinates?: string;
-  notable_features?: string;
-  image_url?: string;
-  notes?: string;
-  attributes?: Json;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'multiselect' | 'number' | 'date' | 'boolean';
+  required?: boolean;
+  options?: { label: string; value: string | number }[];
+  placeholder?: string;
+  helperText?: string;
 }
 
-export interface Event {
-  id: string;
-  title: string;
-  description?: string;
-  story_id: string;
-  sequence_number: number;
-  chronological_time?: string;
-  relative_time_offset?: string;
-  visible?: boolean;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface Story {
-  id: string;
-  title: string;
-  description?: string;
-  story_world_id?: string;
-  series_id?: string;
-  series_order?: number;
-  status?: string;
-  story_type?: string;
-  word_count?: number;
-  word_count_target?: number;
-  target_date?: string;
-  synopsis?: string;
-  image_url?: string;
-  notes?: string;
-  tags?: string[];
-  genre?: string[];
-  attributes?: Json;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface StoryWorld {
-  id: string;
-  name: string;
-  description?: string;
-  genre?: string[];
-  tags?: string[];
-  time_period?: string;
-  rules?: string;
-  image_url?: string;
-  cover_image?: string;
-  notes?: string;
-  attributes?: Json;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface Series {
-  id: string;
-  name: string;
-  description?: string;
-  story_world_id?: string;
-  tags?: string[];
-  status?: string;
-  target_length?: number;
-  sequence_type?: string;
-  image_url?: string;
-  notes?: string;
-  attributes?: Json;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface Scene {
-  id: string;
-  title: string;
-  description?: string;
-  content?: string;
-  event_id?: string;
-  story_id?: string;
-  sequence_number?: number;
-  type: string;
-  status: string;
-  format?: string;
-  metadata?: Json;
-  essence?: string;
-  interest?: string;
-  notes?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface SceneVersion {
-  id: string;
-  scene_id: string;
-  content: string;
-  version_number: number;
-  created_by?: string;
-  notes?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface SceneComment {
-  id: string;
-  scene_id: string;
-  content: string;
-  created_by?: string;
-  resolved?: boolean;
-  position?: Json;
-  type?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface WritingSample {
-  id: string;
-  title: string;
-  text?: string;
-  content: string;
-  excerpt?: string;
-  author?: string;
-  sample_type?: string;
-  project_id?: string;
-  tags?: string[];
-  word_count?: number;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface StyleProfile {
-  id: string;
-  name: string;
-  description?: string;
-  style_parameters: Json;
-  project_id?: string;
-  genre?: string[];
-  comparable_authors?: string[];
-  user_comments?: string;
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
-}
-
-export interface StyleAnalysis {
-  id: string;
-  sample_id: string;
-  sentence_metrics?: Json;
-  vocabulary_metrics?: Json;
-  narrative_characteristics?: Json;
-  stylistic_devices?: Json;
-  tone_attributes?: Json;
-  descriptive_summary?: string;
-  comparable_authors?: string[];
-  created_at: string;
-  updated_at?: string;
-  user_id?: string;
+export interface EntityFormProps<T extends EntityBase> {
+  initialData?: Partial<T>;
+  onSubmit: (data: T) => Promise<void>;
+  fields: FormField[];
+  isLoading?: boolean;
 }
