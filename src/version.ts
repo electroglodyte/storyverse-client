@@ -1,7 +1,22 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.16';
+export const VERSION = '0.9.17';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Completed final integration phase:
+export const VERSION_NOTES = `Added Entity components and forms:
+- Created type-safe entity detail components:
+  * CharacterDetails with relationship and event tracking
+  * LocationDetails with hierarchy management
+  * FactionDetails with membership tracking
+- Implemented shadcn/ui form components:
+  * EntityForm base component with dynamic field generation
+  * Character, Location, and Faction forms
+  * Form validation using Zod
+  * Proper TypeScript typing throughout
+- Added comprehensive error handling:
+  * Form validation with detailed error messages
+  * API error handling with user-friendly displays
+  * Loading states for all async operations
+
+Previous (0.9.16): Added error handling and layout components:
 - Added consistent error handling components:
   * ErrorBoundary for catching React errors
   * ErrorDisplay for user-friendly error messages
@@ -25,38 +40,4 @@ export const VERSION_NOTES = `Completed final integration phase:
 - Enhanced type safety:
   * Strict null checks enabled
   * Proper error type definitions
-  * Complete type coverage
-
-Previous (0.9.15): Added comprehensive style system:
-- Created types and interfaces for style system:
-  * StyleMetric for quantitative style measures
-  * StyleSample for example text content
-  * StyleProfile for complete style definitions
-  * StyleGuidance for writing guidance
-- Implemented visualization components:
-  * StyleAnalysisVisualization using radar charts
-  * StyleSampleManager for uploading and managing samples
-  * StyleGuidanceDisplay for writing guidance
-  * StyleProfileDetail for complete profile management
-- Added style profile management pages:
-  * List view of all style profiles
-  * Individual profile view/edit page
-  * New profile creation page
-- Integrated with MCP analysis tools:
-  * Text analysis for style metrics
-  * Sample analysis and storage
-  * Guidance generation
-- Added data persistence with Supabase
-
-Previous (0.9.14): Added comprehensive scene management functionality:
-- Created Scene type definitions and database schema
-- Implemented SceneTable component for list view of scenes
-- Added Timeline component for visual scene management
-- Created SceneDetail component with version history
-- Added commenting system with resolution tracking
-- Created new pages for scene management:
-  * Story scenes page with list/timeline views
-  * Individual scene view/edit page
-  * New scene creation page
-- Added proper routing for scene management
-- Integrated with Supabase for data persistence`;
+  * Complete type coverage`;
