@@ -1,7 +1,13 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.12';
+export const VERSION = '0.9.13';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Additional fixes for Vercel deployment:
+export const VERSION_NOTES = `Fixed TypeScript issues with DataGrid components:
+- Improved DataGrid component with generic type support
+- Fixed typings for StoryTable, StoryWorldsTable, and SeriesTable components
+- Updated event handlers with proper typing
+- Fixed pagination model in DataGrid to support the latest MUI DataGrid version
+
+Previous (0.9.12): Additional fixes for Vercel deployment:
 - Added proper ESLint configuration file
 - Updated Vercel config with explicit legacy-peer-deps install command
 - Synchronized version number across all config files
