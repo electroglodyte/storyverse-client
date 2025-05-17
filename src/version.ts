@@ -1,7 +1,23 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.17';
+export const VERSION = '0.9.18';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Added Entity components and forms:
+export const VERSION_NOTES = `Added comprehensive database queries and UI components:
+- Implemented proper table relationship queries:
+  * Character queries with relationships, events, and arcs
+  * Faction queries with members, leader, and headquarters
+  * Location queries with parent/child relationships
+- Added shadcn/ui components:
+  * Button component with variants and sizes
+  * Select component with full functionality
+  * Proper styling utilities
+- Enhanced data fetching:
+  * Type-safe queries using Supabase client
+  * Proper error handling
+  * Relationship handling through join tables
+  * Consistent ordering of related data
+  * Proper null handling for optional relationships
+
+Previous (0.9.17): Added Entity components and forms:
 - Created type-safe entity detail components:
   * CharacterDetails with relationship and event tracking
   * LocationDetails with hierarchy management
@@ -14,30 +30,4 @@ export const VERSION_NOTES = `Added Entity components and forms:
 - Added comprehensive error handling:
   * Form validation with detailed error messages
   * API error handling with user-friendly displays
-  * Loading states for all async operations
-
-Previous (0.9.16): Added error handling and layout components:
-- Added consistent error handling components:
-  * ErrorBoundary for catching React errors
-  * ErrorDisplay for user-friendly error messages
-  * LoadingState for consistent loading indicators
-- Implemented type-safe database operations:
-  * Added database utility functions
-  * Type-safe error handling
-  * Validation utilities
-- Added robust data fetching hooks:
-  * useFetch for data retrieval
-  * useMutation for data modifications
-  * Proper loading and error states
-- Created layout components:
-  * BaseLayout with error boundaries
-  * NavigationGuard for route protection
-  * Consistent page structure
-- Improved build process:
-  * Added error boundaries to all routes
-  * Implemented proper code splitting
-  * Added loading states to async operations
-- Enhanced type safety:
-  * Strict null checks enabled
-  * Proper error type definitions
-  * Complete type coverage`;
+  * Loading states for all async operations`;
