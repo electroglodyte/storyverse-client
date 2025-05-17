@@ -1,18 +1,18 @@
-import { Tables } from '@/types/database';
-import { supabase } from '@/services/supabase';
+import { StoryWorld, Story, Series, Character, Location, Event } from '@/types/database'
+import { ExtendedStoryWorld } from '@/types/extended'
+import { supabase } from '@/lib/supabase'
+import { DBResponse } from '@/lib/supabase'
 
-export interface ExtendedStoryWorld extends Tables['story_worlds'] {
-  stories_count?: number;
-  characters_count?: number;
-}
-
-export async function getStoryWorld(id: string): Promise<ExtendedStoryWorld | null> {
+export async function getStoryWorldWithDetails(id: string): Promise<ExtendedStoryWorld | null> {
   const { data, error } = await supabase
     .from('story_worlds')
     .select(`
       *,
-      stories:stories(count),
-      characters:characters(count)
+      stories:stories(*),
+      series:series(*),
+      characters:characters(*),
+      locations:locations(*),
+      events:events(*)
     `)
     .eq('id', id)
     .single()
@@ -22,60 +22,20 @@ export async function getStoryWorld(id: string): Promise<ExtendedStoryWorld | nu
     return null
   }
 
-  // Transform the response into ExtendedStoryWorld format
-  const storyWorld: ExtendedStoryWorld = {
-    ...data,
-    stories_count: data.stories?.[0]?.count ?? 0,
-    characters_count: data.characters?.[0]?.count ?? 0
-  }
-
-  return storyWorld
+  return data as ExtendedStoryWorld
 }
 
-export async function getAllStoryWorlds(): Promise<ExtendedStoryWorld[]> {
+export async function createStoryWorld(storyWorld: Partial<StoryWorld>): Promise<DBResponse<StoryWorld>> {
   const { data, error } = await supabase
     .from('story_worlds')
-    .select(`
-      *,
-      stories:stories(count),
-      characters:characters(count)
-    `)
-    .order('name')
-
-  if (error) {
-    console.error('Error fetching story worlds:', error)
-    return []
-  }
-
-  // Transform each result into ExtendedStoryWorld format
-  const storyWorlds: ExtendedStoryWorld[] = (data || []).map(world => ({
-    ...world,
-    stories_count: world.stories?.[0]?.count ?? 0,
-    characters_count: world.characters?.[0]?.count ?? 0
-  }))
-
-  return storyWorlds
-}
-
-export async function createStoryWorld(storyWorld: Partial<Tables['story_worlds']>): Promise<Tables['story_worlds'] | null> {
-  const { data, error } = await supabase
-    .from('story_worlds')
-    .insert(storyWorld)
+    .insert([storyWorld])
     .select()
     .single()
 
-  if (error) {
-    console.error('Error creating story world:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function updateStoryWorld(
-  id: string,
-  updates: Partial<Tables['story_worlds']>
-): Promise<Tables['story_worlds'] | null> {
+export async function updateStoryWorld(id: string, updates: Partial<StoryWorld>): Promise<DBResponse<StoryWorld>> {
   const { data, error } = await supabase
     .from('story_worlds')
     .update(updates)
@@ -83,59 +43,86 @@ export async function updateStoryWorld(
     .select()
     .single()
 
+  return { data, error }
+}
+
+export async function deleteStoryWorld(id: string): Promise<DBResponse<StoryWorld>> {
+  const { data, error } = await supabase
+    .from('story_worlds')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function getStoryWorldStories(storyWorldId: string): Promise<Story[]> {
+  const { data, error } = await supabase
+    .from('stories')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
+
   if (error) {
-    console.error('Error updating story world:', error)
-    return null
+    console.error('Error fetching stories:', error)
+    return []
   }
 
   return data
 }
 
-export async function deleteStoryWorld(id: string): Promise<boolean> {
-  // First check if there are any dependent stories
-  const { data: stories } = await supabase
-    .from('stories')
-    .select('id')
-    .eq('story_world_id', id)
-
-  if (stories && stories.length > 0) {
-    console.error('Cannot delete story world with existing stories')
-    return false
-  }
-
-  const { error } = await supabase
-    .from('story_worlds')
-    .delete()
-    .eq('id', id)
+export async function getStoryWorldSeries(storyWorldId: string): Promise<Series[]> {
+  const { data, error } = await supabase
+    .from('series')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
 
   if (error) {
-    console.error('Error deleting story world:', error)
-    return false
+    console.error('Error fetching series:', error)
+    return []
   }
 
-  return true
+  return data
 }
 
-export async function getStoryWorldStatistics(id: string) {
-  const [
-    { data: stories },
-    { data: characters },
-    { data: locations },
-    { data: factions },
-    { data: items }
-  ] = await Promise.all([
-    supabase.from('stories').select('count').eq('story_world_id', id).single(),
-    supabase.from('characters').select('count').eq('story_world_id', id).single(),
-    supabase.from('locations').select('count').eq('story_world_id', id).single(),
-    supabase.from('factions').select('count').eq('story_world_id', id).single(),
-    supabase.from('items').select('count').eq('story_world_id', id).single()
-  ])
+export async function getStoryWorldCharacters(storyWorldId: string): Promise<Character[]> {
+  const { data, error } = await supabase
+    .from('characters')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
 
-  return {
-    stories: stories?.count ?? 0,
-    characters: characters?.count ?? 0,
-    locations: locations?.count ?? 0,
-    factions: factions?.count ?? 0,
-    items: items?.count ?? 0
+  if (error) {
+    console.error('Error fetching characters:', error)
+    return []
   }
+
+  return data
+}
+
+export async function getStoryWorldLocations(storyWorldId: string): Promise<Location[]> {
+  const { data, error } = await supabase
+    .from('locations')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
+
+  if (error) {
+    console.error('Error fetching locations:', error)
+    return []
+  }
+
+  return data
+}
+
+export async function getStoryWorldEvents(storyWorldId: string): Promise<Event[]> {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
+
+  if (error) {
+    console.error('Error fetching events:', error)
+    return []
+  }
+
+  return data
 }
