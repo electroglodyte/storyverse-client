@@ -1,13 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../supabaseClient';
-import DataGrid from '../components/DataGrid';
+import { supabase } from '@/lib/supabase';
+import { DataGrid } from '@/components/DataGrid';
 import { FaPlus, FaTrash, FaEdit } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { formatDistance } from 'date-fns';
+import { GridColDef } from '@mui/x-data-grid';
+
+interface StoryWorld {
+  id: string;
+  name: string;
+  description?: string;
+  created_at?: string;
+  updated_at?: string;
+  seriesCount?: number;
+  storiesCount?: number;
+  createdTimeAgo?: string;
+}
 
 const StoryWorldsTable = () => {
-  const [storyWorlds, setStoryWorlds] = useState([]);
+  const [storyWorlds, setStoryWorlds] = useState<StoryWorld[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -101,7 +113,7 @@ const StoryWorldsTable = () => {
           // Keep the worlds without counts displayed
         });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchStoryWorlds:', error);
       toast.error(`Failed to load story worlds: ${error.message || 'Unknown error'}`);
     } finally {
@@ -117,11 +129,11 @@ const StoryWorldsTable = () => {
     navigate('/story-worlds/new');
   };
 
-  const handleRowSelected = (storyWorld) => {
-    navigate(`/story-worlds/${storyWorld.id}`);
+  const handleRowClick = (params: any) => {
+    navigate(`/story-worlds/${params.row.id}`);
   };
 
-  const handleCellValueChanged = async (event) => {
+  const handleCellValueChanged = async (event: any) => {
     try {
       // Only update if the data actually changed
       if (event.oldValue === event.newValue) return;
@@ -138,7 +150,7 @@ const StoryWorldsTable = () => {
 
       if (error) throw error;
       toast.success('Story world updated');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating story world:', error);
       toast.error(`Failed to update story world: ${error.message || 'Unknown error'}`);
       // Refresh to get the original data
@@ -146,7 +158,7 @@ const StoryWorldsTable = () => {
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this story world? This will also delete all associated series and stories.')) {
       try {
         console.log('Deleting story world:', id);
@@ -163,40 +175,40 @@ const StoryWorldsTable = () => {
         
         toast.success('Story world deleted');
         fetchStoryWorlds();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting story world:', error);
         toast.error(`Failed to delete story world: ${error.message || 'Unknown error'}`);
       }
     }
   };
 
-  const columnDefs = [
+  const columns: GridColDef[] = [
     { 
-      headerName: 'Name', 
       field: 'name', 
+      headerName: 'Name', 
       width: 220,
-      cellRenderer: (params) => (
+      renderCell: (params) => (
         <div className="font-medium text-blue-600 hover:underline cursor-pointer">
           {params.value}
         </div>
       )
     },
-    { headerName: 'Description', field: 'description', flex: 2, minWidth: 250 },
-    { headerName: 'Created', field: 'createdTimeAgo', editable: false, width: 140 },
-    { headerName: 'Series', field: 'seriesCount', editable: false, width: 100, type: 'numericColumn' },
-    { headerName: 'Stories', field: 'storiesCount', editable: false, width: 100, type: 'numericColumn' },
+    { field: 'description', headerName: 'Description', flex: 2, minWidth: 250 },
+    { field: 'createdTimeAgo', headerName: 'Created', width: 140 },
+    { field: 'seriesCount', headerName: 'Series', width: 100, type: 'number' },
+    { field: 'storiesCount', headerName: 'Stories', width: 100, type: 'number' },
     {
+      field: 'actions',
       headerName: 'Actions',
       width: 120,
-      editable: false,
       sortable: false,
-      filter: false,
-      cellRenderer: (params) => (
+      filterable: false,
+      renderCell: (params) => (
         <div className="flex items-center space-x-2">
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              navigate(`/story-worlds/edit/${params.data.id}`);
+              navigate(`/story-worlds/edit/${params.row.id}`);
             }} 
             className="text-accent hover:text-accent-hover"
             title="Edit Story World"
@@ -206,7 +218,7 @@ const StoryWorldsTable = () => {
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              handleDelete(params.data.id);
+              handleDelete(params.row.id);
             }} 
             className="text-red-500 hover:text-red-700"
             title="Delete Story World"
@@ -218,26 +230,27 @@ const StoryWorldsTable = () => {
     }
   ];
 
-  const actionButtons = (
-    <button
-      onClick={handleCreateNew}
-      className="create-button"
-    >
-      <FaPlus />
-      <span>New Story World</span>
-    </button>
-  );
-
   return (
-    <DataGrid
-      title="Story Worlds"
-      columnDefs={columnDefs}
-      rowData={storyWorlds}
-      onRowSelected={handleRowSelected}
-      onCellValueChanged={handleCellValueChanged}
-      actionButtons={actionButtons}
-      isLoading={loading}
-    />
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Story Worlds</h1>
+        <button
+          onClick={handleCreateNew}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+        >
+          <FaPlus />
+          <span>New Story World</span>
+        </button>
+      </div>
+
+      <DataGrid<StoryWorld>
+        rows={storyWorlds}
+        columns={columns}
+        loading={loading}
+        getRowId={(row) => row.id}
+        onRowClick={handleRowClick}
+      />
+    </div>
   );
 };
 
