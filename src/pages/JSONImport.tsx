@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
+import { importStoryData, detectEntityType } from '../lib/entityImporter';
 import './JSONImport.css';
 
 // Define interfaces for story worlds and stories
@@ -75,14 +76,14 @@ const JSONImport: React.FC = () => {
     if (jsonInput.trim()) {
       try {
         const parsed = JSON.parse(jsonInput);
+        const detectedType = detectEntityType(parsed);
         
-        if (Array.isArray(parsed)) {
-          if (parsed.length > 0 && parsed[0].name && (parsed[0].role || parsed[0].description)) {
-            setJsonDataType('characters');
-          } else {
-            setJsonDataType('array');
-          }
+        if (detectedType !== 'unknown') {
+          setJsonDataType(detectedType);
+        } else if (Array.isArray(parsed)) {
+          setJsonDataType('array');
         } else if (typeof parsed === 'object') {
+          // Check if it's a complete story data structure
           if (parsed.characters || parsed.locations || parsed.events) {
             setJsonDataType('story_data');
           } else {
@@ -172,66 +173,55 @@ const JSONImport: React.FC = () => {
         throw new Error(`Invalid JSON format: ${(parseError as Error).message}`);
       }
 
-      // If it's a direct characters array, we don't need to wrap it
-      let dataToSend = parsedData;
-      
-      // For other data types, add context info
-      if (!Array.isArray(parsedData)) {
-        // Add selected story world and story IDs to the data
-        if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
-          parsedData.existingStoryWorldId = selectedStoryWorldId;
-          const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
-          addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
+      // If it's a direct characters array, we need to ensure it has a story ID
+      if (Array.isArray(parsedData) && jsonDataType === 'character') {
+        if (!selectedStoryId) {
+          throw new Error('Please select a story to associate these characters with');
         }
-
-        if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
-          parsedData.existingStoryId = selectedStoryId;
-          const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
-          addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
-        }
-      } else if (Array.isArray(parsedData) && jsonDataType === 'characters') {
-        // For character arrays, add story context if selected
-        if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
-          // Mark each character with the selected story ID
-          dataToSend = parsedData.map(char => ({
-            ...char,
-            story_id: selectedStoryId
-          }));
-          
-          const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
-          addLog(`Added Story ID: ${storyTitle} (${selectedStoryId}) to all characters`);
-        }
+        
+        addLog(`Adding Story ID ${selectedStoryId} to all characters`);
+        parsedData = parsedData.map(item => ({
+          ...item,
+          story_id: selectedStoryId
+        }));
       }
 
-      // Process the data using import_story tool
-      addLog('Invoking import_story tool...');
-      const { data, error: importError } = await supabase.functions.invoke('import-story', {
-        body: dataToSend
-      });
+      // For complete story data or other types, add context data
+      const dataToSend = Array.isArray(parsedData) ? parsedData : {
+        ...parsedData,
+        existingStoryWorldId: selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID ? selectedStoryWorldId : undefined,
+        existingStoryId: selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID ? selectedStoryId : undefined
+      };
 
-      if (importError) {
-        throw new Error(`Error importing data: ${importError.message}`);
+      // If selected story world or story, log it
+      if (selectedStoryWorldId && selectedStoryWorldId !== CREATE_NEW_WORLD_ID) {
+        const worldName = storyWorlds.find(w => w.id === selectedStoryWorldId)?.name || 'Unknown';
+        addLog(`Using Story World: ${worldName} (ID: ${selectedStoryWorldId})`);
+      }
+
+      if (selectedStoryId && selectedStoryId !== CREATE_NEW_STORY_ID) {
+        const storyTitle = stories.find(s => s.id === selectedStoryId)?.title || 'Unknown';
+        addLog(`Using Story: ${storyTitle} (ID: ${selectedStoryId})`);
+      }
+
+      // Process the data using our new importStoryData function
+      addLog('Sending data to Edge Function...');
+      const result = await importStoryData(dataToSend);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Unknown error occurred during import');
       }
 
       // Log the results
-      if (data) {
-        if (data.success) {
-          setSuccess('Story data imported successfully!');
-          addLog(`Successfully imported story with ID: ${data.stats?.story_id || 'N/A'}`);
-          
-          // Log details of what was imported
-          if (data.stats) {
-            Object.entries(data.stats).forEach(([key, value]) => {
-              if (key !== 'story_id') {
-                addLog(`Imported ${value} ${key}`);
-              }
-            });
+      setSuccess('Story data imported successfully!');
+      
+      // Log details of what was imported
+      if (result.stats) {
+        Object.entries(result.stats).forEach(([key, value]) => {
+          if (key !== 'story_id' && value > 0) {
+            addLog(`Imported ${value} ${key}`);
           }
-        } else {
-          throw new Error(data.error || 'Unknown error occurred during import');
-        }
-      } else {
-        throw new Error('No response data received from import function');
+        });
       }
     } catch (err) {
       const errorMessage = (err as Error).message || 'An unknown error occurred';
@@ -243,7 +233,7 @@ const JSONImport: React.FC = () => {
   };
 
   // Determine if story selection is required
-  const isStoryRequired = jsonDataType === 'characters';
+  const isStoryRequired = jsonDataType === 'character';
 
   return (
     <div className="json-import-container">
@@ -307,7 +297,7 @@ const JSONImport: React.FC = () => {
         />
       </div>
 
-      {jsonDataType === 'characters' && !selectedStoryId && (
+      {jsonDataType === 'character' && !selectedStoryId && (
         <div className="warning-message">
           You appear to be importing characters. Please select a story to associate them with.
         </div>
