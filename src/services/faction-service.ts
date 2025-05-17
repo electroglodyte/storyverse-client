@@ -1,19 +1,19 @@
-import { Tables } from '@/types/database';
-import { supabase } from '@/services/supabase';
+import { Faction, Character, FactionCharacter } from '@/types/database'
+import { FactionWithMembers } from '@/types/extended'
+import { supabase } from '@/lib/supabase'
+import { DBResponse } from '@/lib/supabase'
 
-type FactionCharacter = {
-  id: string;
-  faction_id: string;
-  character_id: string;
-  role: string;
-  created_at: string;
-}
-
-export async function getFaction(factionId: string) {
+export async function getFactionWithMembers(id: string): Promise<FactionWithMembers | null> {
   const { data, error } = await supabase
     .from('factions')
-    .select('*')
-    .eq('id', factionId)
+    .select(`
+      *,
+      location:locations(*),
+      characters:faction_characters(
+        characters(*)
+      )
+    `)
+    .eq('id', id)
     .single()
 
   if (error) {
@@ -21,110 +21,103 @@ export async function getFaction(factionId: string) {
     return null
   }
 
-  return data
+  return data as FactionWithMembers
 }
 
-export async function getFactionCharacters(factionId: string) {
-  const { data: factionChars, error: factionError } = await supabase
-    .from('faction_characters')
-    .select(`
-      character_id,
-      role,
-      characters (*)
-    `)
-    .eq('faction_id', factionId)
+export async function createFaction(faction: Partial<Faction>): Promise<DBResponse<Faction>> {
+  const { data, error } = await supabase
+    .from('factions')
+    .insert([faction])
+    .select()
+    .single()
 
-  if (factionError) {
-    console.error('Error fetching faction characters:', factionError)
+  return { data, error }
+}
+
+export async function updateFaction(id: string, updates: Partial<Faction>): Promise<DBResponse<Faction>> {
+  const { data, error } = await supabase
+    .from('factions')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteFaction(id: string): Promise<DBResponse<Faction>> {
+  const { data, error } = await supabase
+    .from('factions')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function getFactionsByStoryWorld(storyWorldId: string): Promise<Faction[]> {
+  const { data, error } = await supabase
+    .from('factions')
+    .select('*')
+    .eq('story_world_id', storyWorldId)
+
+  if (error) {
+    console.error('Error fetching factions:', error)
     return []
   }
 
-  return factionChars || []
+  return data
 }
 
-export async function updateFactionCharacters(
-  factionId: string,
-  characterUpdates: { id: string; role: string }[]
-) {
-  // First remove all existing character associations
-  await supabase
+export async function getFactionMembers(factionId: string): Promise<Character[]> {
+  const { data, error } = await supabase
     .from('faction_characters')
-    .delete()
+    .select('characters(*)')
     .eq('faction_id', factionId)
 
-  // Then add the new ones
-  const newAssociations = characterUpdates.map(char => ({
-    faction_id: factionId,
-    character_id: char.id,
-    role: char.role
-  }))
-
-  const { error } = await supabase
-    .from('faction_characters')
-    .insert(newAssociations)
-
   if (error) {
-    console.error('Error updating faction characters:', error)
-    return false
+    console.error('Error fetching faction members:', error)
+    return []
   }
 
-  return true
+  return data.map(d => d.characters)
 }
 
-export async function addCharacterToFaction(
-  factionId: string,
-  characterId: string,
-  role: string
-) {
-  const { error } = await supabase
+export async function addFactionMember(factionMember: Partial<FactionCharacter>): Promise<DBResponse<FactionCharacter>> {
+  const { data, error } = await supabase
     .from('faction_characters')
-    .insert({
-      faction_id: factionId,
-      character_id: characterId,
-      role
-    })
+    .insert([factionMember])
+    .select()
+    .single()
 
-  if (error) {
-    console.error('Error adding character to faction:', error)
-    return false
-  }
-
-  return true
+  return { data, error }
 }
 
-export async function removeCharacterFromFaction(
-  factionId: string,
-  characterId: string
-) {
-  const { error } = await supabase
+export async function removeFactionMember(factionId: string, characterId: string): Promise<DBResponse<FactionCharacter>> {
+  const { data, error } = await supabase
     .from('faction_characters')
     .delete()
     .eq('faction_id', factionId)
     .eq('character_id', characterId)
+    .select()
+    .single()
 
-  if (error) {
-    console.error('Error removing character from faction:', error)
-    return false
-  }
-
-  return true
+  return { data, error }
 }
 
-export async function updateFactionCharacterRole(
-  factionId: string,
-  characterId: string,
-  newRole: string
-) {
-  const { error } = await supabase
+export async function updateFactionMember(
+  factionId: string, 
+  characterId: string, 
+  updates: Partial<FactionCharacter>
+): Promise<DBResponse<FactionCharacter>> {
+  const { data, error } = await supabase
     .from('faction_characters')
-    .update({ role: newRole })
+    .update(updates)
     .eq('faction_id', factionId)
     .eq('character_id', characterId)
+    .select()
+    .single()
 
-  if (error) {
-    console.error('Error updating character role:', error)
-    return false
-  }
-
-  return true
+  return { data, error }
 }
