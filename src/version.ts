@@ -1,7 +1,20 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.13';
+export const VERSION = '0.9.14';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Fixed TypeScript issues with DataGrid components:
+export const VERSION_NOTES = `Added comprehensive scene management functionality:
+- Created Scene type definitions and database schema
+- Implemented SceneTable component for list view of scenes
+- Added Timeline component for visual scene management
+- Created SceneDetail component with version history
+- Added commenting system with resolution tracking
+- Created new pages for scene management:
+  * Story scenes page with list/timeline views
+  * Individual scene view/edit page
+  * New scene creation page
+- Added proper routing for scene management
+- Integrated with Supabase for data persistence
+
+Previous (0.9.13): Fixed TypeScript issues with DataGrid components:
 - Improved DataGrid component with generic type support
 - Fixed typings for StoryTable, StoryWorldsTable, and SeriesTable components
 - Updated event handlers with proper typing
