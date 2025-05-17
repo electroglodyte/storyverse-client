@@ -8,9 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Save, ArrowLeft, MessageSquare } from 'lucide-react';
+import { Save, ArrowLeft, MessageSquare, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import { CommentForm } from './CommentForm';
 
 interface SceneDetailProps {
   sceneId?: string;
@@ -127,6 +128,27 @@ export const SceneDetail: React.FC<SceneDetailProps> = ({ sceneId, storyId, isNe
     }
   };
 
+  const handleToggleCommentResolved = async (commentId: string, currentResolved: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('scene_comments')
+        .update({ resolved: !currentResolved })
+        .eq('id', commentId);
+
+      if (error) throw error;
+      
+      // Update local state
+      setComments(comments.map(comment => 
+        comment.id === commentId 
+          ? { ...comment, resolved: !currentResolved }
+          : comment
+      ));
+    } catch (error) {
+      toast.error('Failed to update comment status');
+      console.error('Error updating comment status:', error);
+    }
+  };
+
   if (loading) {
     return <div>Loading...</div>;
   }
@@ -240,20 +262,37 @@ export const SceneDetail: React.FC<SceneDetailProps> = ({ sceneId, storyId, isNe
 
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4">Comments</h3>
-              <div className="space-y-2">
-                {comments.map((comment) => (
-                  <Card key={comment.id} className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center">
-                        <MessageSquare className="w-4 h-4 mr-2" />
-                        <div>{comment.content}</div>
+              <div className="space-y-4">
+                <CommentForm 
+                  sceneId={sceneId!} 
+                  onCommentAdded={fetchSceneData}
+                />
+                <div className="space-y-2">
+                  {comments.map((comment) => (
+                    <Card key={comment.id} className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center flex-grow">
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          <div className={comment.resolved ? 'text-gray-500' : ''}>
+                            {comment.content}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm text-gray-500">
+                            {format(new Date(comment.created_at), 'MMM d, yyyy HH:mm')}
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleCommentResolved(comment.id, comment.resolved)}
+                          >
+                            <Check className={`w-4 h-4 ${comment.resolved ? 'text-green-500' : 'text-gray-400'}`} />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-500">
-                        {format(new Date(comment.created_at), 'MMM d, yyyy HH:mm')}
-                      </div>
-                    </div>
-                  </Card>
-                ))}
+                    </Card>
+                  ))}
+                </div>
               </div>
             </div>
           </>
