@@ -1,77 +1,16 @@
-import { Tables } from '@/types/database';
-import { supabase } from '@/services/supabase';
+import { StyleProfile, StyleAnalysis, WritingSample } from '@/types/database'
+import { StyleProfileWithSamples, WritingSampleWithAnalysis } from '@/types/extended'
+import { supabase } from '@/lib/supabase'
+import { DBResponse } from '@/lib/supabase'
 
-type WritingSample = Tables['writing_samples']
-type StyleProfile = Tables['style_profiles']
-type StyleAnalysis = Tables['style_analyses']
-
-export async function getWritingSample(id: string): Promise<WritingSample | null> {
-  const { data, error } = await supabase
-    .from('writing_samples')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching writing sample:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function createWritingSample(sample: Partial<WritingSample>): Promise<WritingSample | null> {
-  const { data, error } = await supabase
-    .from('writing_samples')
-    .insert(sample)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating writing sample:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function updateWritingSample(
-  id: string,
-  updates: Partial<WritingSample>
-): Promise<WritingSample | null> {
-  const { data, error } = await supabase
-    .from('writing_samples')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating writing sample:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function deleteWritingSample(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('writing_samples')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('Error deleting writing sample:', error)
-    return false
-  }
-
-  return true
-}
-
-export async function getStyleProfile(id: string): Promise<StyleProfile | null> {
+export async function getStyleProfileWithSamples(id: string): Promise<StyleProfileWithSamples | null> {
   const { data, error } = await supabase
     .from('style_profiles')
-    .select('*')
+    .select(`
+      *,
+      samples:writing_samples(*),
+      analyses:style_analyses(*)
+    `)
     .eq('id', id)
     .single()
 
@@ -80,28 +19,20 @@ export async function getStyleProfile(id: string): Promise<StyleProfile | null> 
     return null
   }
 
-  return data
+  return data as StyleProfileWithSamples
 }
 
-export async function createStyleProfile(profile: Partial<StyleProfile>): Promise<StyleProfile | null> {
+export async function createStyleProfile(profile: Partial<StyleProfile>): Promise<DBResponse<StyleProfile>> {
   const { data, error } = await supabase
     .from('style_profiles')
-    .insert(profile)
+    .insert([profile])
     .select()
     .single()
 
-  if (error) {
-    console.error('Error creating style profile:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function updateStyleProfile(
-  id: string,
-  updates: Partial<StyleProfile>
-): Promise<StyleProfile | null> {
+export async function updateStyleProfile(id: string, updates: Partial<StyleProfile>): Promise<DBResponse<StyleProfile>> {
   const { data, error } = await supabase
     .from('style_profiles')
     .update(updates)
@@ -109,33 +40,85 @@ export async function updateStyleProfile(
     .select()
     .single()
 
-  if (error) {
-    console.error('Error updating style profile:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function deleteStyleProfile(id: string): Promise<boolean> {
-  const { error } = await supabase
+export async function deleteStyleProfile(id: string): Promise<DBResponse<StyleProfile>> {
+  const { data, error } = await supabase
     .from('style_profiles')
     .delete()
     .eq('id', id)
+    .select()
+    .single()
 
-  if (error) {
-    console.error('Error deleting style profile:', error)
-    return false
-  }
-
-  return true
+  return { data, error }
 }
 
-export async function getStyleAnalysis(id: string): Promise<StyleAnalysis | null> {
+export async function createStyleAnalysis(analysis: Partial<StyleAnalysis>): Promise<DBResponse<StyleAnalysis>> {
+  const { data, error } = await supabase
+    .from('style_analyses')
+    .insert([analysis])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function getWritingSample(id: string): Promise<WritingSampleWithAnalysis | null> {
+  const { data, error } = await supabase
+    .from('writing_samples')
+    .select(`
+      *,
+      style_analysis:style_analyses(*)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error('Error fetching writing sample:', error)
+    return null
+  }
+
+  return data as WritingSampleWithAnalysis
+}
+
+export async function createWritingSample(sample: Partial<WritingSample>): Promise<DBResponse<WritingSample>> {
+  const { data, error } = await supabase
+    .from('writing_samples')
+    .insert([sample])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateWritingSample(id: string, updates: Partial<WritingSample>): Promise<DBResponse<WritingSample>> {
+  const { data, error } = await supabase
+    .from('writing_samples')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteWritingSample(id: string): Promise<DBResponse<WritingSample>> {
+  const { data, error } = await supabase
+    .from('writing_samples')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function getStyleAnalysisByWritingSample(sampleId: string): Promise<StyleAnalysis | null> {
   const { data, error } = await supabase
     .from('style_analyses')
     .select('*')
-    .eq('id', id)
+    .eq('sample_id', sampleId)
     .single()
 
   if (error) {
@@ -144,95 +127,4 @@ export async function getStyleAnalysis(id: string): Promise<StyleAnalysis | null
   }
 
   return data
-}
-
-export async function createStyleAnalysis(analysis: Partial<StyleAnalysis>): Promise<StyleAnalysis | null> {
-  const { data, error } = await supabase
-    .from('style_analyses')
-    .insert(analysis)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating style analysis:', error)
-    return null
-  }
-
-  return data
-}
-
-export async function linkSampleToProfile(
-  profileId: string,
-  sampleId: string,
-  weight: number = 1
-): Promise<boolean> {
-  const { error } = await supabase
-    .from('profile_samples')
-    .insert({
-      profile_id: profileId,
-      sample_id: sampleId,
-      weight
-    })
-
-  if (error) {
-    console.error('Error linking sample to profile:', error)
-    return false
-  }
-
-  return true
-}
-
-export async function getProfileSamples(profileId: string) {
-  const { data, error } = await supabase
-    .from('profile_samples')
-    .select(`
-      sample_id,
-      weight,
-      writing_samples (*)
-    `)
-    .eq('profile_id', profileId)
-
-  if (error) {
-    console.error('Error fetching profile samples:', error)
-    return []
-  }
-
-  return data || []
-}
-
-export async function updateSampleWeight(
-  profileId: string,
-  sampleId: string,
-  weight: number
-): Promise<boolean> {
-  const { error } = await supabase
-    .from('profile_samples')
-    .update({ weight })
-    .eq('profile_id', profileId)
-    .eq('sample_id', sampleId)
-
-  if (error) {
-    console.error('Error updating sample weight:', error)
-    return false
-  }
-
-  return true
-}
-
-export async function removeSampleFromProfile(
-  profileId: string,
-  sampleId: string
-): Promise<boolean> {
-  const { error } = await supabase
-    .from('profile_samples')
-    .delete()
-    .eq('profile_id', profileId)
-    .eq('sample_id', sampleId)
-
-  if (error) {
-    console.error('Error removing sample from profile:', error)
-    return false
-  }
-
-  return true
 }
