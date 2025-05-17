@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.9.10 (2025-05-16)
+## Current Version: 0.9.11 (2025-05-17)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -153,6 +153,8 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Remove old analyze_story tools and related importer interfaces
 - [x] Create a simplified JSON import interface
 - [x] Fix dependency issues for Vercel deployment (removed outdated @types/react-dropzone)
+- [x] Fix dependency conflicts to ensure Vercel deployment works correctly
+- [x] Add .npmrc file with legacy-peer-deps=true for compatibility
 - [ ] Refactor supabase-tables.ts to use more consistent naming
 - [x] Complete transition from local setup to Vercel/Supabase
 - [ ] Improve test coverage
