@@ -1,7 +1,30 @@
 // Version information for StoryVerse client
-export const VERSION = '0.9.18';
+export const VERSION = '0.9.19';
 export const VERSION_DATE = '2025-05-17';
-export const VERSION_NOTES = `Added comprehensive database queries and UI components:
+export const VERSION_NOTES = `Added TypeScript verification and testing:
+- Enhanced TypeScript configuration:
+  * Enabled strict mode with all strict flags
+  * Added strict null checks and function types
+  * Configured path aliases and module resolution
+  * Added comprehensive type declarations
+- Implemented enhanced type definitions:
+  * Added extended types for all entities
+  * Added type guards for runtime checks
+  * Added utility types for forms
+  * Proper null handling in types
+- Added test infrastructure:
+  * Vitest configuration with React testing
+  * Test coverage reporting
+  * Mock implementations for dependencies
+  * DOM testing environment
+- Added database operation tests:
+  * Character operation tests
+  * Faction operation tests
+  * Location operation tests
+  * Error case handling
+  * Null relationship handling
+
+Previous (0.9.18): Added comprehensive database queries and UI components:
 - Implemented proper table relationship queries:
   * Character queries with relationships, events, and arcs
   * Faction queries with members, leader, and headquarters
@@ -15,19 +38,4 @@ export const VERSION_NOTES = `Added comprehensive database queries and UI compon
   * Proper error handling
   * Relationship handling through join tables
   * Consistent ordering of related data
-  * Proper null handling for optional relationships
-
-Previous (0.9.17): Added Entity components and forms:
-- Created type-safe entity detail components:
-  * CharacterDetails with relationship and event tracking
-  * LocationDetails with hierarchy management
-  * FactionDetails with membership tracking
-- Implemented shadcn/ui form components:
-  * EntityForm base component with dynamic field generation
-  * Character, Location, and Faction forms
-  * Form validation using Zod
-  * Proper TypeScript typing throughout
-- Added comprehensive error handling:
-  * Form validation with detailed error messages
-  * API error handling with user-friendly displays
-  * Loading states for all async operations`;
+  * Proper null handling for optional relationships`;
