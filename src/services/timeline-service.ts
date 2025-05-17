@@ -1,206 +1,192 @@
-import { supabase } from '@/services/supabase';
-import { Tables } from '@/types/database';
+import { TimelineElement, Storyline, StorylineElement, StructuralElement } from '@/types/database'
+import { TimelineElementWithDetails } from '@/types/extended'
+import { supabase } from '@/lib/supabase'
+import { DBResponse } from '@/lib/supabase'
 
-type Event = {
-  id: string;
-  title: string;
-  description?: string;
-  story_id: string;
-  sequence_number: number;
-  chronological_time?: string;
-  relative_time_offset?: string;
-  time_reference_point?: string;
-  visible?: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-type TimelineElement = {
-  id: string;
-  element_type: string;
-  element_id: string;
-  chronological_time: string;
-  relative_time_offset?: string;
-  time_reference_point?: string;
-  story_order: number;
-  story_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export async function getTimeline(storyId: string) {
-  // First get all timeline elements
-  const { data: elements, error: elementsError } = await supabase
-    .from('timeline_elements')
-    .select('*')
-    .eq('story_id', storyId)
-    .order('story_order')
-
-  if (elementsError) {
-    console.error('Error fetching timeline elements:', elementsError)
-    return []
-  }
-
-  // Then fetch details for each element
-  const timelineItems = await Promise.all((elements || []).map(async (element) => {
-    switch (element.element_type) {
-      case 'event': {
-        const { data: event } = await supabase
-          .from('events')
-          .select('*')
-          .eq('id', element.element_id)
-          .single()
-        return { ...element, details: event }
-      }
-      case 'scene': {
-        const { data: scene } = await supabase
-          .from('scenes')
-          .select('*')
-          .eq('id', element.element_id)
-          .single()
-        return { ...element, details: scene }
-      }
-      case 'structural_element': {
-        const { data: structuralElement } = await supabase
-          .from('structural_elements')
-          .select('*')
-          .eq('id', element.element_id)
-          .single()
-        return { ...element, details: structuralElement }
-      }
-      default:
-        return element
-    }
-  }))
-
-  return timelineItems
-}
-
-export async function getEvents(storyId: string) {
-  const { data, error } = await supabase
-    .from('events')
-    .select('*')
-    .eq('story_id', storyId)
-    .order('sequence_number')
-
-  if (error) {
-    console.error('Error fetching events:', error)
-    return []
-  }
-
-  return data || []
-}
-
-export async function createTimelineElement(element: Partial<TimelineElement>) {
+export async function getTimelineElementWithDetails(id: string): Promise<TimelineElementWithDetails | null> {
   const { data, error } = await supabase
     .from('timeline_elements')
-    .insert(element)
-    .select()
+    .select(`
+      *,
+      storylines:storyline_elements(
+        storylines(*)
+      )
+    `)
+    .eq('id', id)
     .single()
 
   if (error) {
-    console.error('Error creating timeline element:', error)
+    console.error('Error fetching timeline element:', error)
+    return null
+  }
+
+  // Load the referenced element based on type
+  if (data) {
+    const elementData = await getElementByType(data.element_type, data.element_id)
+    return {
+      ...data,
+      element: elementData,
+      storylines: data.storylines?.map((s: any) => s.storylines) || []
+    } as TimelineElementWithDetails
+  }
+
+  return null
+}
+
+async function getElementByType(type: string, id: string): Promise<any> {
+  let table: string
+  switch (type) {
+    case 'scene':
+      table = 'scenes'
+      break
+    case 'event':
+      table = 'events'
+      break
+    case 'structural':
+      table = 'structural_elements'
+      break
+    default:
+      return null
+  }
+
+  const { data, error } = await supabase
+    .from(table)
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error) {
+    console.error(`Error fetching ${type}:`, error)
     return null
   }
 
   return data
 }
 
-export async function updateTimelineElement(
-  elementId: string,
-  updates: Partial<TimelineElement>
-) {
+export async function createTimelineElement(element: Partial<TimelineElement>): Promise<DBResponse<TimelineElement>> {
+  const { data, error } = await supabase
+    .from('timeline_elements')
+    .insert([element])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateTimelineElement(id: string, updates: Partial<TimelineElement>): Promise<DBResponse<TimelineElement>> {
   const { data, error } = await supabase
     .from('timeline_elements')
     .update(updates)
-    .eq('id', elementId)
+    .eq('id', id)
     .select()
     .single()
 
-  if (error) {
-    console.error('Error updating timeline element:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function deleteTimelineElement(elementId: string) {
-  const { error } = await supabase
+export async function deleteTimelineElement(id: string): Promise<DBResponse<TimelineElement>> {
+  const { data, error } = await supabase
     .from('timeline_elements')
     .delete()
-    .eq('id', elementId)
-
-  if (error) {
-    console.error('Error deleting timeline element:', error)
-    return false
-  }
-
-  return true
-}
-
-export async function reorderTimelineElements(
-  storyId: string,
-  elementOrder: { id: string; order: number }[]
-) {
-  const updates = elementOrder.map(item => ({
-    id: item.id,
-    story_order: item.order
-  }))
-
-  const { error } = await supabase
-    .from('timeline_elements')
-    .upsert(updates)
-
-  if (error) {
-    console.error('Error reordering timeline elements:', error)
-    return false
-  }
-
-  return true
-}
-
-export async function createEvent(event: Partial<Event>) {
-  const { data, error } = await supabase
-    .from('events')
-    .insert(event)
+    .eq('id', id)
     .select()
     .single()
 
-  if (error) {
-    console.error('Error creating event:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function updateEvent(eventId: string, updates: Partial<Event>) {
+export async function createStoryline(storyline: Partial<Storyline>): Promise<DBResponse<Storyline>> {
   const { data, error } = await supabase
-    .from('events')
+    .from('storylines')
+    .insert([storyline])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateStoryline(id: string, updates: Partial<Storyline>): Promise<DBResponse<Storyline>> {
+  const { data, error } = await supabase
+    .from('storylines')
     .update(updates)
-    .eq('id', eventId)
+    .eq('id', id)
     .select()
     .single()
 
-  if (error) {
-    console.error('Error updating event:', error)
-    return null
-  }
-
-  return data
+  return { data, error }
 }
 
-export async function deleteEvent(eventId: string) {
-  const { error } = await supabase
-    .from('events')
+export async function deleteStoryline(id: string): Promise<DBResponse<Storyline>> {
+  const { data, error } = await supabase
+    .from('storylines')
     .delete()
-    .eq('id', eventId)
+    .eq('id', id)
+    .select()
+    .single()
 
-  if (error) {
-    console.error('Error deleting event:', error)
-    return false
-  }
+  return { data, error }
+}
 
-  return true
+export async function addElementToStoryline(
+  storylineElement: Partial<StorylineElement>
+): Promise<DBResponse<StorylineElement>> {
+  const { data, error } = await supabase
+    .from('storyline_elements')
+    .insert([storylineElement])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function removeElementFromStoryline(
+  storylineId: string,
+  elementId: string
+): Promise<DBResponse<StorylineElement>> {
+  const { data, error } = await supabase
+    .from('storyline_elements')
+    .delete()
+    .eq('storyline_id', storylineId)
+    .eq('element_id', elementId)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function createStructuralElement(
+  element: Partial<StructuralElement>
+): Promise<DBResponse<StructuralElement>> {
+  const { data, error } = await supabase
+    .from('structural_elements')
+    .insert([element])
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function updateStructuralElement(
+  id: string,
+  updates: Partial<StructuralElement>
+): Promise<DBResponse<StructuralElement>> {
+  const { data, error } = await supabase
+    .from('structural_elements')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+export async function deleteStructuralElement(id: string): Promise<DBResponse<StructuralElement>> {
+  const { data, error } = await supabase
+    .from('structural_elements')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single()
+
+  return { data, error }
 }
