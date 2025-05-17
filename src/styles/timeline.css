@@ -1,0 +1,33 @@
+.status-idea {
+  background-color: #e5e7eb !important;
+  border-color: #d1d5db !important;
+}
+
+.status-draft {
+  background-color: #bfdbfe !important;
+  border-color: #93c5fd !important;
+}
+
+.status-revised {
+  background-color: #bbf7d0 !important;
+  border-color: #86efac !important;
+}
+
+.status-polished {
+  background-color: #fde68a !important;
+  border-color: #fcd34d !important;
+}
+
+.status-finished {
+  background-color: #86efac !important;
+  border-color: #4ade80 !important;
+}
+
+/* Hover states */
+.status-idea:hover,
+.status-draft:hover,
+.status-revised:hover,
+.status-polished:hover,
+.status-finished:hover {
+  filter: brightness(0.95);
+}
