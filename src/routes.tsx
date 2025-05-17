@@ -18,6 +18,7 @@ import ScenesExplorerPage from '@/pages/scenes/ScenesExplorerPage'
 import SceneEditorPage from '@/pages/scenes/SceneEditorPage'
 import SceneVersionsPage from '@/pages/scenes/SceneVersionsPage'
 import SceneVersionCompare from '@/pages/scenes/SceneVersionCompare'
+import JsonImportPage from '@/pages/JsonImportPage'
 
 export const router = createBrowserRouter([
   {
@@ -95,6 +96,10 @@ export const router = createBrowserRouter([
       {
         path: '/style',
         element: <StyleProfilesPage />,
+      },
+      {
+        path: '/json-import',
+        element: <JsonImportPage />,
       },
     ],
   },
