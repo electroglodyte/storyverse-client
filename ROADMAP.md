@@ -2,7 +2,7 @@
 
 This document outlines the planned features, improvements, and milestones for the StoryVerse project.
 
-## Current Version: 0.9.12 (2025-05-17)
+## Current Version: 0.9.13 (2025-05-17)
 
 ## Vision
 StoryVerse aims to be a comprehensive storytelling platform that leverages AI to help writers develop, visualize, and manage complex narratives with interconnected characters, events, and storylines.
@@ -37,6 +37,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Add creation_notes, 5Q, and subtext fields to scenes table
 - [x] Create story_questions table for tracking narrative questions
 - [x] Create writing_goals, writing_sessions, and daily_progress tables for progress tracking
+- [x] Add image_url column to characters table to fix character import issue
 
 ### Progress Tracking Features
 - [x] Database schema for writing goals, sessions, and progress tracking
@@ -66,6 +67,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Add duplicate character detection during import process
 - [x] Fix Promise handling in extractor functions to properly await results
 - [x] Simplify import process with direct JSON import interface
+- [x] Fix character import functionality to properly handle database schema requirements
 - [ ] Implement React Flow for story visualization
 - [ ] Create multiple interactive views:
   - [ ] Timeline View
@@ -157,6 +159,7 @@ This distinction makes perfect sense from a UX perspective. It separates the cre
 - [x] Add .npmrc file with legacy-peer-deps=true for compatibility
 - [x] Add proper ESLint configuration
 - [x] Update Vercel configuration for more reliable builds
+- [x] Fix database schema mismatch (added missing image_url column to characters table)
 - [ ] Refactor supabase-tables.ts to use more consistent naming
 - [x] Complete transition from local setup to Vercel/Supabase
 - [ ] Improve test coverage
